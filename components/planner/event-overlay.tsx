@@ -44,7 +44,10 @@ export function buildMonthWeekEventLayouts({
   const rows = Math.ceil(cells.length / WEEK_SIZE);
 
   for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
-    const rowCells = cells.slice(rowIndex * WEEK_SIZE, rowIndex * WEEK_SIZE + WEEK_SIZE);
+    const rowCells = cells.slice(
+      rowIndex * WEEK_SIZE,
+      rowIndex * WEEK_SIZE + WEEK_SIZE,
+    );
     const rowDateKeys = rowCells
       .map((day) => {
         if (!day) {
@@ -69,7 +72,9 @@ export function buildMonthWeekEventLayouts({
         return;
       }
 
-      const dateKey = formatDateKey(new Date(month.year, month.monthIndex, day));
+      const dateKey = formatDateKey(
+        new Date(month.year, month.monthIndex, day),
+      );
       columnByDateKey.set(dateKey, columnIndex + 1);
     });
 
@@ -80,13 +85,17 @@ export function buildMonthWeekEventLayouts({
         }
 
         const eventEndDate = event.endDate ?? event.startDate;
-        return event.startDate <= rowEndDateKey && eventEndDate >= rowStartDateKey;
+        return (
+          event.startDate <= rowEndDateKey && eventEndDate >= rowStartDateKey
+        );
       })
       .map((event) => {
         const eventStartDate = event.startDate!;
         const eventEndDate = event.endDate ?? event.startDate!;
-        const visibleStartDate = eventStartDate > rowStartDateKey ? eventStartDate : rowStartDateKey;
-        const visibleEndDate = eventEndDate < rowEndDateKey ? eventEndDate : rowEndDateKey;
+        const visibleStartDate =
+          eventStartDate > rowStartDateKey ? eventStartDate : rowStartDateKey;
+        const visibleEndDate =
+          eventEndDate < rowEndDateKey ? eventEndDate : rowEndDateKey;
         const startColumn = columnByDateKey.get(visibleStartDate);
         const endColumn = columnByDateKey.get(visibleEndDate);
 
@@ -103,7 +112,10 @@ export function buildMonthWeekEventLayouts({
           roundRight: visibleEndDate === eventEndDate,
         } satisfies Omit<MonthWeekEventSegment, "lane">;
       })
-      .filter((segment): segment is Omit<MonthWeekEventSegment, "lane"> => segment !== null)
+      .filter(
+        (segment): segment is Omit<MonthWeekEventSegment, "lane"> =>
+          segment !== null,
+      )
       .sort((left, right) => {
         if (left.startColumn !== right.startColumn) {
           return left.startColumn - right.startColumn;
@@ -113,7 +125,9 @@ export function buildMonthWeekEventLayouts({
           return left.columnSpan - right.columnSpan;
         }
 
-        const titleComparison = left.event.title.localeCompare(right.event.title);
+        const titleComparison = left.event.title.localeCompare(
+          right.event.title,
+        );
         if (titleComparison !== 0) {
           return titleComparison;
         }
@@ -125,7 +139,9 @@ export function buildMonthWeekEventLayouts({
     const segments: MonthWeekEventSegment[] = [];
 
     for (const segment of rowEvents) {
-      let lane = laneEndColumns.findIndex((endColumn) => endColumn < segment.startColumn);
+      let lane = laneEndColumns.findIndex(
+        (endColumn) => endColumn < segment.startColumn,
+      );
 
       if (lane === -1) {
         lane = laneEndColumns.length;
@@ -168,9 +184,7 @@ export function MonthWeekEventOverlay({
   }
 
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-1"
-    >
+    <div className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-1">
       <div
         className="grid h-full grid-cols-7 content-start"
         style={{

@@ -62,7 +62,10 @@ export function MonthCard({ month }: MonthCardProps) {
       <div className="relative">
         {Array.from({ length: rowCount }, (_, rowIndex) => {
           const rowCells = cells.slice(rowIndex * 7, rowIndex * 7 + 7);
-          const rowLayout = rowLayouts[rowIndex] ?? { laneCount: 0, segments: [] };
+          const rowLayout = rowLayouts[rowIndex] ?? {
+            laneCount: 0,
+            segments: [],
+          };
           const rowHeight = getMonthWeekRowHeight(rowLayout.laneCount);
 
           return (
@@ -87,11 +90,7 @@ export function MonthCard({ month }: MonthCardProps) {
                 const dateKey = formatDateKey(date);
 
                 return (
-                  <CalendarDayCell
-                    key={dateKey}
-                    day={day}
-                    dateKey={dateKey}
-                  />
+                  <CalendarDayCell key={dateKey} day={day} dateKey={dateKey} />
                 );
               })}
 
