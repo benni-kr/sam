@@ -30,20 +30,6 @@ export function MobileView() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Mobile list
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-          Chronological events for quick scanning
-        </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-          This compact list mirrors the same semester data as the calendar and
-          mind map. Scheduled items appear in order, and unscheduled items are
-          kept at the bottom so they stay easy to find on a phone.
-        </p>
-      </div>
-
       <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
