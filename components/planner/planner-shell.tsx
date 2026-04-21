@@ -184,12 +184,6 @@ function PlannerShellFrame({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                   Semester Aktivity Manager
                 </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  {activeSemester.label}
-                </h1>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {activeSemester.description}
-                </p>
               </div>
 
               <div ref={semesterMenuRef} className="relative">
