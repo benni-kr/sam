@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -17,10 +17,36 @@ type PlannerShellProps = {
 
 export function PlannerShell({ children }: PlannerShellProps) {
   const [semesterMenuOpen, setSemesterMenuOpen] = useState(false);
+  const semesterMenuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const semesterId = searchParams.get("semester") ?? defaultPlannerSemesterId;
   const activeSemester = getPlannerSemester(semesterId);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        semesterMenuRef.current &&
+        !semesterMenuRef.current.contains(event.target as Node)
+      ) {
+        setSemesterMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSemesterMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   function buildSemesterHref(nextSemesterId: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -49,7 +75,10 @@ export function PlannerShell({ children }: PlannerShellProps) {
                 {activeSemester.label}
               </h1>
             </div>
-            <div className="relative self-start sm:self-auto">
+            <div
+              ref={semesterMenuRef}
+              className="relative self-start sm:self-auto"
+            >
               <button
                 type="button"
                 onClick={() => setSemesterMenuOpen((current) => !current)}
@@ -62,7 +91,7 @@ export function PlannerShell({ children }: PlannerShellProps) {
               </button>
 
               {semesterMenuOpen ? (
-                <div className="absolute right-0 top-12 z-20 w-64 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+                <div className="absolute right-0 top-12 z-20 w-72 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
                   <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                     Choose semester
                   </p>
@@ -84,7 +113,7 @@ export function PlannerShell({ children }: PlannerShellProps) {
                               : "text-slate-700 hover:bg-slate-100"
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-0.5">
                             <span className="font-medium">
                               {semester.label}
                             </span>
