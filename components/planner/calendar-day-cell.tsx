@@ -30,8 +30,8 @@ export function CalendarDayCell({
       className={`group relative h-full min-h-28 border-b border-r px-2 py-2 transition-colors last:border-r-0 ${
         isOver
           ? "border-slate-900 bg-slate-100"
-          // Weekend columns use a slightly darker tone.
-          : isWeekend
+          : // Weekend columns use a slightly darker tone.
+            isWeekend
             ? "border-slate-200 bg-slate-50/90 hover:bg-slate-100"
             : "border-slate-200 bg-white hover:bg-slate-50"
       }`}
