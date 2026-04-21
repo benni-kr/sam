@@ -6,7 +6,12 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 
 - A fixed six-month calendar layout for April through September 2026
 - An unscheduled inbox area for floating events
-- Shared, typed event data in the main page component
+- A grouped App Router structure for the calendar, mind map, and mobile views
+- Shared, typed event data and semester metadata in `lib/planner.ts`
+- Shared client-side planner state so all views stay synchronized
+- Drag-and-drop foundations for moving events between inbox and calendar dates
+- Local browser persistence for event scheduling placement changes
+- Persistence resolver with Supabase sync and local fallback
 - Semantic app metadata and a configured global font stack
 - Continuous integration that runs linting and production build checks
 
@@ -33,6 +38,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Run the SQL migration in [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) using the Supabase SQL editor.
+3. Copy [.env.example](.env.example) to `.env.local` and fill in Supabase values.
+4. Set `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` in `.env.local`.
+
+If Supabase is unavailable, the app still writes placements to local storage as a fallback.
+
 ## Available Scripts
 
 - `npm run dev` - start the local development server
@@ -42,9 +56,43 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
 
-- [app/page.tsx](app/page.tsx) - planner shell UI and sample event data
+- [app/(planner)/layout.tsx](app/%28planner%29/layout.tsx) - shared planner shell and view tabs
+- [app/(planner)/page.tsx](app/%28planner%29/page.tsx) - calendar view entry route
+- [app/(planner)/mindmap/page.tsx](app/%28planner%29/mindmap/page.tsx) - mind map route
+- [app/(planner)/mobile/page.tsx](app/%28planner%29/mobile/page.tsx) - mobile timeline route
 - [app/layout.tsx](app/layout.tsx) - root layout and metadata
 - [app/globals.css](app/globals.css) - global styling and theme tokens
+- [components/planner/\*](components/planner) - view shells, tabs, and reusable planner UI
+- [components/planner/planner-state.tsx](components/planner/planner-state.tsx) - shared planner state provider and actions
+- [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
+- [lib/planner-persistence.ts](lib/planner-persistence.ts) - storage adapter and placement serialization
+- [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) - baseline planner placements table and policies
+
+Persistence defaults to local storage. Supabase mode is available through `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` when both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
+
+Optional rollout logging is available with `NEXT_PUBLIC_SAM_LOG_PERSISTENCE=true` (production) or automatically in development mode.
+
+The Supabase adapter expects a table named `planner_event_placements` with this shape:
+
+- `semester_id` text not null
+- `event_id` text not null
+- `start_date` text null
+- `end_date` text null
+- primary key on (`semester_id`, `event_id`)
+
+In Supabase mode, writes are persisted locally first and then synced remotely, so drag-and-drop remains durable even if the network is unavailable.
+
+## Routing
+
+The planner lives in a route group so the visible URLs stay clean while the UI stays organized:
+
+- `/` - calendar view
+- `/mindmap` - mind map placeholder
+- `/mobile` - mobile list placeholder
+
+The shared header and view tabs live in the grouped layout, so all three routes stay under the same planner chrome.
+
+Semester switching is query-parameter based (`?semester=...`) for now. This keeps URLs simple, preserves shareable deep links between views, and avoids route duplication while the data layer is still in-memory. A route-segment model can be introduced later if we need stricter path semantics or server-driven semester data loading.
 
 ## Working Rules
 
