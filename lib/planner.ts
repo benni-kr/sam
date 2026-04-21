@@ -219,3 +219,45 @@ export function getCategorySummaries(): PlannerCategorySummary[] {
     };
   });
 }
+
+export function getChronologicalEvents(): PlannerEvent[] {
+  return [...plannerEvents].sort((left, right) => {
+    if (left.startDate === null && right.startDate === null) {
+      return left.title.localeCompare(right.title);
+    }
+
+    if (left.startDate === null) {
+      return 1;
+    }
+
+    if (right.startDate === null) {
+      return -1;
+    }
+
+    const dateComparison = left.startDate.localeCompare(right.startDate);
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+
+    if (left.endDate === null && right.endDate === null) {
+      return left.title.localeCompare(right.title);
+    }
+
+    if (left.endDate === null) {
+      return 1;
+    }
+
+    if (right.endDate === null) {
+      return -1;
+    }
+
+    const endDateComparison = left.endDate.localeCompare(right.endDate);
+
+    if (endDateComparison !== 0) {
+      return endDateComparison;
+    }
+
+    return left.title.localeCompare(right.title);
+  });
+}

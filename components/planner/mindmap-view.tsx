@@ -63,7 +63,9 @@ export function MindMapView() {
               <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${styles.dot}`} />
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${styles.dot}`}
+                    />
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                       {summary.category}
                     </p>
@@ -125,7 +127,8 @@ export function MindMapView() {
 
                   <p className="mt-4 text-sm leading-6 text-slate-600">
                     This participant layer is the bridge to a fuller graph view
-                    later on, when we connect the mind map to a dedicated canvas.
+                    later on, when we connect the mind map to a dedicated
+                    canvas.
                   </p>
                 </div>
               </div>
