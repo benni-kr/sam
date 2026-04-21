@@ -253,7 +253,7 @@ export const plannerViews: PlannerView[] = [
   },
 ];
 
-export const weekdayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+export const weekdayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
 export const monthFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
@@ -271,7 +271,7 @@ export function formatDateKey(date: Date) {
 export function buildMonthDays(year: number, monthIndex: number) {
   const firstDay = new Date(year, monthIndex, 1);
   const totalDays = new Date(year, monthIndex + 1, 0).getDate();
-  const leadingEmptyDays = firstDay.getDay();
+  const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
   const cells: Array<number | null> = Array.from(
     { length: leadingEmptyDays },
     () => null,

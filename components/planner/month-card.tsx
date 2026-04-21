@@ -69,12 +69,15 @@ export function MonthCard({ month }: MonthCardProps) {
             >
               {rowCells.map((day, columnIndex) => {
                 const absoluteIndex = rowIndex * 7 + columnIndex;
+                const isWeekend = columnIndex >= 5;
+                const stripedBackground =
+                  "bg-[repeating-linear-gradient(135deg,_rgba(148,163,184,0.18)_0,_rgba(148,163,184,0.18)_8px,_rgba(248,250,252,0.72)_8px,_rgba(248,250,252,0.72)_16px)]";
 
                 if (!day) {
                   return (
                     <div
                       key={`empty-${month.year}-${month.monthIndex}-${absoluteIndex}`}
-                      className="h-full min-h-28 border-b border-r border-slate-200 bg-slate-50/30 last:border-r-0"
+                      className={`h-full min-h-28 border-b border-r border-slate-200 last:border-r-0 ${stripedBackground}`}
                     />
                   );
                 }
@@ -83,7 +86,12 @@ export function MonthCard({ month }: MonthCardProps) {
                 const dateKey = formatDateKey(date);
 
                 return (
-                  <CalendarDayCell key={dateKey} day={day} dateKey={dateKey} />
+                  <CalendarDayCell
+                    key={dateKey}
+                    day={day}
+                    dateKey={dateKey}
+                    isWeekend={isWeekend}
+                  />
                 );
               })}
 
