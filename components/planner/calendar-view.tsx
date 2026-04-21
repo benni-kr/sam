@@ -1,9 +1,14 @@
 import { EventBadge } from "@/components/planner/event-badge";
 import { MonthCard } from "@/components/planner/month-card";
-import { getInboxEvents, plannerMonths } from "@/lib/planner";
+import { getInboxEvents, getPlannerSemester } from "@/lib/planner";
 
-export function CalendarView() {
-  const inboxEvents = getInboxEvents();
+type CalendarViewProps = {
+  semesterId?: string | null;
+};
+
+export function CalendarView({ semesterId }: CalendarViewProps) {
+  const semester = getPlannerSemester(semesterId);
+  const inboxEvents = getInboxEvents(semester.id);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
@@ -14,7 +19,7 @@ export function CalendarView() {
               Calendar View
             </p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">
-              Six-month grid for the semester
+              Six-month grid for {semester.label}
             </h2>
           </div>
           <div className="hidden text-sm text-slate-500 md:block">
@@ -23,8 +28,12 @@ export function CalendarView() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {plannerMonths.map(({ label, monthIndex }) => (
-            <MonthCard key={label} label={label} monthIndex={monthIndex} />
+          {semester.months.map((month) => (
+            <MonthCard
+              key={`${month.year}-${month.monthIndex}`}
+              month={month}
+              semesterId={semester.id}
+            />
           ))}
         </div>
       </div>

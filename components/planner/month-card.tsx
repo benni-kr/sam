@@ -3,24 +3,27 @@ import {
   formatDateKey,
   getEventsForDate,
   monthFormatter,
+  type PlannerMonth,
   weekdayLabels,
 } from "@/lib/planner";
 
 type MonthCardProps = {
-  label: string;
-  monthIndex: number;
+  month: PlannerMonth;
+  semesterId: string;
 };
 
-export function MonthCard({ label, monthIndex }: MonthCardProps) {
-  const cells = buildMonthDays(2026, monthIndex);
-  const monthLabel = monthFormatter.format(new Date(2026, monthIndex, 1));
+export function MonthCard({ month, semesterId }: MonthCardProps) {
+  const cells = buildMonthDays(month.year, month.monthIndex);
+  const monthLabel = monthFormatter.format(
+    new Date(month.year, month.monthIndex, 1),
+  );
 
   return (
     <article className="rounded-[1.5rem] border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-            {label}
+            {month.label}
           </p>
           <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
             {monthLabel}
@@ -44,15 +47,15 @@ export function MonthCard({ label, monthIndex }: MonthCardProps) {
           if (!day) {
             return (
               <div
-                key={`empty-${label}-${index}`}
+                key={`empty-${month.year}-${month.monthIndex}-${index}`}
                 className="h-24 rounded-2xl"
               />
             );
           }
 
-          const date = new Date(2026, monthIndex, day);
+          const date = new Date(month.year, month.monthIndex, day);
           const dateKey = formatDateKey(date);
-          const dayEvents = getEventsForDate(dateKey);
+          const dayEvents = getEventsForDate(dateKey, semesterId);
 
           return (
             <div

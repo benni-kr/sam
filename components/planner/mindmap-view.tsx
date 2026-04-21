@@ -31,8 +31,12 @@ const categoryStyles: Record<
   },
 };
 
-export function MindMapView() {
-  const categorySummaries = getCategorySummaries();
+type MindMapViewProps = {
+  semesterId?: string | null;
+};
+
+export function MindMapView({ semesterId }: MindMapViewProps) {
+  const categorySummaries = getCategorySummaries(semesterId);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">

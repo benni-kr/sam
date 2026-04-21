@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { PlannerShell } from "@/components/planner/planner-shell";
@@ -7,5 +8,9 @@ export default function PlannerLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  return <PlannerShell>{children}</PlannerShell>;
+  return (
+    <Suspense fallback={null}>
+      <PlannerShell>{children}</PlannerShell>
+    </Suspense>
+  );
 }

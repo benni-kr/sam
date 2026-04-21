@@ -1,4 +1,4 @@
-import { getChronologicalEvents, plannerSemester } from "@/lib/planner";
+import { getChronologicalEvents, getPlannerSemester } from "@/lib/planner";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -25,8 +25,13 @@ function mobileCategoryTone(category: string) {
   }
 }
 
-export function MobileView() {
-  const events = getChronologicalEvents();
+type MobileViewProps = {
+  semesterId?: string | null;
+};
+
+export function MobileView({ semesterId }: MobileViewProps) {
+  const semester = getPlannerSemester(semesterId);
+  const events = getChronologicalEvents(semester.id);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
@@ -51,7 +56,7 @@ export function MobileView() {
               Timeline
             </p>
             <h3 className="mt-1 text-lg font-semibold text-slate-900">
-              {plannerSemester.label}
+              {semester.label}
             </h3>
           </div>
           <p className="text-sm text-slate-500">

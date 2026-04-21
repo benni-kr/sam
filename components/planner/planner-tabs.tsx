@@ -1,22 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
-import { plannerViews } from "@/lib/planner";
+import { defaultPlannerSemesterId, plannerViews } from "@/lib/planner";
 
-export function PlannerTabs() {
+type PlannerTabsProps = {
+  activeSemesterId?: string | null;
+};
+
+export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const semesterId = activeSemesterId ?? defaultPlannerSemesterId;
+
+  function buildViewHref(viewHref: string) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (semesterId === defaultPlannerSemesterId) {
+      params.delete("semester");
+    } else {
+      params.set("semester", semesterId);
+    }
+
+    const query = params.toString();
+
+    return query ? `${viewHref}?${query}` : viewHref;
+  }
 
   return (
     <nav aria-label="Planner views" className="flex flex-wrap gap-2">
       {plannerViews.map((view) => {
         const isActive = pathname === view.href;
+        const href = buildViewHref(view.href);
 
         return (
           <Link
             key={view.key}
-            href={view.href}
+            href={href}
             aria-current={isActive ? "page" : undefined}
             className={`rounded-full border px-4 py-2 text-sm transition-colors ${
               isActive
