@@ -9,7 +9,6 @@ import {
 import {
   buildMonthDays,
   formatDateKey,
-  monthFormatter,
   weekdayLabels,
   type PlannerMonth,
 } from "@/lib/planner";
@@ -22,9 +21,6 @@ type MonthCardProps = {
 export function MonthCard({ month }: MonthCardProps) {
   const { events } = usePlannerState();
   const cells = buildMonthDays(month.year, month.monthIndex);
-  const monthLabel = monthFormatter.format(
-    new Date(month.year, month.monthIndex, 1),
-  );
   const rowLayouts = buildMonthWeekEventLayouts({
     month,
     cells,
@@ -39,9 +35,6 @@ export function MonthCard({ month }: MonthCardProps) {
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
             {month.label}
           </p>
-          <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-            {monthLabel}
-          </h3>
         </div>
         <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
           {month.year}
