@@ -2,14 +2,12 @@ import type { PlannerEvent } from "@/lib/planner";
 
 function categoryTone(category: PlannerEvent["category"]) {
   switch (category) {
-    case "Social":
-      return "border-amber-200 bg-amber-50 text-amber-900";
-    case "Study":
-      return "border-sky-200 bg-sky-50 text-sky-900";
-    case "Admin":
-      return "border-zinc-200 bg-zinc-100 text-zinc-700";
-    case "Trip":
+    case "Exams":
+      return "border-violet-200 bg-violet-50 text-violet-900";
+    case "Group Events":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
+    case "Private Events":
+      return "border-amber-200 bg-amber-50 text-amber-900";
     case "Inbox":
       return "border-stone-200 bg-stone-100 text-stone-700";
     default:

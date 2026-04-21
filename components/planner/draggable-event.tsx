@@ -9,11 +9,13 @@ import type { PlannerEvent } from "@/lib/planner";
 type DraggableEventProps = {
   event: PlannerEvent;
   compact?: boolean;
+  children?: React.ReactNode;
 };
 
 export function DraggableEvent({
   event,
   compact = false,
+  children,
 }: DraggableEventProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -53,7 +55,7 @@ export function DraggableEvent({
         isDragging ? "opacity-40" : "opacity-100"
       }`}
     >
-      <EventBadge event={event} />
+      {children ?? <EventBadge event={event} />}
     </div>
   );
 }

@@ -15,15 +15,15 @@ type MonthCardProps = {
 };
 
 export function MonthCard({ month }: MonthCardProps) {
-  const { getEventsForDate } = usePlannerState();
+  const { getEventsCoveringDate } = usePlannerState();
   const cells = buildMonthDays(month.year, month.monthIndex);
   const monthLabel = monthFormatter.format(
     new Date(month.year, month.monthIndex, 1),
   );
 
   return (
-    <article className="rounded-[1.5rem] border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <article className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
             {month.label}
@@ -37,28 +37,31 @@ export function MonthCard({ month }: MonthCardProps) {
         </span>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
         {weekdayLabels.map((weekday, index) => (
-          <div key={`${weekday}-${index}`} className="pb-1">
+          <div
+            key={`${weekday}-${index}`}
+            className="border-r border-slate-200 py-1 last:border-r-0"
+          >
             {weekday}
           </div>
         ))}
       </div>
 
-      <div className="mt-2 grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7">
         {cells.map((day, index) => {
           if (!day) {
             return (
               <div
                 key={`empty-${month.year}-${month.monthIndex}-${index}`}
-                className="h-24 rounded-2xl"
+                className="h-28 border-b border-r border-slate-200 bg-slate-50/30 last:border-r-0"
               />
             );
           }
 
           const date = new Date(month.year, month.monthIndex, day);
           const dateKey = formatDateKey(date);
-          const dayEvents = getEventsForDate(dateKey);
+          const dayEvents = getEventsCoveringDate(dateKey);
 
           return (
             <CalendarDayCell
