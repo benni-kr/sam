@@ -1,10 +1,23 @@
 "use client";
 
-import { createContext, useContext, useMemo, useReducer } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
+
+import {
+  localPlannerEventStore,
+  type PlannerPlacementsBySemester,
+} from "@/lib/planner-persistence";
 
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
+  plannerSemesterIds,
   plannerSemesters,
   type PlannerCategorySummary,
   type PlannerEvent,
@@ -34,6 +47,12 @@ type PlannerStateProviderProps = {
 };
 
 type PlannerAction =
+  | {
+      type: "HYDRATE_FROM_STORAGE";
+      payload: {
+        placements: PlannerPlacementsBySemester | null;
+      };
+    }
   | {
       type: "MOVE_EVENT_TO_DATE";
       payload: {
@@ -86,9 +105,25 @@ function eventDurationInDays(event: PlannerEvent) {
 
 function initializeEventsBySemester(): EventsBySemester {
   return plannerSemesters.reduce((acc, semester) => {
-    acc[semester.id] = semester.events;
+    acc[semester.id] = semester.events.map((event) => ({ ...event }));
     return acc;
   }, {} as EventsBySemester);
+}
+
+function buildPlacementsBySemester(
+  eventsBySemester: EventsBySemester,
+): PlannerPlacementsBySemester {
+  return plannerSemesterIds.reduce((acc, semesterId) => {
+    const semesterEvents = eventsBySemester[semesterId] ?? [];
+
+    acc[semesterId] = semesterEvents.map((event) => ({
+      id: event.id,
+      startDate: event.startDate,
+      endDate: event.endDate,
+    }));
+
+    return acc;
+  }, {} as PlannerPlacementsBySemester);
 }
 
 function plannerStateReducer(
@@ -96,6 +131,45 @@ function plannerStateReducer(
   action: PlannerAction,
 ): EventsBySemester {
   switch (action.type) {
+    case "HYDRATE_FROM_STORAGE": {
+      const { placements } = action.payload;
+
+      if (!placements) {
+        return state;
+      }
+
+      const nextState: EventsBySemester = { ...state };
+
+      for (const semesterId of plannerSemesterIds) {
+        const semesterEvents = state[semesterId] ?? [];
+        const semesterPlacements = placements[semesterId];
+
+        if (!semesterPlacements || semesterPlacements.length === 0) {
+          continue;
+        }
+
+        const placementByEventId = new Map(
+          semesterPlacements.map((placement) => [placement.id, placement]),
+        );
+
+        nextState[semesterId] = semesterEvents.map((event) => {
+          const placement = placementByEventId.get(event.id);
+
+          if (!placement) {
+            return event;
+          }
+
+          return {
+            ...event,
+            startDate: placement.startDate,
+            endDate: placement.endDate,
+          };
+        });
+      }
+
+      return nextState;
+    }
+
     case "MOVE_EVENT_TO_DATE": {
       const { semesterId, eventId, dateKey } = action.payload;
       const semesterEvents = state[semesterId] ?? [];
@@ -218,6 +292,42 @@ export function PlannerStateProvider({
     undefined,
     initializeEventsBySemester,
   );
+  const didHydrateFromStorage = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void localPlannerEventStore
+      .loadPlacements()
+      .then((placements) => {
+        if (cancelled) {
+          return;
+        }
+
+        dispatch({
+          type: "HYDRATE_FROM_STORAGE",
+          payload: { placements },
+        });
+      })
+      .finally(() => {
+        if (!cancelled) {
+          didHydrateFromStorage.current = true;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didHydrateFromStorage.current) {
+      return;
+    }
+
+    const placements = buildPlacementsBySemester(eventsBySemester);
+    void localPlannerEventStore.savePlacements(placements);
+  }, [eventsBySemester]);
 
   const normalizedSemesterId = (
     plannerSemesters.some((semester) => semester.id === activeSemesterId)
