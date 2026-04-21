@@ -35,6 +35,13 @@ export type PlannerView = {
   description: string;
 };
 
+export type PlannerCategorySummary = {
+  category: PlannerEventCategory;
+  count: number;
+  participants: string[];
+  events: PlannerEvent[];
+};
+
 export const plannerSemester: PlannerSemester = {
   id: "spring-2026",
   label: "Spring 2026",
@@ -189,4 +196,26 @@ export function getEventsForDate(dateKey: string) {
 
 export function getInboxEvents() {
   return plannerEvents.filter((event) => !event.startDate);
+}
+
+export function getCategorySummaries(): PlannerCategorySummary[] {
+  const categories = new Set<PlannerEventCategory>();
+
+  for (const event of plannerEvents) {
+    categories.add(event.category);
+  }
+
+  return Array.from(categories).map((category) => {
+    const events = plannerEvents.filter((event) => event.category === category);
+    const participants = Array.from(
+      new Set(events.flatMap((event) => event.participants)),
+    );
+
+    return {
+      category,
+      count: events.length,
+      participants,
+      events,
+    };
+  });
 }
