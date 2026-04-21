@@ -38,6 +38,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Run the SQL migration in [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) using the Supabase SQL editor.
+3. Copy [.env.example](.env.example) to `.env.local` and fill in Supabase values.
+4. Set `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` in `.env.local`.
+
+If Supabase is unavailable, the app still writes placements to local storage as a fallback.
+
 ## Available Scripts
 
 - `npm run dev` - start the local development server
@@ -57,6 +66,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - [components/planner/planner-state.tsx](components/planner/planner-state.tsx) - shared planner state provider and actions
 - [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
 - [lib/planner-persistence.ts](lib/planner-persistence.ts) - storage adapter and placement serialization
+- [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) - baseline planner placements table and policies
 
 Persistence defaults to local storage. Supabase mode is available through `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` when both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
 
