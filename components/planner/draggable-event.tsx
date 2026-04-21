@@ -34,7 +34,7 @@ export function DraggableEvent({
         style={style}
         {...listeners}
         {...attributes}
-        className={`truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] leading-4 text-slate-700 ${
+        className={`touch-none cursor-grab truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] leading-4 text-slate-700 active:cursor-grabbing ${
           isDragging ? "opacity-40" : "opacity-100"
         }`}
       >
@@ -49,7 +49,9 @@ export function DraggableEvent({
       style={style}
       {...listeners}
       {...attributes}
-      className={isDragging ? "opacity-40" : "opacity-100"}
+      className={`touch-none cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-40" : "opacity-100"
+      }`}
     >
       <EventBadge event={event} />
     </div>
