@@ -18,6 +18,14 @@ export type PlannerEventStore = {
 export type PlannerStoreMode = "local" | "supabase";
 
 const LOCAL_STORAGE_KEY = "sam.planner.placements.v1";
+const SUPABASE_PLACEMENTS_TABLE = "planner_event_placements";
+
+type SupabasePlacementRow = {
+  semester_id: PlannerSemesterId;
+  event_id: string;
+  start_date: string | null;
+  end_date: string | null;
+};
 
 function isDateValue(value: unknown) {
   return value === null || typeof value === "string";
@@ -64,6 +72,103 @@ function normalizePlacements(
   return normalized;
 }
 
+function placementsToRows(
+  placements: PlannerPlacementsBySemester,
+): SupabasePlacementRow[] {
+  const rows: SupabasePlacementRow[] = [];
+
+  for (const semesterId of plannerSemesterIds) {
+    const semesterPlacements = placements[semesterId] ?? [];
+
+    for (const placement of semesterPlacements) {
+      rows.push({
+        semester_id: semesterId,
+        event_id: placement.id,
+        start_date: placement.startDate,
+        end_date: placement.endDate,
+      });
+    }
+  }
+
+  return rows;
+}
+
+function rowsToPlacements(rows: SupabasePlacementRow[]) {
+  const placements: PlannerPlacementsBySemester = {};
+
+  for (const semesterId of plannerSemesterIds) {
+    const semesterRows = rows.filter((row) => row.semester_id === semesterId);
+
+    if (semesterRows.length === 0) {
+      continue;
+    }
+
+    placements[semesterId] = semesterRows.map((row) => ({
+      id: row.event_id,
+      startDate: row.start_date,
+      endDate: row.end_date,
+    }));
+  }
+
+  return placements;
+}
+
+function getSupabaseConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return null;
+  }
+
+  return {
+    url,
+    anonKey,
+  };
+}
+
+async function fetchSupabasePlacements(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_PLACEMENTS_TABLE}?select=semester_id,event_id,start_date,end_date`;
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load planner placements from Supabase.");
+  }
+
+  const rows = (await response.json()) as SupabasePlacementRow[];
+  return rowsToPlacements(rows);
+}
+
+async function upsertSupabasePlacements(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  placements: PlannerPlacementsBySemester,
+) {
+  const rows = placementsToRows(placements);
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_PLACEMENTS_TABLE}?on_conflict=semester_id,event_id`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to save planner placements to Supabase.");
+  }
+}
+
 export const localPlannerEventStore: PlannerEventStore = {
   async loadPlacements() {
     if (typeof window === "undefined") {
@@ -99,30 +204,65 @@ export const localPlannerEventStore: PlannerEventStore = {
 };
 
 function hasSupabaseClientConfig() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+  return Boolean(getSupabaseConfig());
 }
 
-// Stub adapter for future backend wiring.
-// For now it intentionally does nothing so behavior stays local-first.
 export const supabasePlannerEventStore: PlannerEventStore = {
   async loadPlacements() {
-    return null;
+    const config = getSupabaseConfig();
+
+    if (!config) {
+      return null;
+    }
+
+    try {
+      return await fetchSupabasePlacements(config);
+    } catch {
+      return null;
+    }
   },
 
   async savePlacements(placements) {
-    void placements;
-    return;
+    const config = getSupabaseConfig();
+
+    if (!config) {
+      return;
+    }
+
+    try {
+      await upsertSupabasePlacements(config, placements);
+    } catch {
+      return;
+    }
   },
 };
+
+function createSupabaseFallbackStore(): PlannerEventStore {
+  return {
+    async loadPlacements() {
+      const supabasePlacements =
+        await supabasePlannerEventStore.loadPlacements();
+
+      if (supabasePlacements) {
+        return supabasePlacements;
+      }
+
+      return localPlannerEventStore.loadPlacements();
+    },
+
+    async savePlacements(placements) {
+      // Persist locally first for resilience, then attempt remote sync.
+      await localPlannerEventStore.savePlacements(placements);
+      await supabasePlannerEventStore.savePlacements(placements);
+    },
+  };
+}
 
 export function resolvePlannerEventStore(): PlannerEventStore {
   const configuredMode = process.env.NEXT_PUBLIC_SAM_PLANNER_STORE;
 
   if (configuredMode === "supabase" && hasSupabaseClientConfig()) {
-    return supabasePlannerEventStore;
+    return createSupabaseFallbackStore();
   }
 
   return localPlannerEventStore;

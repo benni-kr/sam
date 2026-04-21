@@ -58,7 +58,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
 - [lib/planner-persistence.ts](lib/planner-persistence.ts) - storage adapter and placement serialization
 
-Persistence currently defaults to local storage. A backend path is scaffolded through a store resolver (`NEXT_PUBLIC_SAM_PLANNER_STORE=supabase`) and a Supabase-shaped adapter stub that can be implemented without changing planner state consumers.
+Persistence defaults to local storage. Supabase mode is available through `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` when both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
+
+The Supabase adapter expects a table named `planner_event_placements` with this shape:
+
+- `semester_id` text not null
+- `event_id` text not null
+- `start_date` text null
+- `end_date` text null
+- primary key on (`semester_id`, `event_id`)
+
+In Supabase mode, writes are persisted locally first and then synced remotely, so drag-and-drop remains durable even if the network is unavailable.
 
 ## Routing
 
