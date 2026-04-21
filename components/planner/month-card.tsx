@@ -38,8 +38,8 @@ export function MonthCard({ month }: MonthCardProps) {
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
-        {weekdayLabels.map((weekday) => (
-          <div key={weekday} className="pb-1">
+        {weekdayLabels.map((weekday, index) => (
+          <div key={`${weekday}-${index}`} className="pb-1">
             {weekday}
           </div>
         ))}
