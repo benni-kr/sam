@@ -6,7 +6,8 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 
 - A fixed six-month calendar layout for April through September 2026
 - An unscheduled inbox area for floating events
-- Shared, typed event data in the main page component
+- A grouped App Router structure for the calendar, mind map, and mobile views
+- Shared, typed event data and semester metadata in `lib/planner.ts`
 - Semantic app metadata and a configured global font stack
 - Continuous integration that runs linting and production build checks
 
@@ -42,9 +43,24 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
 
-- [app/page.tsx](app/page.tsx) - planner shell UI and sample event data
+- [app/(planner)/layout.tsx](app/%28planner%29/layout.tsx) - shared planner shell and view tabs
+- [app/(planner)/page.tsx](app/%28planner%29/page.tsx) - calendar view entry route
+- [app/(planner)/mindmap/page.tsx](app/%28planner%29/mindmap/page.tsx) - mind map placeholder route
+- [app/(planner)/mobile/page.tsx](app/%28planner%29/mobile/page.tsx) - mobile list placeholder route
 - [app/layout.tsx](app/layout.tsx) - root layout and metadata
 - [app/globals.css](app/globals.css) - global styling and theme tokens
+- [components/planner/\*](components/planner) - view shells, tabs, and reusable planner UI
+- [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
+
+## Routing
+
+The planner lives in a route group so the visible URLs stay clean while the UI stays organized:
+
+- `/` - calendar view
+- `/mindmap` - mind map placeholder
+- `/mobile` - mobile list placeholder
+
+The shared header and view tabs live in the grouped layout, so all three routes stay under the same planner chrome.
 
 ## Working Rules
 

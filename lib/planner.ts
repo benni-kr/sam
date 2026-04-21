@@ -19,6 +19,51 @@ export type PlannerMonth = {
   monthIndex: number;
 };
 
+export type PlannerViewKey = "calendar" | "mindmap" | "mobile";
+
+export type PlannerSemester = {
+  id: string;
+  label: string;
+  dateRangeLabel: string;
+  description: string;
+};
+
+export type PlannerView = {
+  key: PlannerViewKey;
+  label: string;
+  href: string;
+  description: string;
+};
+
+export const plannerSemester: PlannerSemester = {
+  id: "spring-2026",
+  label: "Spring 2026",
+  dateRangeLabel: "April 2026 to September 2026",
+  description:
+    "A collaborative semester workspace for exams, trips, and shared plans.",
+};
+
+export const plannerViews: PlannerView[] = [
+  {
+    key: "calendar",
+    label: "Calendar",
+    href: "/",
+    description: "6-month overview with inbox",
+  },
+  {
+    key: "mindmap",
+    label: "Mind maps",
+    href: "/mindmap",
+    description: "One map per category",
+  },
+  {
+    key: "mobile",
+    label: "Mobile list",
+    href: "/mobile",
+    description: "Chronological compact view",
+  },
+];
+
 export const plannerEvents: PlannerEvent[] = [
   {
     id: "evt-1",
