@@ -71,6 +71,8 @@ If Supabase is unavailable, the app still writes placements to local storage as 
 - [components/planner/event-overlay.tsx](components/planner/event-overlay.tsx) - week-row multi-day event segmentation and overlay rendering
 - [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
 - [lib/planner-persistence.ts](lib/planner-persistence.ts) - storage adapter and placement serialization
+- [docs/architecture.md](docs/architecture.md) - architecture overview and planner data/rendering flow
+- [docs/contributing.md](docs/contributing.md) - contribution workflow and quality expectations
 - [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) - baseline planner placements table and policies
 
 Persistence defaults to local storage. Supabase mode is available through `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` when both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
@@ -105,6 +107,8 @@ Semester switching is query-parameter based (`?semester=...`) for now. This keep
 - Prefer typed data structures over ad hoc objects.
 - Document non-obvious logic where it helps future maintenance.
 - Preserve the fixed semester scope until the next view is introduced.
+
+For detailed engineering guidance, see [docs/architecture.md](docs/architecture.md) and [docs/contributing.md](docs/contributing.md).
 
 ## Validation
 
