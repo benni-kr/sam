@@ -11,7 +11,7 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 - Shared client-side planner state so all views stay synchronized
 - Drag-and-drop foundations for moving events between inbox and calendar dates
 - Local browser persistence for event scheduling placement changes
-- Backend-ready persistence resolver with a Supabase adapter stub
+- Persistence resolver with Supabase sync and local fallback
 - Semantic app metadata and a configured global font stack
 - Continuous integration that runs linting and production build checks
 
@@ -69,6 +69,8 @@ If Supabase is unavailable, the app still writes placements to local storage as 
 - [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) - baseline planner placements table and policies
 
 Persistence defaults to local storage. Supabase mode is available through `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` when both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
+
+Optional rollout logging is available with `NEXT_PUBLIC_SAM_LOG_PERSISTENCE=true` (production) or automatically in development mode.
 
 The Supabase adapter expects a table named `planner_event_placements` with this shape:
 
