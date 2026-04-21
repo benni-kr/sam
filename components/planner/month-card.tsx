@@ -2,11 +2,16 @@
 
 import { CalendarDayCell } from "@/components/planner/calendar-day-cell";
 import {
+  MonthWeekEventOverlay,
+  buildMonthWeekEventLayouts,
+  getMonthWeekRowHeight,
+} from "@/components/planner/event-overlay";
+import {
   buildMonthDays,
   formatDateKey,
   monthFormatter,
-  type PlannerMonth,
   weekdayLabels,
+  type PlannerMonth,
 } from "@/lib/planner";
 import { usePlannerState } from "@/components/planner/planner-state";
 
@@ -15,11 +20,17 @@ type MonthCardProps = {
 };
 
 export function MonthCard({ month }: MonthCardProps) {
-  const { getEventsCoveringDate } = usePlannerState();
+  const { events } = usePlannerState();
   const cells = buildMonthDays(month.year, month.monthIndex);
   const monthLabel = monthFormatter.format(
     new Date(month.year, month.monthIndex, 1),
   );
+  const rowLayouts = buildMonthWeekEventLayouts({
+    month,
+    cells,
+    events,
+  });
+  const rowCount = Math.ceil(cells.length / 7);
 
   return (
     <article className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
@@ -48,28 +59,47 @@ export function MonthCard({ month }: MonthCardProps) {
         ))}
       </div>
 
-      <div className="grid grid-cols-7">
-        {cells.map((day, index) => {
-          if (!day) {
-            return (
-              <div
-                key={`empty-${month.year}-${month.monthIndex}-${index}`}
-                className="h-28 border-b border-r border-slate-200 bg-slate-50/30 last:border-r-0"
-              />
-            );
-          }
-
-          const date = new Date(month.year, month.monthIndex, day);
-          const dateKey = formatDateKey(date);
-          const dayEvents = getEventsCoveringDate(dateKey);
+      <div className="relative">
+        {Array.from({ length: rowCount }, (_, rowIndex) => {
+          const rowCells = cells.slice(rowIndex * 7, rowIndex * 7 + 7);
+          const rowLayout = rowLayouts[rowIndex] ?? { laneCount: 0, segments: [] };
+          const rowHeight = getMonthWeekRowHeight(rowLayout.laneCount);
 
           return (
-            <CalendarDayCell
-              key={dateKey}
-              day={day}
-              dateKey={dateKey}
-              events={dayEvents}
-            />
+            <div
+              key={`${month.year}-${month.monthIndex}-row-${rowIndex}`}
+              className="relative grid grid-cols-7"
+              style={{ minHeight: rowHeight }}
+            >
+              {rowCells.map((day, columnIndex) => {
+                const absoluteIndex = rowIndex * 7 + columnIndex;
+
+                if (!day) {
+                  return (
+                    <div
+                      key={`empty-${month.year}-${month.monthIndex}-${absoluteIndex}`}
+                      className="h-full min-h-28 border-b border-r border-slate-200 bg-slate-50/30 last:border-r-0"
+                    />
+                  );
+                }
+
+                const date = new Date(month.year, month.monthIndex, day);
+                const dateKey = formatDateKey(date);
+
+                return (
+                  <CalendarDayCell
+                    key={dateKey}
+                    day={day}
+                    dateKey={dateKey}
+                  />
+                );
+              })}
+
+              <MonthWeekEventOverlay
+                laneCount={rowLayout.laneCount}
+                segments={rowLayout.segments}
+              />
+            </div>
           );
         })}
       </div>
