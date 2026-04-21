@@ -1,18 +1,21 @@
+"use client";
+
+import { CalendarDayCell } from "@/components/planner/calendar-day-cell";
 import {
   buildMonthDays,
   formatDateKey,
-  getEventsForDate,
   monthFormatter,
   type PlannerMonth,
   weekdayLabels,
 } from "@/lib/planner";
+import { usePlannerState } from "@/components/planner/planner-state";
 
 type MonthCardProps = {
   month: PlannerMonth;
-  semesterId: string;
 };
 
-export function MonthCard({ month, semesterId }: MonthCardProps) {
+export function MonthCard({ month }: MonthCardProps) {
+  const { getEventsForDate } = usePlannerState();
   const cells = buildMonthDays(month.year, month.monthIndex);
   const monthLabel = monthFormatter.format(
     new Date(month.year, month.monthIndex, 1),
@@ -30,7 +33,7 @@ export function MonthCard({ month, semesterId }: MonthCardProps) {
           </h3>
         </div>
         <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
-          2026
+          {month.year}
         </span>
       </div>
 
@@ -55,39 +58,15 @@ export function MonthCard({ month, semesterId }: MonthCardProps) {
 
           const date = new Date(month.year, month.monthIndex, day);
           const dateKey = formatDateKey(date);
-          const dayEvents = getEventsForDate(dateKey, semesterId);
+          const dayEvents = getEventsForDate(dateKey);
 
           return (
-            <div
+            <CalendarDayCell
               key={dateKey}
-              className="group flex h-24 flex-col rounded-2xl border border-slate-200 bg-white px-2 py-2 transition-colors hover:bg-slate-50"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-slate-500">
-                  {day}
-                </span>
-                {dayEvents.length > 0 ? (
-                  <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                    {dayEvents.length}
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 flex flex-1 flex-col gap-1 overflow-hidden">
-                {dayEvents.slice(0, 2).map((event) => (
-                  <div
-                    key={event.id}
-                    className="truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] leading-4 text-slate-700"
-                  >
-                    {event.title}
-                  </div>
-                ))}
-                {dayEvents.length > 2 ? (
-                  <div className="text-[11px] text-slate-400">
-                    +{dayEvents.length - 2} more
-                  </div>
-                ) : null}
-              </div>
-            </div>
+              day={day}
+              dateKey={dateKey}
+              events={dayEvents}
+            />
           );
         })}
       </div>

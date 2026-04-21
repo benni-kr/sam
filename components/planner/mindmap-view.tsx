@@ -1,4 +1,6 @@
-import { getCategorySummaries } from "@/lib/planner";
+"use client";
+
+import { usePlannerState } from "@/components/planner/planner-state";
 
 const categoryStyles: Record<
   string,
@@ -31,12 +33,8 @@ const categoryStyles: Record<
   },
 };
 
-type MindMapViewProps = {
-  semesterId?: string | null;
-};
-
-export function MindMapView({ semesterId }: MindMapViewProps) {
-  const categorySummaries = getCategorySummaries(semesterId);
+export function MindMapView() {
+  const { categorySummaries } = usePlannerState();
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">

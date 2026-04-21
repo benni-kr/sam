@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { PlannerStateProvider } from "@/components/planner/planner-state";
 import { PlannerTabs } from "@/components/planner/planner-tabs";
 import {
   defaultPlannerSemesterId,
@@ -136,7 +137,9 @@ export function PlannerShell({ children }: PlannerShellProps) {
           <PlannerTabs activeSemesterId={semesterId} />
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-6">{children}</div>
+        <PlannerStateProvider activeSemesterId={semesterId}>
+          <div className="flex min-h-0 flex-1 flex-col gap-6">{children}</div>
+        </PlannerStateProvider>
       </div>
     </main>
   );

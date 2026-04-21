@@ -1,4 +1,6 @@
-import { getChronologicalEvents, getPlannerSemester } from "@/lib/planner";
+"use client";
+
+import { usePlannerState } from "@/components/planner/planner-state";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -25,13 +27,8 @@ function mobileCategoryTone(category: string) {
   }
 }
 
-type MobileViewProps = {
-  semesterId?: string | null;
-};
-
-export function MobileView({ semesterId }: MobileViewProps) {
-  const semester = getPlannerSemester(semesterId);
-  const events = getChronologicalEvents(semester.id);
+export function MobileView() {
+  const { activeSemester, chronologicalEvents: events } = usePlannerState();
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
@@ -56,7 +53,7 @@ export function MobileView({ semesterId }: MobileViewProps) {
               Timeline
             </p>
             <h3 className="mt-1 text-lg font-semibold text-slate-900">
-              {semester.label}
+              {activeSemester.label}
             </h3>
           </div>
           <p className="text-sm text-slate-500">
