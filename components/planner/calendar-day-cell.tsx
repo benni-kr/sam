@@ -25,7 +25,7 @@ export function CalendarDayCell({ day, dateKey }: CalendarDayCellProps) {
           : "border-slate-200 bg-white hover:bg-slate-50"
       }`}
     >
-      <div className="text-sm font-medium text-slate-500">{day}</div>
+      <div className="text-[11px] font-medium text-slate-500">{day}</div>
     </div>
   );
 }
