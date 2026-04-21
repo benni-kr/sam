@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import {
-  localPlannerEventStore,
+  resolvePlannerEventStore,
   type PlannerPlacementsBySemester,
 } from "@/lib/planner-persistence";
 
@@ -293,11 +293,12 @@ export function PlannerStateProvider({
     initializeEventsBySemester,
   );
   const didHydrateFromStorage = useRef(false);
+  const eventStore = useRef(resolvePlannerEventStore());
 
   useEffect(() => {
     let cancelled = false;
 
-    void localPlannerEventStore
+    void eventStore.current
       .loadPlacements()
       .then((placements) => {
         if (cancelled) {
@@ -326,7 +327,7 @@ export function PlannerStateProvider({
     }
 
     const placements = buildPlacementsBySemester(eventsBySemester);
-    void localPlannerEventStore.savePlacements(placements);
+    void eventStore.current.savePlacements(placements);
   }, [eventsBySemester]);
 
   const normalizedSemesterId = (

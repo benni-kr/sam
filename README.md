@@ -11,6 +11,7 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 - Shared client-side planner state so all views stay synchronized
 - Drag-and-drop foundations for moving events between inbox and calendar dates
 - Local browser persistence for event scheduling placement changes
+- Backend-ready persistence resolver with a Supabase adapter stub
 - Semantic app metadata and a configured global font stack
 - Continuous integration that runs linting and production build checks
 
@@ -56,6 +57,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - [components/planner/planner-state.tsx](components/planner/planner-state.tsx) - shared planner state provider and actions
 - [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
 - [lib/planner-persistence.ts](lib/planner-persistence.ts) - storage adapter and placement serialization
+
+Persistence currently defaults to local storage. A backend path is scaffolded through a store resolver (`NEXT_PUBLIC_SAM_PLANNER_STORE=supabase`) and a Supabase-shaped adapter stub that can be implemented without changing planner state consumers.
 
 ## Routing
 

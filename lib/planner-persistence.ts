@@ -15,6 +15,8 @@ export type PlannerEventStore = {
   savePlacements: (placements: PlannerPlacementsBySemester) => Promise<void>;
 };
 
+export type PlannerStoreMode = "local" | "supabase";
+
 const LOCAL_STORAGE_KEY = "sam.planner.placements.v1";
 
 function isDateValue(value: unknown) {
@@ -95,3 +97,33 @@ export const localPlannerEventStore: PlannerEventStore = {
     }
   },
 };
+
+function hasSupabaseClientConfig() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+}
+
+// Stub adapter for future backend wiring.
+// For now it intentionally does nothing so behavior stays local-first.
+export const supabasePlannerEventStore: PlannerEventStore = {
+  async loadPlacements() {
+    return null;
+  },
+
+  async savePlacements(placements) {
+    void placements;
+    return;
+  },
+};
+
+export function resolvePlannerEventStore(): PlannerEventStore {
+  const configuredMode = process.env.NEXT_PUBLIC_SAM_PLANNER_STORE;
+
+  if (configuredMode === "supabase" && hasSupabaseClientConfig()) {
+    return supabasePlannerEventStore;
+  }
+
+  return localPlannerEventStore;
+}
