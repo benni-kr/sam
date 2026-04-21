@@ -30,6 +30,9 @@ type PlannerShellProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Top-level planner shell with semester routing, drag-and-drop context, and sidebar.
+ */
 export function PlannerShell({ children }: PlannerShellProps) {
   const [semesterMenuOpen, setSemesterMenuOpen] = useState(false);
   const semesterMenuRef = useRef<HTMLDivElement | null>(null);

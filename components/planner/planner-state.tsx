@@ -74,6 +74,9 @@ const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
 );
 
+/**
+ * Converts a persisted date key to a stable midday Date instance.
+ */
 function toDate(dateKey: string) {
   return new Date(`${dateKey}T12:00:00`);
 }
@@ -390,6 +393,9 @@ export function PlannerStateProvider({
   );
 }
 
+/**
+ * Accessor hook for planner state and actions.
+ */
 export function usePlannerState() {
   const context = useContext(PlannerStateContext);
 

@@ -12,6 +12,9 @@ type DraggableEventProps = {
   children?: React.ReactNode;
 };
 
+/**
+ * Shared drag wrapper for calendar and inbox event presentations.
+ */
 export function DraggableEvent({
   event,
   compact = false,

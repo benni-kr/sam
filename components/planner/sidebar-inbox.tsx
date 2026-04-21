@@ -5,6 +5,9 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggableEvent } from "@/components/planner/draggable-event";
 import { usePlannerState } from "@/components/planner/planner-state";
 
+/**
+ * Sidebar drop zone for unscheduled events.
+ */
 export function SidebarInbox() {
   const { inboxEvents } = usePlannerState();
   const { setNodeRef, isOver } = useDroppable({

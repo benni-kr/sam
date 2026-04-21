@@ -260,6 +260,9 @@ export const monthFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
+/**
+ * Formats a Date into a YYYY-MM-DD key used across planner state and persistence.
+ */
 export function formatDateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -268,6 +271,10 @@ export function formatDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Builds a month grid as week rows with Monday as the first day.
+ * Empty leading/trailing cells are represented by null.
+ */
 export function buildMonthDays(year: number, monthIndex: number) {
   const firstDay = new Date(year, monthIndex, 1);
   const totalDays = new Date(year, monthIndex + 1, 0).getDate();

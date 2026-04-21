@@ -34,6 +34,9 @@ const MIN_EVENT_LANES = 3;
 const EVENT_LANE_HEIGHT = 32;
 const ROW_VERTICAL_PADDING = 4;
 
+/**
+ * Computes per-week event segments and lane assignments for calendar rendering.
+ */
 export function buildMonthWeekEventLayouts({
   month,
   cells,
@@ -175,6 +178,9 @@ export function getMonthWeekRowHeight(laneCount: number) {
   );
 }
 
+/**
+ * Paints the segmented multi-day bars on top of one calendar row.
+ */
 export function MonthWeekEventOverlay({
   laneCount,
   segments,

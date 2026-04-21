@@ -28,6 +28,9 @@ const categoryStyles: Record<
   },
 };
 
+/**
+ * Presents semester events grouped by category with participant chips.
+ */
 export function MindMapView() {
   const { categorySummaries } = usePlannerState();
 

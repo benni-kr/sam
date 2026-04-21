@@ -15,6 +15,9 @@ function categoryTone(category: PlannerEvent["category"]) {
   }
 }
 
+/**
+ * Rich event card used in drag previews and non-compact event contexts.
+ */
 export function EventBadge({ event }: { event: PlannerEvent }) {
   return (
     <div

@@ -25,6 +25,9 @@ function mobileCategoryTone(category: string) {
   }
 }
 
+/**
+ * Displays a chronological timeline optimized for narrow screens.
+ */
 export function MobileView() {
   const { activeSemester, chronologicalEvents: events } = usePlannerState();
 

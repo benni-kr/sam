@@ -18,6 +18,9 @@ type MonthCardProps = {
   month: PlannerMonth;
 };
 
+/**
+ * Displays one month grid with a row-level multi-day event overlay.
+ */
 export function MonthCard({ month }: MonthCardProps) {
   const { events } = usePlannerState();
   const cells = buildMonthDays(month.year, month.monthIndex);
@@ -70,6 +73,7 @@ export function MonthCard({ month }: MonthCardProps) {
               {rowCells.map((day, columnIndex) => {
                 const absoluteIndex = rowIndex * 7 + columnIndex;
                 const isWeekend = columnIndex >= 5;
+                // Visually marks days outside the current month in each row.
                 const stripedBackground =
                   "bg-[repeating-linear-gradient(135deg,_rgba(148,163,184,0.18)_0,_rgba(148,163,184,0.18)_8px,_rgba(248,250,252,0.72)_8px,_rgba(248,250,252,0.72)_16px)]";
 

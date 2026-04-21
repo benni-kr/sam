@@ -3,6 +3,9 @@
 import { MonthCard } from "@/components/planner/month-card";
 import { usePlannerState } from "@/components/planner/planner-state";
 
+/**
+ * Renders the semester calendar as a vertical stack of month cards.
+ */
 export function CalendarView() {
   const { months } = usePlannerState();
 
