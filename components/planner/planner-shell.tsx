@@ -292,7 +292,7 @@ function PlannerShellFrame({
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                  Semester Aktivity Manager
+                  Semester Activity Manager
                 </p>
               </div>
 

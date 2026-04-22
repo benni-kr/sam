@@ -31,26 +31,12 @@ function mobileCategoryTone(category: string) {
  * Displays a chronological timeline optimized for narrow screens.
  */
 export function MobileView() {
-  const { activeSemester, chronologicalEvents: events } = usePlannerState();
+  const { chronologicalEvents: events } = usePlannerState();
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
-        <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Timeline
-            </p>
-            <h3 className="mt-1 text-lg font-semibold text-slate-900">
-              {activeSemester.label}
-            </h3>
-          </div>
-          <p className="text-sm text-slate-500">
-            Same semester data, reordered for small screens.
-          </p>
-        </div>
-
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           {events.map((event, index) => {
             const scheduledLabel = event.startDate
               ? event.endDate && event.endDate !== event.startDate

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SAM | Semester Aktivity Manager",
+  title: "SAM | Semester Activity Manager",
   description:
-    "Collaborative semester planner for shared calendars, inbox ideas, and future views.",
+    "Collaborative semester planner for shared calendars, inbox ideas, and participation tracking.",
 };
 
 export default function RootLayout({
