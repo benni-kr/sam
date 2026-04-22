@@ -35,6 +35,7 @@ type PlannerStateContextValue = {
   events: PlannerEvent[];
   inboxEvents: PlannerEvent[];
   getEventsForDate: (dateKey: string) => PlannerEvent[];
+  getEventsCoveringDate: (dateKey: string) => PlannerEvent[];
   categorySummaries: PlannerCategorySummary[];
   chronologicalEvents: PlannerEvent[];
   moveEventToDate: (eventId: string, dateKey: string) => void;
@@ -73,6 +74,9 @@ const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
 );
 
+/**
+ * Converts a persisted date key to a stable midday Date instance.
+ */
 function toDate(dateKey: string) {
   return new Date(`${dateKey}T12:00:00`);
 }
@@ -241,6 +245,16 @@ function buildCategorySummaries(
   });
 }
 
+function eventCoversDate(event: PlannerEvent, dateKey: string) {
+  if (!event.startDate) {
+    return false;
+  }
+
+  const endDate = event.endDate ?? event.startDate;
+
+  return event.startDate <= dateKey && endDate >= dateKey;
+}
+
 function sortChronological(events: PlannerEvent[]): PlannerEvent[] {
   return [...events].sort((left, right) => {
     if (left.startDate === null && right.startDate === null) {
@@ -353,6 +367,8 @@ export function PlannerStateProvider({
       inboxEvents,
       getEventsForDate: (dateKey) =>
         events.filter((event) => event.startDate === dateKey),
+      getEventsCoveringDate: (dateKey) =>
+        events.filter((event) => eventCoversDate(event, dateKey)),
       categorySummaries,
       chronologicalEvents,
       moveEventToDate: (eventId, dateKey) => {
@@ -377,6 +393,9 @@ export function PlannerStateProvider({
   );
 }
 
+/**
+ * Accessor hook for planner state and actions.
+ */
 export function usePlannerState() {
   const context = useContext(PlannerStateContext);
 

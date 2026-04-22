@@ -9,6 +9,9 @@ type PlannerTabsProps = {
   activeSemesterId?: string | null;
 };
 
+/**
+ * View navigation tabs that preserve the currently selected semester query param.
+ */
 export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();

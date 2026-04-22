@@ -6,25 +6,20 @@ const categoryStyles: Record<
   string,
   { ring: string; badge: string; dot: string }
 > = {
-  Social: {
-    ring: "border-amber-200 bg-amber-50/80",
-    badge: "bg-amber-100 text-amber-900",
-    dot: "bg-amber-400",
+  Exams: {
+    ring: "border-violet-200 bg-violet-50/80",
+    badge: "bg-violet-100 text-violet-900",
+    dot: "bg-violet-400",
   },
-  Study: {
-    ring: "border-sky-200 bg-sky-50/80",
-    badge: "bg-sky-100 text-sky-900",
-    dot: "bg-sky-400",
-  },
-  Admin: {
-    ring: "border-zinc-200 bg-zinc-50/80",
-    badge: "bg-zinc-100 text-zinc-700",
-    dot: "bg-zinc-400",
-  },
-  Trip: {
+  "Group Events": {
     ring: "border-emerald-200 bg-emerald-50/80",
     badge: "bg-emerald-100 text-emerald-900",
     dot: "bg-emerald-400",
+  },
+  "Private Events": {
+    ring: "border-amber-200 bg-amber-50/80",
+    badge: "bg-amber-100 text-amber-900",
+    dot: "bg-amber-400",
   },
   Inbox: {
     ring: "border-stone-200 bg-stone-50/80",
@@ -33,26 +28,14 @@ const categoryStyles: Record<
   },
 };
 
+/**
+ * Presents semester events grouped by category with participant chips.
+ */
 export function MindMapView() {
   const { categorySummaries } = usePlannerState();
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Mind maps
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-          One category map per branch of the semester
-        </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-          Each category forms its own map. Events are the first level, and the
-          participants attached to those events become the second level. This
-          keeps the structure synced with the calendar data while leaving room
-          for a richer graph later.
-        </p>
-      </div>
-
       <div className="grid gap-4 xl:grid-cols-2">
         {categorySummaries.map((summary) => {
           const styles = categoryStyles[summary.category];

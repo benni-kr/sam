@@ -5,11 +5,14 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 ## What is in this repo
 
 - A fixed six-month calendar layout for April through September 2026
+- Monday-first week layout with visual weekend emphasis
+- Distinct striped placeholders for days outside each month
 - An unscheduled inbox area for floating events
 - A grouped App Router structure for the calendar, mind map, and mobile views
 - Shared, typed event data and semester metadata in `lib/planner.ts`
 - Shared client-side planner state so all views stay synchronized
 - Drag-and-drop foundations for moving events between inbox and calendar dates
+- Row-based multi-day event segmentation with deterministic lane assignment
 - Local browser persistence for event scheduling placement changes
 - Persistence resolver with Supabase sync and local fallback
 - Semantic app metadata and a configured global font stack
@@ -52,20 +55,24 @@ If Supabase is unavailable, the app still writes placements to local storage as 
 - `npm run dev` - start the local development server
 - `npm run lint` - run ESLint
 - `npm run build` - create a production build
+- `npm test` - run unit tests with Vitest
 - `npm start` - start the production server after a build
 
 ## Project Structure
 
 - [app/(planner)/layout.tsx](app/%28planner%29/layout.tsx) - shared planner shell and view tabs
 - [app/(planner)/page.tsx](app/%28planner%29/page.tsx) - calendar view entry route
-- [app/(planner)/mindmap/page.tsx](app/%28planner%29/mindmap/page.tsx) - mind map route
-- [app/(planner)/mobile/page.tsx](app/%28planner%29/mobile/page.tsx) - mobile timeline route
+- [app/(planner)/mindmap/page.tsx](app/%28planner%29/mindmap/page.tsx) - category overview route
+- [app/(planner)/mobile/page.tsx](app/%28planner%29/mobile/page.tsx) - chronological timeline route
 - [app/layout.tsx](app/layout.tsx) - root layout and metadata
 - [app/globals.css](app/globals.css) - global styling and theme tokens
 - [components/planner/\*](components/planner) - view shells, tabs, and reusable planner UI
 - [components/planner/planner-state.tsx](components/planner/planner-state.tsx) - shared planner state provider and actions
+- [components/planner/event-overlay.tsx](components/planner/event-overlay.tsx) - week-row multi-day event segmentation and overlay rendering
 - [lib/planner.ts](lib/planner.ts) - semester, view, and event data helpers
 - [lib/planner-persistence.ts](lib/planner-persistence.ts) - storage adapter and placement serialization
+- [docs/architecture.md](docs/architecture.md) - architecture overview and planner data/rendering flow
+- [docs/contributing.md](docs/contributing.md) - contribution workflow and quality expectations
 - [supabase/migrations/20260421_create_planner_event_placements.sql](supabase/migrations/20260421_create_planner_event_placements.sql) - baseline planner placements table and policies
 
 Persistence defaults to local storage. Supabase mode is available through `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` when both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
@@ -87,8 +94,8 @@ In Supabase mode, writes are persisted locally first and then synced remotely, s
 The planner lives in a route group so the visible URLs stay clean while the UI stays organized:
 
 - `/` - calendar view
-- `/mindmap` - mind map placeholder
-- `/mobile` - mobile list placeholder
+- `/mindmap` - category summary view
+- `/mobile` - chronological list view
 
 The shared header and view tabs live in the grouped layout, so all three routes stay under the same planner chrome.
 
@@ -101,11 +108,14 @@ Semester switching is query-parameter based (`?semester=...`) for now. This keep
 - Document non-obvious logic where it helps future maintenance.
 - Preserve the fixed semester scope until the next view is introduced.
 
+For detailed engineering guidance, see [docs/architecture.md](docs/architecture.md) and [docs/contributing.md](docs/contributing.md).
+
 ## Validation
 
 Before merging changes, run:
 
 ```bash
+npm test
 npm run lint
 npm run build
 ```

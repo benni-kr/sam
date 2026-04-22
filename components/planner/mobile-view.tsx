@@ -14,38 +14,25 @@ function formatDateKeyLabel(dateKey: string) {
 
 function mobileCategoryTone(category: string) {
   switch (category) {
-    case "Social":
-      return "border-amber-200 bg-amber-50 text-amber-900";
-    case "Study":
-      return "border-sky-200 bg-sky-50 text-sky-900";
-    case "Admin":
-      return "border-zinc-200 bg-zinc-50 text-zinc-700";
-    case "Trip":
+    case "Exams":
+      return "border-violet-200 bg-violet-50 text-violet-900";
+    case "Group Events":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
+    case "Private Events":
+      return "border-amber-200 bg-amber-50 text-amber-900";
     default:
       return "border-stone-200 bg-stone-50 text-stone-700";
   }
 }
 
+/**
+ * Displays a chronological timeline optimized for narrow screens.
+ */
 export function MobileView() {
   const { activeSemester, chronologicalEvents: events } = usePlannerState();
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Mobile list
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-          Chronological events for quick scanning
-        </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-          This compact list mirrors the same semester data as the calendar and
-          mind map. Scheduled items appear in order, and unscheduled items are
-          kept at the bottom so they stay easy to find on a phone.
-        </p>
-      </div>
-
       <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
