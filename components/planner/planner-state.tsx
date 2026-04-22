@@ -65,6 +65,7 @@ type PlannerStateContextValue = {
   toggleParticipant: (eventId: string, participantName: string) => void;
   friends: string[];
   addFriend: (name: string) => void;
+  renameFriend: (currentName: string, nextName: string) => void;
   removeFriend: (name: string) => void;
 };
 
@@ -129,6 +130,13 @@ type PlannerAction =
       type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS";
       payload: {
         participantName: string;
+      };
+    }
+  | {
+      type: "RENAME_PARTICIPANT_IN_ALL_EVENTS";
+      payload: {
+        currentName: string;
+        nextName: string;
       };
     };
 
@@ -507,6 +515,28 @@ export function plannerStateReducer(
       }, {} as EventsBySemester);
     }
 
+    case "RENAME_PARTICIPANT_IN_ALL_EVENTS": {
+      const currentName = action.payload.currentName.toLocaleLowerCase();
+      const nextName = action.payload.nextName;
+
+      return plannerSemesterIds.reduce((nextState, semesterId) => {
+        const semesterEvents = state[semesterId] ?? [];
+
+        nextState[semesterId] = semesterEvents.map((event) => ({
+          ...event,
+          participants: dedupeParticipantNames(
+            event.participants.map((participant) =>
+              participant.toLocaleLowerCase() === currentName
+                ? nextName
+                : participant,
+            ),
+          ),
+        }));
+
+        return nextState;
+      }, {} as EventsBySemester);
+    }
+
     default:
       return state;
   }
@@ -776,6 +806,63 @@ export function PlannerStateProvider({
           return [...current, normalizedName].sort((left, right) =>
             left.localeCompare(right),
           );
+        });
+      },
+      renameFriend: (currentName, nextName) => {
+        const normalizedCurrentName = normalizeFriendName(currentName);
+        const normalizedNextName = normalizeFriendName(nextName);
+
+        if (!normalizedCurrentName || !normalizedNextName) {
+          return;
+        }
+
+        if (
+          normalizedCurrentName.toLocaleLowerCase() ===
+          normalizedNextName.toLocaleLowerCase()
+        ) {
+          return;
+        }
+
+        let wasRenamed = false;
+
+        setFriends((current) => {
+          const hasCurrentName = current.some(
+            (friend) =>
+              friend.toLocaleLowerCase() ===
+              normalizedCurrentName.toLocaleLowerCase(),
+          );
+          const hasTargetName = current.some(
+            (friend) =>
+              friend.toLocaleLowerCase() ===
+              normalizedNextName.toLocaleLowerCase(),
+          );
+
+          if (!hasCurrentName || hasTargetName) {
+            return current;
+          }
+
+          wasRenamed = true;
+
+          return current
+            .map((friend) =>
+              friend.toLocaleLowerCase() ===
+              normalizedCurrentName.toLocaleLowerCase()
+                ? normalizedNextName
+                : friend,
+            )
+            .sort((left, right) => left.localeCompare(right));
+        });
+
+        if (!wasRenamed) {
+          return;
+        }
+
+        dispatch({
+          type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
+          payload: {
+            currentName: normalizedCurrentName,
+            nextName: normalizedNextName,
+          },
         });
       },
       removeFriend: (name) => {

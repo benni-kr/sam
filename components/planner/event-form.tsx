@@ -105,13 +105,6 @@ export function PlannerEventForm({
         />
       </div>
 
-      <input
-        value={participants.join(", ")}
-        readOnly
-        placeholder="No participants selected"
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-      />
-
       <div className="rounded-lg border border-slate-200 bg-white p-2">
         <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
           Participants
@@ -133,7 +126,7 @@ export function PlannerEventForm({
                 }}
                 className={`rounded-md border px-2 py-1 text-left text-xs transition-colors ${
                   isSelected
-                    ? "border-slate-900 bg-slate-900 text-white"
+                    ? "border-slate-300 bg-slate-100 text-slate-900"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                 }`}
               >

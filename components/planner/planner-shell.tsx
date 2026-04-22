@@ -159,21 +159,27 @@ function PlannerShellFrame({
 }) {
   const {
     events,
-    moveEventToDate,
     moveEventToInbox,
+    moveEventToDate,
     createEvent,
     friends,
     addFriend,
+    renameFriend,
     removeFriend,
   } = usePlannerState();
+
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<PlannerEventCategory>("Group Event");
+  const [category, setCategory] = useState<PlannerEventCategory>("Exam");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [newFriendName, setNewFriendName] = useState("");
+  const [editingFriendName, setEditingFriendName] = useState<string | null>(
+    null,
+  );
+  const [editingFriendValue, setEditingFriendValue] = useState("");
   const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
 
   const sensors = useSensors(
@@ -251,6 +257,25 @@ function PlannerShellFrame({
 
     addFriend(newFriendName);
     setNewFriendName("");
+  }
+
+  function startEditingFriend(friendName: string) {
+    setEditingFriendName(friendName);
+    setEditingFriendValue(friendName);
+  }
+
+  function cancelEditingFriend() {
+    setEditingFriendName(null);
+    setEditingFriendValue("");
+  }
+
+  function saveEditedFriend() {
+    if (!editingFriendName) {
+      return;
+    }
+
+    renameFriend(editingFriendName, editingFriendValue);
+    cancelEditingFriend();
   }
 
   return (
@@ -345,6 +370,14 @@ function PlannerShellFrame({
                 + Add Event
               </button>
 
+              <button
+                type="button"
+                onClick={() => setIsManageFriendsOpen(true)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                Manage friends
+              </button>
+
               {pathname === "/crosstables" ? (
                 <>
                   <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
@@ -376,19 +409,6 @@ function PlannerShellFrame({
                         }
                       />
                     </div>
-                  </section>
-
-                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      Friends
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setIsManageFriendsOpen(true)}
-                      className="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                      Manage friends
-                    </button>
                   </section>
                 </>
               ) : null}
@@ -428,7 +448,9 @@ function PlannerShellFrame({
               participants={participants}
               availableParticipants={friends}
               onTitleChange={setTitle}
-              onCategoryChange={(nextCategory) => setCategory(nextCategory)}
+              onCategoryChange={(nextCategory: PlannerEventCategory) =>
+                setCategory(nextCategory)
+              }
               onStartDateChange={setStartDate}
               onEndDateChange={setEndDate}
               onParticipantsChange={setParticipants}
@@ -445,11 +467,17 @@ function PlannerShellFrame({
           onClick={() => setIsManageFriendsOpen(false)}
         >
           <section
-            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Friends
+            </p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-900">
+              Manage your friends
+            </h3>
+            <p className="mt-1 text-xs text-slate-600">
+              Add, rename, or remove friends used in event participants.
             </p>
 
             <form onSubmit={handleAddFriend} className="mt-3 flex gap-2">
@@ -457,35 +485,85 @@ function PlannerShellFrame({
                 value={newFriendName}
                 onChange={(event) => setNewFriendName(event.target.value)}
                 placeholder="Add friend"
-                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none ring-slate-300 focus:ring"
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
               />
               <button
                 type="submit"
-                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
               >
                 Add
               </button>
             </form>
 
-            <div className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1">
-              {friends.map((friend) => (
+            <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
+              {friends.map((friend: string) => (
                 <div
                   key={friend}
-                  className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 px-2 py-1"
+                  className="rounded-xl border border-slate-200 bg-slate-50/80 p-2"
                 >
-                  <span className="truncate text-xs text-slate-700">
-                    {friend}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeFriend(friend)}
-                    className="rounded px-1 text-[11px] text-slate-500 hover:bg-slate-200 hover:text-slate-700"
-                    aria-label={`Remove ${friend}`}
-                  >
-                    remove
-                  </button>
+                  {editingFriendName === friend ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={editingFriendValue}
+                        onChange={(event) =>
+                          setEditingFriendValue(event.target.value)
+                        }
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
+                        aria-label={`Edit ${friend}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={saveEditedFriend}
+                        className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEditingFriend}
+                        className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm text-slate-700">
+                        {friend}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditingFriend(friend)}
+                          className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                          aria-label={`Edit ${friend}`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editingFriendName === friend) {
+                              cancelEditingFriend();
+                            }
+                            removeFriend(friend);
+                          }}
+                          className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-600 hover:bg-rose-100"
+                          aria-label={`Remove ${friend}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
+
+              {friends.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-xs text-slate-500">
+                  No friends yet. Add someone to start assigning participants.
+                </p>
+              ) : null}
             </div>
 
             <div className="mt-3 flex justify-end">
