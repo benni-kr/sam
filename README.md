@@ -131,3 +131,7 @@ Both commands should pass locally and in CI.
 - Events can be created, edited, and deleted from modal dialogs.
 - Dates are selected through a custom calendar popover rather than the native browser input.
 - Events remain color-coded by category across the calendar, inbox, crosstables, and mobile views.
+- Crosstables show event-vs-participant matrices per category with participant toggles in each cell.
+- In crosstables, event dates are displayed as `DD.MM.YYYY`.
+- Undated events are rendered at the bottom of each category table and can still be toggled for participants.
+- The crosstables sidebar has two URL-backed filters: hide finished events and hide undated events.
