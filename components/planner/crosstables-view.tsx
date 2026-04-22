@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { PlannerEventForm } from "@/components/planner/event-form";
 import { usePlannerState } from "@/components/planner/planner-state";
 import {
   SEMESTER_FRIENDS,
@@ -68,10 +70,13 @@ const categoryCheckboxStyles: Record<
  */
 export function CrosstablesView() {
   const searchParams = useSearchParams();
-  const { events, inboxEvents, toggleParticipant } = usePlannerState();
+  const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
+    usePlannerState();
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
+  const showInactiveParticipants = searchParams.get("showInactive") === "1";
   const todayDateKey = getTodayDateKey();
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const crosstableEvents = dedupeEventsById([
     ...events.filter((event) => Boolean(event.startDate)),
@@ -92,9 +97,37 @@ export function CrosstablesView() {
     return endDate >= todayDateKey;
   });
 
+  const editingEvent = useMemo(
+    () => crosstableEvents.find((event) => event.id === editingEventId) ?? null,
+    [crosstableEvents, editingEventId],
+  );
+
+  useEffect(() => {
+    if (!editingEventId) {
+      return;
+    }
+
+    if (!editingEvent) {
+      setEditingEventId(null);
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setEditingEventId(null);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [editingEvent, editingEventId]);
+
   const participantNames = Array.from(
     new Set([
-      ...SEMESTER_FRIENDS,
+      ...(showInactiveParticipants ? SEMESTER_FRIENDS : []),
       ...filteredCrosstableEvents.flatMap((event) => event.participants),
     ]),
   );
@@ -120,7 +153,7 @@ export function CrosstablesView() {
           return (
             <article
               key={category}
-              className={`rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
+              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
             >
               <div className="mb-3 flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
@@ -135,7 +168,7 @@ export function CrosstablesView() {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="max-w-full overflow-x-auto">
                 <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white/90 text-sm">
                   <thead>
                     <tr>
@@ -145,7 +178,7 @@ export function CrosstablesView() {
                       {participantNames.map((participantName) => (
                         <th
                           key={`${category}-${participantName}-header`}
-                          className="border-b border-slate-200 bg-slate-50 px-1 py-2 text-center align-bottom"
+                          className="w-10 min-w-10 border-b border-slate-200 bg-slate-50 px-1 py-2 text-center align-bottom"
                         >
                           <span className="inline-block origin-center -rotate-180 whitespace-nowrap text-[11px] font-medium tracking-[0.14em] text-slate-600 [writing-mode:vertical-rl]">
                             {participantName}
@@ -158,12 +191,15 @@ export function CrosstablesView() {
                   <tbody>
                     {categoryEvents.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={participantNames.length + 1}
-                          className="px-3 py-4 text-sm text-slate-500"
-                        >
+                        <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-4 text-left text-sm text-slate-500">
                           No events in this category yet.
                         </td>
+                        {participantNames.map((participantName) => (
+                          <td
+                            key={`${category}-${participantName}-empty`}
+                            className="w-10 min-w-10 border-l border-slate-100 px-1 py-2"
+                          />
+                        ))}
                       </tr>
                     ) : (
                       categoryEvents.map((event) => (
@@ -172,9 +208,13 @@ export function CrosstablesView() {
                           className="odd:bg-white even:bg-slate-50/50"
                         >
                           <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-2">
-                            <p className="font-medium text-slate-900">
+                            <button
+                              type="button"
+                              onClick={() => setEditingEventId(event.id)}
+                              className="font-medium text-slate-900 underline-offset-2 hover:underline"
+                            >
                               {event.title}
-                            </p>
+                            </button>
                             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
                               {event.startDate
                                 ? formatDisplayDate(event.startDate)
@@ -193,7 +233,7 @@ export function CrosstablesView() {
                             return (
                               <td
                                 key={`${event.id}-${participantName}`}
-                                className="border-l border-slate-100 px-1 py-2 text-center"
+                                className="w-10 min-w-10 border-l border-slate-100 px-1 py-2 text-center"
                               >
                                 <label className="inline-flex cursor-pointer items-center justify-center">
                                   <input
@@ -232,6 +272,15 @@ export function CrosstablesView() {
           );
         })}
       </div>
+
+      {editingEvent ? (
+        <EventEditModal
+          event={editingEvent}
+          onSave={updateEvent}
+          onDelete={deleteEvent}
+          onClose={() => setEditingEventId(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -287,4 +336,95 @@ function getTodayDateKey() {
   const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function EventEditModal({
+  event,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  event: PlannerEvent;
+  onSave: (
+    eventId: string,
+    input: {
+      title: string;
+      category: PlannerEventCategory;
+      startDate: string | null;
+      endDate: string | null;
+      participants: string[];
+    },
+  ) => void;
+  onDelete: (eventId: string) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(event.title);
+  const [category, setCategory] = useState<PlannerEventCategory>(
+    event.category,
+  );
+  const [startDate, setStartDate] = useState(event.startDate ?? "");
+  const [endDate, setEndDate] = useState(event.endDate ?? "");
+  const [participants, setParticipants] = useState(
+    event.participants.join(", "),
+  );
+
+  function handleSubmit(eventForm: FormEvent<HTMLFormElement>) {
+    eventForm.preventDefault();
+
+    onSave(event.id, {
+      title,
+      category,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      participants: participants
+        .split(",")
+        .map((participant) => participant.trim())
+        .filter(Boolean),
+    });
+
+    onClose();
+  }
+
+  function handleDeleteConfirm() {
+    onDelete(event.id);
+    onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Edit event: ${event.title}`}
+    >
+      <section
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
+        onClick={(nextEvent) => nextEvent.stopPropagation()}
+      >
+        <PlannerEventForm
+          heading="Edit event"
+          submitLabel="Save changes"
+          title={title}
+          category={category}
+          startDate={startDate}
+          endDate={endDate}
+          participants={participants}
+          onTitleChange={setTitle}
+          onCategoryChange={setCategory}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onParticipantsChange={setParticipants}
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+          deleteAction={{
+            label: "Delete event",
+            prompt: "Are you sure you want to delete this event?",
+            confirmLabel: "Yes, delete",
+            onDelete: handleDeleteConfirm,
+          }}
+        />
+      </section>
+    </div>
+  );
 }

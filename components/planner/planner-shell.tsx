@@ -45,6 +45,7 @@ export function PlannerShell({ children }: PlannerShellProps) {
   const activeSemester = getPlannerSemester(semesterId);
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
+  const showInactiveParticipants = searchParams.get("showInactive") === "1";
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -86,7 +87,7 @@ export function PlannerShell({ children }: PlannerShellProps) {
   }
 
   function setCrosstablesFilterParam(
-    key: "hideFinished" | "hideUndated",
+    key: "hideFinished" | "hideUndated" | "showInactive",
     enabled: boolean,
   ) {
     const params = new URLSearchParams(searchParams.toString());
@@ -115,6 +116,7 @@ export function PlannerShell({ children }: PlannerShellProps) {
         buildSemesterHref={buildSemesterHref}
         hideFinished={hideFinished}
         hideUndated={hideUndated}
+        showInactiveParticipants={showInactiveParticipants}
         setCrosstablesFilterParam={setCrosstablesFilterParam}
       >
         {children}
@@ -133,6 +135,7 @@ function PlannerShellFrame({
   buildSemesterHref,
   hideFinished,
   hideUndated,
+  showInactiveParticipants,
   setCrosstablesFilterParam,
   children,
 }: {
@@ -145,8 +148,9 @@ function PlannerShellFrame({
   buildSemesterHref: (nextSemesterId: string) => string;
   hideFinished: boolean;
   hideUndated: boolean;
+  showInactiveParticipants: boolean;
   setCrosstablesFilterParam: (
-    key: "hideFinished" | "hideUndated",
+    key: "hideFinished" | "hideUndated" | "showInactive",
     enabled: boolean,
   ) => void;
   children: React.ReactNode;
@@ -345,6 +349,14 @@ function PlannerShellFrame({
                       checked={hideUndated}
                       onToggle={(checked) =>
                         setCrosstablesFilterParam("hideUndated", checked)
+                      }
+                    />
+
+                    <SidebarToggle
+                      label="Show inactive participants"
+                      checked={showInactiveParticipants}
+                      onToggle={(checked) =>
+                        setCrosstablesFilterParam("showInactive", checked)
                       }
                     />
                   </div>

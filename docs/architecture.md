@@ -46,10 +46,11 @@ Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sortin
 3. Actions update only date placement fields (`startDate`, `endDate`).
 4. CRUD actions update event metadata in the semester that owns the event.
 5. Derived selectors feed all views:
-  - covering events per date
-  - inbox events across all semesters
-  - chronological events
-  - category summaries
+
+- covering events per date
+- inbox events across all semesters
+- chronological events
+- category summaries
 
 This keeps all routes synchronized without duplicating logic.
 
