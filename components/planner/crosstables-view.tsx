@@ -36,6 +36,13 @@ const categoryStyles: Record<
   },
 };
 
+const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
+  Exam: "Exams",
+  "Group Event": "Group Events",
+  "Private Event": "Private Events",
+  Other: "Others",
+};
+
 /**
  * Cross-table view to manage participants per event by category.
  */
@@ -84,15 +91,6 @@ export function CrosstablesView() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-4">
-      <header className="rounded-[1.5rem] border border-white/70 bg-white/80 px-5 py-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Crosstables
-        </p>
-        <h2 className="mt-1 text-2xl font-semibold text-slate-950">
-          Who&apos;s in?
-        </h2>
-      </header>
-
       <div className="grid gap-4">
         {plannerEventCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
@@ -103,14 +101,14 @@ export function CrosstablesView() {
               key={category}
               className={`rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
             >
-              <div className="mb-3 flex items-center gap-2 border-b border-black/5 pb-3">
+              <div className="mb-3 flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
                 <h3
                   className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}
                 >
-                  {category}
+                  {categoryLabelsPlural[category]}
                 </h3>
-                <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                <span className="ml-auto rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
                   {categoryEvents.length} event
                   {categoryEvents.length === 1 ? "" : "s"}
                 </span>
