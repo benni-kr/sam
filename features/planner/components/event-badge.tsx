@@ -1,4 +1,4 @@
-import type { PlannerEvent } from "@/lib/planner";
+import type { PlannerEvent } from "@/features/planner/lib/planner";
 
 function categoryTone(category: PlannerEvent["category"]) {
   switch (category) {

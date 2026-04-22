@@ -1,11 +1,11 @@
 "use client";
 
-import { DraggableEvent } from "@/components/planner/draggable-event";
+import { DraggableEvent } from "@/features/planner/components/draggable-event";
 import {
   formatDateKey,
   type PlannerEvent,
   type PlannerMonth,
-} from "@/lib/planner";
+} from "@/features/planner/lib/planner";
 
 type MonthWeekEventSegment = {
   event: PlannerEvent;

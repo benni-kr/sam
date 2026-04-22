@@ -5,10 +5,10 @@ import { createPortal } from "react-dom";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
-import { EventBadge } from "@/components/planner/event-badge";
-import { PlannerEventForm } from "@/components/planner/event-form";
-import { usePlannerState } from "@/components/planner/planner-state";
-import { type PlannerEvent, type PlannerEventCategory } from "@/lib/planner";
+import { EventBadge } from "@/features/planner/components/event-badge";
+import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { usePlannerState } from "@/features/planner/state/planner-state";
+import { type PlannerEvent, type PlannerEventCategory } from "@/features/planner/lib/planner";
 
 type DraggableEventProps = {
   event: PlannerEvent;

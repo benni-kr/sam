@@ -2,8 +2,8 @@
 
 import { useDroppable } from "@dnd-kit/core";
 
-import { DraggableEvent } from "@/components/planner/draggable-event";
-import { usePlannerState } from "@/components/planner/planner-state";
+import { DraggableEvent } from "@/features/planner/components/draggable-event";
+import { usePlannerState } from "@/features/planner/state/planner-state";
 
 /**
  * Sidebar drop zone for unscheduled events.

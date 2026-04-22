@@ -1,18 +1,18 @@
 "use client";
 
-import { CalendarDayCell } from "@/components/planner/calendar-day-cell";
+import { CalendarDayCell } from "@/features/planner/components/calendar-day-cell";
 import {
   MonthWeekEventOverlay,
   buildMonthWeekEventLayouts,
   getMonthWeekRowHeight,
-} from "@/components/planner/event-overlay";
+} from "@/features/planner/components/event-overlay";
 import {
   buildMonthDays,
   formatDateKey,
   weekdayLabels,
   type PlannerMonth,
-} from "@/lib/planner";
-import { usePlannerState } from "@/components/planner/planner-state";
+} from "@/features/planner/lib/planner";
+import { usePlannerState } from "@/features/planner/state/planner-state";
 
 type MonthCardProps = {
   month: PlannerMonth;

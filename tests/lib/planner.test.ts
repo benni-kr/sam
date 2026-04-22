@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildMonthDays, weekdayLabels } from "../../lib/planner";
+import {
+  buildMonthDays,
+  weekdayLabels,
+} from "../../features/planner/lib/planner";
 
 describe("buildMonthDays", () => {
   it("pads leading days for Monday-first calendars", () => {

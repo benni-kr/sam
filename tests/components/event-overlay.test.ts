@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildMonthWeekEventLayouts,
   getMonthWeekRowHeight,
-} from "../../components/planner/event-overlay";
+} from "../../features/planner/components/event-overlay";
 import {
   buildMonthDays,
   type PlannerEvent,
   type PlannerMonth,
-} from "../../lib/planner";
+} from "../../features/planner/lib/planner";
 
 describe("buildMonthWeekEventLayouts", () => {
   it("splits multi-day events across week rows with stable lane assignment", () => {

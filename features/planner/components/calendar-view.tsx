@@ -1,7 +1,7 @@
 "use client";
 
-import { MonthCard } from "@/components/planner/month-card";
-import { usePlannerState } from "@/components/planner/planner-state";
+import { MonthCard } from "@/features/planner/components/month-card";
+import { usePlannerState } from "@/features/planner/state/planner-state";
 
 /**
  * Renders the semester calendar as a vertical stack of month cards.
