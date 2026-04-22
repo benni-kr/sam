@@ -39,7 +39,7 @@ export function DraggableEvent({
   compact = false,
   children,
 }: DraggableEventProps) {
-  const { updateEvent, deleteEvent } = usePlannerState();
+  const { updateEvent, deleteEvent, friends } = usePlannerState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -102,6 +102,7 @@ export function DraggableEvent({
           ? createPortal(
               <EventDetailsModal
                 event={event}
+                availableParticipants={friends}
                 onSave={updateEvent}
                 onDelete={deleteEvent}
                 onClose={() => setIsPreviewOpen(false)}
@@ -132,6 +133,7 @@ export function DraggableEvent({
         ? createPortal(
             <EventDetailsModal
               event={event}
+              availableParticipants={friends}
               onSave={updateEvent}
               onDelete={deleteEvent}
               onClose={() => setIsPreviewOpen(false)}
@@ -145,11 +147,13 @@ export function DraggableEvent({
 
 function EventDetailsModal({
   event,
+  availableParticipants,
   onSave,
   onDelete,
   onClose,
 }: {
   event: PlannerEvent;
+  availableParticipants: string[];
   onSave: (
     eventId: string,
     input: {
@@ -170,9 +174,7 @@ function EventDetailsModal({
   );
   const [startDate, setStartDate] = useState(event.startDate ?? "");
   const [endDate, setEndDate] = useState(event.endDate ?? "");
-  const [participants, setParticipants] = useState(
-    event.participants.join(", "),
-  );
+  const [participants, setParticipants] = useState(event.participants);
 
   function handleSubmit(eventForm: FormEvent<HTMLFormElement>) {
     eventForm.preventDefault();
@@ -182,10 +184,7 @@ function EventDetailsModal({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
-      participants: participants
-        .split(",")
-        .map((participant) => participant.trim())
-        .filter(Boolean),
+      participants,
     });
 
     onClose();
@@ -217,6 +216,7 @@ function EventDetailsModal({
             startDate={startDate}
             endDate={endDate}
             participants={participants}
+            availableParticipants={availableParticipants}
             onTitleChange={setTitle}
             onCategoryChange={setCategory}
             onStartDateChange={setStartDate}

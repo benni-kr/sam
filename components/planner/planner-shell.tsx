@@ -43,9 +43,9 @@ export function PlannerShell({ children }: PlannerShellProps) {
   const searchParams = useSearchParams();
   const semesterId = searchParams.get("semester") ?? defaultPlannerSemesterId;
   const activeSemester = getPlannerSemester(semesterId);
-  const hideFinished = searchParams.get("hideFinished") === "1";
+  const hideFinished = searchParams.get("hideFinished") !== "0";
   const hideUndated = searchParams.get("hideUndated") === "1";
-  const showInactiveParticipants = searchParams.get("showInactive") === "1";
+  const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -87,12 +87,14 @@ export function PlannerShell({ children }: PlannerShellProps) {
   }
 
   function setCrosstablesFilterParam(
-    key: "hideFinished" | "hideUndated" | "showInactive",
+    key: "hideFinished" | "hideUndated" | "hideInactive",
     enabled: boolean,
   ) {
     const params = new URLSearchParams(searchParams.toString());
 
-    if (enabled) {
+    if (key === "hideFinished" || key === "hideInactive") {
+      params.set(key, enabled ? "1" : "0");
+    } else if (enabled) {
       params.set(key, "1");
     } else {
       params.delete(key);
@@ -116,7 +118,7 @@ export function PlannerShell({ children }: PlannerShellProps) {
         buildSemesterHref={buildSemesterHref}
         hideFinished={hideFinished}
         hideUndated={hideUndated}
-        showInactiveParticipants={showInactiveParticipants}
+        hideInactiveParticipants={hideInactiveParticipants}
         setCrosstablesFilterParam={setCrosstablesFilterParam}
       >
         {children}
@@ -135,7 +137,7 @@ function PlannerShellFrame({
   buildSemesterHref,
   hideFinished,
   hideUndated,
-  showInactiveParticipants,
+  hideInactiveParticipants,
   setCrosstablesFilterParam,
   children,
 }: {
@@ -148,22 +150,31 @@ function PlannerShellFrame({
   buildSemesterHref: (nextSemesterId: string) => string;
   hideFinished: boolean;
   hideUndated: boolean;
-  showInactiveParticipants: boolean;
+  hideInactiveParticipants: boolean;
   setCrosstablesFilterParam: (
-    key: "hideFinished" | "hideUndated" | "showInactive",
+    key: "hideFinished" | "hideUndated" | "hideInactive",
     enabled: boolean,
   ) => void;
   children: React.ReactNode;
 }) {
-  const { events, moveEventToDate, moveEventToInbox, createEvent } =
-    usePlannerState();
+  const {
+    events,
+    moveEventToDate,
+    moveEventToInbox,
+    createEvent,
+    friends,
+    addFriend,
+    removeFriend,
+  } = usePlannerState();
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<PlannerEventCategory>("Group Event");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [participants, setParticipants] = useState("");
+  const [participants, setParticipants] = useState<string[]>([]);
+  const [newFriendName, setNewFriendName] = useState("");
+  const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -225,17 +236,21 @@ function PlannerShellFrame({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
-      participants: participants
-        .split(",")
-        .map((participant) => participant.trim())
-        .filter(Boolean),
+      participants,
     });
 
     setTitle("");
     setStartDate("");
     setEndDate("");
-    setParticipants("");
+    setParticipants([]);
     setIsCreateModalOpen(false);
+  }
+
+  function handleAddFriend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    addFriend(newFriendName);
+    setNewFriendName("");
   }
 
   return (
@@ -331,36 +346,51 @@ function PlannerShellFrame({
               </button>
 
               {pathname === "/crosstables" ? (
-                <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    Table Filters
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    <SidebarToggle
-                      label="Hide finished events"
-                      checked={hideFinished}
-                      onToggle={(checked) =>
-                        setCrosstablesFilterParam("hideFinished", checked)
-                      }
-                    />
+                <>
+                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      Table Filters
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      <SidebarToggle
+                        label="Hide finished events"
+                        checked={hideFinished}
+                        onToggle={(checked) =>
+                          setCrosstablesFilterParam("hideFinished", checked)
+                        }
+                      />
 
-                    <SidebarToggle
-                      label="Hide undated events"
-                      checked={hideUndated}
-                      onToggle={(checked) =>
-                        setCrosstablesFilterParam("hideUndated", checked)
-                      }
-                    />
+                      <SidebarToggle
+                        label="Hide undated events"
+                        checked={hideUndated}
+                        onToggle={(checked) =>
+                          setCrosstablesFilterParam("hideUndated", checked)
+                        }
+                      />
 
-                    <SidebarToggle
-                      label="Show inactive participants"
-                      checked={showInactiveParticipants}
-                      onToggle={(checked) =>
-                        setCrosstablesFilterParam("showInactive", checked)
-                      }
-                    />
-                  </div>
-                </section>
+                      <SidebarToggle
+                        label="Hide inactive participants"
+                        checked={hideInactiveParticipants}
+                        onToggle={(checked) =>
+                          setCrosstablesFilterParam("hideInactive", checked)
+                        }
+                      />
+                    </div>
+                  </section>
+
+                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      Friends
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsManageFriendsOpen(true)}
+                      className="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                      Manage friends
+                    </button>
+                  </section>
+                </>
               ) : null}
 
               {pathname === "/crosstables" ? null : <SidebarInbox />}
@@ -396,6 +426,7 @@ function PlannerShellFrame({
               startDate={startDate}
               endDate={endDate}
               participants={participants}
+              availableParticipants={friends}
               onTitleChange={setTitle}
               onCategoryChange={(nextCategory) => setCategory(nextCategory)}
               onStartDateChange={setStartDate}
@@ -404,6 +435,68 @@ function PlannerShellFrame({
               onSubmit={handleCreateEvent}
               onCancel={() => setIsCreateModalOpen(false)}
             />
+          </section>
+        </div>
+      ) : null}
+
+      {isManageFriendsOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
+          onClick={() => setIsManageFriendsOpen(false)}
+        >
+          <section
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Friends
+            </p>
+
+            <form onSubmit={handleAddFriend} className="mt-3 flex gap-2">
+              <input
+                value={newFriendName}
+                onChange={(event) => setNewFriendName(event.target.value)}
+                placeholder="Add friend"
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none ring-slate-300 focus:ring"
+              />
+              <button
+                type="submit"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Add
+              </button>
+            </form>
+
+            <div className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1">
+              {friends.map((friend) => (
+                <div
+                  key={friend}
+                  className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 px-2 py-1"
+                >
+                  <span className="truncate text-xs text-slate-700">
+                    {friend}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFriend(friend)}
+                    className="rounded px-1 text-[11px] text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                    aria-label={`Remove ${friend}`}
+                  >
+                    remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsManageFriendsOpen(false)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              >
+                Close
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

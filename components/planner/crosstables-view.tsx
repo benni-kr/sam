@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { PlannerEventForm } from "@/components/planner/event-form";
 import { usePlannerState } from "@/components/planner/planner-state";
 import {
-  SEMESTER_FRIENDS,
   plannerEventCategories,
   type PlannerEvent,
   type PlannerEventCategory,
@@ -70,11 +69,17 @@ const categoryCheckboxStyles: Record<
  */
 export function CrosstablesView() {
   const searchParams = useSearchParams();
-  const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
-    usePlannerState();
+  const {
+    events,
+    inboxEvents,
+    toggleParticipant,
+    updateEvent,
+    deleteEvent,
+    friends,
+  } = usePlannerState();
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
-  const showInactiveParticipants = searchParams.get("showInactive") === "1";
+  const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
   const todayDateKey = getTodayDateKey();
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
@@ -127,7 +132,7 @@ export function CrosstablesView() {
 
   const participantNames = Array.from(
     new Set([
-      ...(showInactiveParticipants ? SEMESTER_FRIENDS : []),
+      ...(hideInactiveParticipants ? [] : friends),
       ...filteredCrosstableEvents.flatMap((event) => event.participants),
     ]),
   );
@@ -276,6 +281,7 @@ export function CrosstablesView() {
       {editingEvent ? (
         <EventEditModal
           event={editingEvent}
+          availableParticipants={friends}
           onSave={updateEvent}
           onDelete={deleteEvent}
           onClose={() => setEditingEventId(null)}
@@ -340,11 +346,13 @@ function getTodayDateKey() {
 
 function EventEditModal({
   event,
+  availableParticipants,
   onSave,
   onDelete,
   onClose,
 }: {
   event: PlannerEvent;
+  availableParticipants: string[];
   onSave: (
     eventId: string,
     input: {
@@ -364,9 +372,7 @@ function EventEditModal({
   );
   const [startDate, setStartDate] = useState(event.startDate ?? "");
   const [endDate, setEndDate] = useState(event.endDate ?? "");
-  const [participants, setParticipants] = useState(
-    event.participants.join(", "),
-  );
+  const [participants, setParticipants] = useState(event.participants);
 
   function handleSubmit(eventForm: FormEvent<HTMLFormElement>) {
     eventForm.preventDefault();
@@ -376,10 +382,7 @@ function EventEditModal({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
-      participants: participants
-        .split(",")
-        .map((participant) => participant.trim())
-        .filter(Boolean),
+      participants,
     });
 
     onClose();
@@ -410,6 +413,7 @@ function EventEditModal({
           startDate={startDate}
           endDate={endDate}
           participants={participants}
+          availableParticipants={availableParticipants}
           onTitleChange={setTitle}
           onCategoryChange={setCategory}
           onStartDateChange={setStartDate}
