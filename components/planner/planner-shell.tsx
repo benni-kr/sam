@@ -85,7 +85,6 @@ export function PlannerShell({ children }: PlannerShellProps) {
   return (
     <PlannerStateProvider activeSemesterId={semesterId}>
       <PlannerShellFrame
-        pathname={pathname}
         semesterId={semesterId}
         activeSemester={activeSemester}
         semesterMenuOpen={semesterMenuOpen}
@@ -100,7 +99,6 @@ export function PlannerShell({ children }: PlannerShellProps) {
 }
 
 function PlannerShellFrame({
-  pathname,
   semesterId,
   activeSemester,
   semesterMenuOpen,
@@ -109,7 +107,6 @@ function PlannerShellFrame({
   buildSemesterHref,
   children,
 }: {
-  pathname: string;
   semesterId: string;
   activeSemester: ReturnType<typeof getPlannerSemester>;
   semesterMenuOpen: boolean;
@@ -285,17 +282,15 @@ function PlannerShellFrame({
                 </div>
               </section>
 
-              {pathname === "/" ? (
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  + Add Event
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                + Add Event
+              </button>
 
-              {pathname === "/" ? <SidebarInbox /> : null}
+              <SidebarInbox />
             </div>
           </aside>
 
