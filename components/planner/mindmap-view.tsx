@@ -1,7 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-
 import { usePlannerState } from "@/components/planner/planner-state";
 import {
   SEMESTER_FRIENDS,
@@ -36,73 +34,23 @@ const categoryStyles: Record<
   },
 };
 
-const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
-  Exam: "Exams",
-  "Group Event": "Group Events",
-  "Private Event": "Private Events",
-  Other: "Others",
-};
-
-const categoryCheckboxStyles: Record<
-  PlannerEventCategory,
-  {
-    mark: string;
-  }
-> = {
-  Exam: {
-    mark: "text-violet-700",
-  },
-  "Group Event": {
-    mark: "text-emerald-700",
-  },
-  "Private Event": {
-    mark: "text-amber-700",
-  },
-  Other: {
-    mark: "text-sky-700",
-  },
-};
-
 /**
  * Cross-table view to manage participants per event by category.
  */
-export function CrosstablesView() {
-  const searchParams = useSearchParams();
-  const { events, inboxEvents, toggleParticipant } = usePlannerState();
-  const hideFinished = searchParams.get("hideFinished") === "1";
-  const hideUndated = searchParams.get("hideUndated") === "1";
-  const todayDateKey = getTodayDateKey();
-
-  const crosstableEvents = dedupeEventsById([
-    ...events.filter((event) => Boolean(event.startDate)),
-    ...inboxEvents,
-  ]);
-
-  const filteredCrosstableEvents = crosstableEvents.filter((event) => {
-    if (!event.startDate) {
-      return !hideUndated;
-    }
-
-    if (!hideFinished) {
-      return true;
-    }
-
-    const endDate = event.endDate ?? event.startDate;
-
-    return endDate >= todayDateKey;
-  });
+export function MindMapView() {
+  const { events, toggleParticipant } = usePlannerState();
 
   const participantNames = Array.from(
     new Set([
       ...SEMESTER_FRIENDS,
-      ...filteredCrosstableEvents.flatMap((event) => event.participants),
+      ...events.flatMap((event) => event.participants),
     ]),
   );
 
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
       acc[category] = sortCategoryEvents(
-        filteredCrosstableEvents.filter((event) => event.category === category),
+        events.filter((event) => event.category === category),
       );
       return acc;
     },
@@ -111,25 +59,33 @@ export function CrosstablesView() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-4">
+      <header className="rounded-[1.5rem] border border-white/70 bg-white/80 px-5 py-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)]">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Crosstables
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+          Who&apos;s in?
+        </h2>
+      </header>
+
       <div className="grid gap-4">
         {plannerEventCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
           const styles = categoryStyles[category];
-          const checkboxStyles = categoryCheckboxStyles[category];
 
           return (
             <article
               key={category}
               className={`rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
             >
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex items-center gap-2 border-b border-black/5 pb-3">
                 <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
                 <h3
                   className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}
                 >
-                  {categoryLabelsPlural[category]}
+                  {category}
                 </h3>
-                <span className="ml-auto rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
                   {categoryEvents.length} event
                   {categoryEvents.length === 1 ? "" : "s"}
                 </span>
@@ -176,12 +132,10 @@ export function CrosstablesView() {
                               {event.title}
                             </p>
                             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                              {event.startDate
-                                ? formatDisplayDate(event.startDate)
-                                : "Undated"}
+                              {event.startDate ?? "Undated"}
                               {event.endDate &&
                               event.endDate !== event.startDate
-                                ? ` to ${formatDisplayDate(event.endDate)}`
+                                ? ` to ${event.endDate}`
                                 : ""}
                             </p>
                           </td>
@@ -205,16 +159,8 @@ export function CrosstablesView() {
                                         participantName,
                                       )
                                     }
-                                    className="peer sr-only"
+                                    className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                                   />
-                                  <span
-                                    className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent opacity-0 transition-[opacity,background-color] hover:bg-slate-100 peer-checked:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400 peer-focus-visible:ring-offset-1 ${checkboxStyles.mark}`}
-                                    aria-hidden="true"
-                                  >
-                                    <span className="text-3xl leading-none">
-                                      ×
-                                    </span>
-                                  </span>
                                   <span className="sr-only">
                                     Toggle {participantName} for {event.title}
                                   </span>
@@ -258,33 +204,4 @@ function sortCategoryEvents(events: PlannerEvent[]) {
 
     return left.title.localeCompare(right.title);
   });
-}
-
-function formatDisplayDate(dateKey: string) {
-  const [year, month, day] = dateKey.split("-");
-
-  if (!year || !month || !day) {
-    return dateKey;
-  }
-
-  return `${day}.${month}.${year}`;
-}
-
-function dedupeEventsById(events: PlannerEvent[]) {
-  const eventMap = new Map<string, PlannerEvent>();
-
-  for (const event of events) {
-    eventMap.set(event.id, event);
-  }
-
-  return Array.from(eventMap.values());
-}
-
-function getTodayDateKey() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
 }
