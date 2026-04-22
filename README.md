@@ -10,7 +10,7 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 - A shared inbox for unscheduled events across semesters
 - Event creation, editing, and deletion flows in centered modals
 - A custom popover date picker for event dates
-- A grouped App Router structure for the calendar, mind map, and mobile views
+- A grouped App Router structure for the calendar, crosstables, and mobile views
 - Shared, typed event data and semester metadata in `lib/planner.ts`
 - Shared client-side planner state so all views stay synchronized
 - Drag-and-drop foundations for moving events between inbox and calendar dates
@@ -65,7 +65,7 @@ If Supabase is unavailable, the app still writes placements to local storage as 
 
 - [app/(planner)/layout.tsx](app/%28planner%29/layout.tsx) - shared planner shell and view tabs
 - [app/(planner)/page.tsx](app/%28planner%29/page.tsx) - calendar view entry route
-- [app/(planner)/mindmap/page.tsx](app/%28planner%29/mindmap/page.tsx) - category overview route
+- [app/(planner)/crosstables/page.tsx](app/%28planner%29/crosstables/page.tsx) - who-is-in cross-table route
 - [app/(planner)/mobile/page.tsx](app/%28planner%29/mobile/page.tsx) - chronological timeline route
 - [app/layout.tsx](app/layout.tsx) - root layout and metadata
 - [app/globals.css](app/globals.css) - global styling and theme tokens
@@ -97,7 +97,7 @@ In Supabase mode, writes are persisted locally first and then synced remotely, s
 The planner lives in a route group so the visible URLs stay clean while the UI stays organized:
 
 - `/` - calendar view
-- `/mindmap` - category summary view
+- `/crosstables` - who-is-in cross-table view
 - `/mobile` - chronological list view
 
 The shared header and view tabs live in the grouped layout, so all three routes stay under the same planner chrome.
@@ -130,4 +130,4 @@ Both commands should pass locally and in CI.
 - The inbox is shared across semesters and only shows unscheduled events.
 - Events can be created, edited, and deleted from modal dialogs.
 - Dates are selected through a custom calendar popover rather than the native browser input.
-- Events remain color-coded by category across the calendar, inbox, mind map, and mobile views.
+- Events remain color-coded by category across the calendar, inbox, crosstables, and mobile views.

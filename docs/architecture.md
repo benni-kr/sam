@@ -5,7 +5,7 @@
 SAM (Semester Aktivity Manager) is a collaborative semester planning UI with three synchronized representations of the same event data:
 
 - Calendar view (`/`)
-- Category-focused mind map summary (`/mindmap`)
+- Category-focused crosstables matrix (`/crosstables`)
 - Chronological mobile-style timeline (`/mobile`)
 
 All views are driven by shared planner state and the same event model.
@@ -14,7 +14,7 @@ All views are driven by shared planner state and the same event model.
 
 - `app/(planner)/layout.tsx`: Shared planner chrome and route grouping
 - `app/(planner)/page.tsx`: Calendar route entry
-- `app/(planner)/mindmap/page.tsx`: Mind map route entry
+- `app/(planner)/crosstables/page.tsx`: Crosstables route entry
 - `app/(planner)/mobile/page.tsx`: Mobile route entry
 - `components/planner/planner-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay
 - `components/planner/planner-state.tsx`: State container and state transitions
@@ -120,7 +120,7 @@ Validation gates:
 ## Known Constraints
 
 - Semester/event fixtures are currently static in `lib/planner.ts`
-- Mind map route is a structured summary, not a graph canvas yet
+- Crosstables route is a category-based participation matrix and not a graph canvas
 - Mobile route is timeline-style but not a separate responsive app shell
 
 ## Extension Guidance

@@ -37,7 +37,7 @@ const categoryStyles: Record<
 /**
  * Cross-table view to manage participants per event by category.
  */
-export function MindMapView() {
+export function CrosstablesView() {
   const { events, toggleParticipant } = usePlannerState();
 
   const participantNames = Array.from(

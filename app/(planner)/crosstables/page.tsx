@@ -1,5 +1,5 @@
-import { MindMapView } from "@/components/planner/mindmap-view";
+import { CrosstablesView } from "@/components/planner/crosstables-view";
 
 export default function Page() {
-  return <MindMapView />;
+  return <CrosstablesView />;
 }
