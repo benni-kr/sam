@@ -1,121 +1,160 @@
 "use client";
 
 import { usePlannerState } from "@/components/planner/planner-state";
+import {
+  SEMESTER_FRIENDS,
+  plannerEventCategories,
+  type PlannerEvent,
+  type PlannerEventCategory,
+} from "@/lib/planner";
 
 const categoryStyles: Record<
   string,
-  { ring: string; badge: string; dot: string }
+  { section: string; heading: string; accent: string }
 > = {
   Exam: {
-    ring: "border-violet-200 bg-violet-50/80",
-    badge: "bg-violet-100 text-violet-900",
-    dot: "bg-violet-400",
+    section: "border-violet-200 bg-violet-50/80",
+    heading: "text-violet-900",
+    accent: "bg-violet-500",
   },
   "Group Event": {
-    ring: "border-emerald-200 bg-emerald-50/80",
-    badge: "bg-emerald-100 text-emerald-900",
-    dot: "bg-emerald-400",
+    section: "border-emerald-200 bg-emerald-50/80",
+    heading: "text-emerald-900",
+    accent: "bg-emerald-500",
   },
   "Private Event": {
-    ring: "border-amber-200 bg-amber-50/80",
-    badge: "bg-amber-100 text-amber-900",
-    dot: "bg-amber-400",
+    section: "border-amber-200 bg-amber-50/80",
+    heading: "text-amber-900",
+    accent: "bg-amber-400",
   },
   Other: {
-    ring: "border-sky-200 bg-sky-50/80",
-    badge: "bg-sky-100 text-sky-900",
-    dot: "bg-sky-400",
+    section: "border-sky-200 bg-sky-50/80",
+    heading: "text-sky-900",
+    accent: "bg-sky-500",
   },
 };
 
 /**
- * Presents semester events grouped by category with participant chips.
+ * Cross-table view to manage participants per event by category.
  */
 export function MindMapView() {
-  const { categorySummaries } = usePlannerState();
+  const { events, toggleParticipant } = usePlannerState();
+
+  const participantNames = Array.from(
+    new Set([...SEMESTER_FRIENDS, ...events.flatMap((event) => event.participants)]),
+  );
+
+  const eventsByCategory = plannerEventCategories.reduce(
+    (acc, category) => {
+      acc[category] = sortCategoryEvents(
+        events.filter((event) => event.category === category),
+      );
+      return acc;
+    },
+    {} as Record<PlannerEventCategory, PlannerEvent[]>,
+  );
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="grid gap-4 xl:grid-cols-2">
-        {categorySummaries.map((summary) => {
-          const styles = categoryStyles[summary.category];
+    <section className="flex min-h-0 flex-1 flex-col gap-4">
+      <header className="rounded-[1.5rem] border border-white/70 bg-white/80 px-5 py-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)]">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Crosstables
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold text-slate-950">Who&apos;s in?</h2>
+      </header>
+
+      <div className="grid gap-4">
+        {plannerEventCategories.map((category) => {
+          const categoryEvents = eventsByCategory[category];
+          const styles = categoryStyles[category];
 
           return (
             <article
-              key={summary.category}
-              className={`rounded-[1.75rem] border p-5 shadow-sm ${styles.ring}`}
+              key={category}
+              className={`rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
             >
-              <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${styles.dot}`}
-                    />
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      {summary.category}
-                    </p>
-                  </div>
-                  <h3 className="mt-2 text-xl font-semibold text-slate-950">
-                    {summary.count} event{summary.count === 1 ? "" : "s"}
-                  </h3>
-                </div>
-
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${styles.badge}`}
-                >
-                  Category
+              <div className="mb-3 flex items-center gap-2 border-b border-black/5 pb-3">
+                <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
+                <h3 className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}>
+                  {category}
+                </h3>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  {categoryEvents.length} event{categoryEvents.length === 1 ? "" : "s"}
                 </span>
               </div>
 
-              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-                <div className="space-y-3">
-                  {summary.events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="rounded-2xl border border-white/60 bg-white/80 p-4 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-950">
-                            {event.title}
-                          </p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                            {event.startDate ?? "Unscheduled"}
-                            {event.endDate && event.endDate !== event.startDate
-                              ? ` to ${event.endDate}`
-                              : ""}
-                          </p>
-                        </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white/90 text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Event
+                      </th>
+                      {participantNames.map((participantName) => (
+                        <th
+                          key={`${category}-${participantName}-header`}
+                          className="border-b border-slate-200 bg-slate-50 px-1 py-2 text-center align-bottom"
+                        >
+                          <span className="inline-block origin-center -rotate-180 whitespace-nowrap text-[11px] font-medium tracking-[0.14em] text-slate-600 [writing-mode:vertical-rl]">
+                            {participantName}
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
 
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                          {event.participants.length} people
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  <tbody>
+                    {categoryEvents.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={participantNames.length + 1}
+                          className="px-3 py-4 text-sm text-slate-500"
+                        >
+                          No events in this category yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      categoryEvents.map((event) => (
+                        <tr key={`${category}-${event.id}`} className="odd:bg-white even:bg-slate-50/50">
+                          <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-2">
+                            <p className="font-medium text-slate-900">{event.title}</p>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                              {event.startDate ?? "Undated"}
+                              {event.endDate && event.endDate !== event.startDate
+                                ? ` to ${event.endDate}`
+                                : ""}
+                            </p>
+                          </td>
 
-                <div className="rounded-2xl border border-slate-200 bg-white/75 p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Participants
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {summary.participants.map((participant) => (
-                      <span
-                        key={participant}
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700"
-                      >
-                        {participant}
-                      </span>
-                    ))}
-                  </div>
+                          {participantNames.map((participantName) => {
+                            const checked = event.participants.includes(participantName);
 
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    This participant layer is the bridge to a fuller graph view
-                    later on, when we connect the mind map to a dedicated
-                    canvas.
-                  </p>
-                </div>
+                            return (
+                              <td
+                                key={`${event.id}-${participantName}`}
+                                className="border-l border-slate-100 px-1 py-2 text-center"
+                              >
+                                <label className="inline-flex cursor-pointer items-center justify-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() =>
+                                      toggleParticipant(event.id, participantName)
+                                    }
+                                    className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                                  />
+                                  <span className="sr-only">
+                                    Toggle {participantName} for {event.title}
+                                  </span>
+                                </label>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </article>
           );
@@ -123,4 +162,28 @@ export function MindMapView() {
       </div>
     </section>
   );
+}
+
+function sortCategoryEvents(events: PlannerEvent[]) {
+  return [...events].sort((left, right) => {
+    if (!left.startDate && !right.startDate) {
+      return left.title.localeCompare(right.title);
+    }
+
+    if (!left.startDate) {
+      return 1;
+    }
+
+    if (!right.startDate) {
+      return -1;
+    }
+
+    const startDateComparison = left.startDate.localeCompare(right.startDate);
+
+    if (startDateComparison !== 0) {
+      return startDateComparison;
+    }
+
+    return left.title.localeCompare(right.title);
+  });
 }
