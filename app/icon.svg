@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Semester Activity Manager">
+  <defs>
+    <linearGradient id="samGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#samGradient)" />
+
+  <!-- Bold SAM text -->
+  <g font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="32" fill="white" letter-spacing="-1" text-anchor="middle">
+    <text x="32" y="40">SAM</text>
+  </g>
+
+  <!-- Playful accent dots -->
+  <circle cx="50" cy="10" r="2.5" fill="#60a5fa" opacity="0.9" />
+  <circle cx="10" cy="50" r="2.5" fill="#f97316" opacity="0.9" />
+</svg>

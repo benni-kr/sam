@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
+import { enGB } from "date-fns/locale";
 import { DayPicker } from "react-day-picker";
 
 type DatePickerProps = {
@@ -76,6 +77,7 @@ export function DatePicker({
         <div className="absolute z-30 mt-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
           <DayPicker
             mode="single"
+            locale={enGB}
             selected={selectedDate}
             onDayClick={(_, __, event) => {
               // Prevent form submission when day buttons are clicked inside forms.

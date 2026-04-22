@@ -23,7 +23,7 @@ export function SidebarInbox() {
       className={`rounded-[1.25rem] border border-dashed p-3 transition-colors ${
         isOver
           ? "border-slate-900 bg-slate-100"
-          : "border-slate-300 bg-[#faf7f0]/90"
+          : "border-slate-300 bg-white/90"
       }`}
     >
       <div className="mb-3 border-b border-slate-200 pb-2">

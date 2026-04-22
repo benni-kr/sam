@@ -2,13 +2,13 @@
 
 ## Purpose
 
-SAM (Semester Aktivity Manager) is a collaborative semester planning UI with three synchronized representations of the same event data:
+SAM (Semester Activity Manager) is a collaborative semester planning UI with three synchronized representations of the same event data:
 
 - Calendar view (`/`)
-- Category-focused crosstables matrix (`/crosstables`)
+- Category-focused crosstables matrix with participation toggles (`/crosstables`)
 - Chronological mobile-style timeline (`/mobile`)
 
-All views are driven by shared planner state and the same event model.
+All views are driven by shared planner state and the same event model, with managed friends list ensuring consistent participant data across events.
 
 ## High-Level Structure
 
@@ -33,24 +33,36 @@ Core types live in `lib/planner.ts`:
 - `PlannerEvent`: Event identity, title, category, date range, participants
 - `PlannerMonth`: Year/month metadata for rendering
 - `PlannerSemester`: Semester identity, months, and events
-- `SEMESTER_FRIENDS`: Seed participant names used by the crosstables matrix
+- `SEMESTER_FRIENDS`: Seed participant names
 
 Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sorting.
+
+## Friends and Participants
+
+SAM enforces a managed friends workflow:
+
+1. A canonical `friends` list is initialized from `SEMESTER_FRIENDS` plus all participant names from seed events.
+2. Event participants are only selected from this friends list during create/edit.
+3. Renaming a friend updates that name across all events.
+4. Removing a friend removes that participant from all events.
+
+This keeps participant data consistent and prevents orphaned or stale names.
 
 ## State and Data Flow
 
 `PlannerStateProvider` is the single source of truth for planner interactions.
 
-1. Initial state is built from static semester fixtures.
+1. Initial state is built from static semester fixtures and friends list.
 2. Persisted placements are hydrated and merged by event ID.
-3. Actions update only date placement fields (`startDate`, `endDate`).
-4. CRUD actions update event metadata in the semester that owns the event.
+3. Actions update date placement fields (`startDate`, `endDate`), event metadata (title, category, participants), and friend list operations (add, rename, remove).
+4. Friend mutations trigger participant cleanup across events when removing or renaming.
 5. Derived selectors feed all views:
 
 - covering events per date
 - inbox events across all semesters
 - chronological events
 - category summaries
+- filtered participant visibility
 
 This keeps all routes synchronized without duplicating logic.
 
@@ -86,19 +98,27 @@ DnD is provided by `@dnd-kit/core`.
 ## Crosstables Behavior
 
 - Crosstables render one matrix per category (rows: events, columns: participants).
+- Each cell shows an × mark if the participant is assigned; click to toggle.
+- Date formatting is `DD.MM.YYYY` for readability.
 - Participant membership is updated via `toggleParticipant(eventId, participantName)`.
 - Date sorting keeps undated events at the bottom of each category table.
-- Crosstables-only sidebar filters (`hideFinished`, `hideUndated`) are URL-backed query params so view state is shareable.
+- Sidebar filters control visibility:
+  - `hideFinished` (default on): hide events past their end date
+  - `hideUndated` (default off): hide unscheduled events
+  - `hideInactive` (default off): hide friends with no assigned participants
+- All filters are URL-backed query params so view state is shareable.
 
-## Event Forms
+## Event Forms and Friends Management
 
 Create and edit flows share one reusable form component so the field layout and confirmation handling stay consistent.
 
 - Create is opened from the sidebar `+ Add Event` button in a centered modal.
-- Edit is opened from the event details modal and uses the same shared form.
+- Edit is opened from the crosstables event title link in a centered modal.
+- Participants are selected from the managed friends list via toggleable chips.
 - Delete uses an inline confirmation block rather than a browser alert.
+- Manage Friends opens from the sidebar `Manage friends` button, allowing add/edit/remove of canonical friend names.
 
-The form uses a popover calendar picker instead of the native browser date input so the interaction stays visually consistent across browsers.
+The form uses a popover calendar picker instead of the native browser date input so the interaction stays visually consistent across browsers. Week layout is Monday-first.
 
 ## Persistence
 
@@ -128,9 +148,10 @@ Validation gates:
 
 ## Known Constraints
 
-- Semester/event fixtures are currently static in `lib/planner.ts`
+- Semester/event fixtures and initial friends list are static in `lib/planner.ts`
 - Crosstables route is a category-based participation matrix and not a graph canvas
 - Mobile route is timeline-style but not a separate responsive app shell
+- Friend renames and removals affect all events globally; no event-level friend isolation
 
 ## Extension Guidance
 
