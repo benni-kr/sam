@@ -19,7 +19,7 @@ describe("buildMonthWeekEventLayouts", () => {
       {
         id: "evt-long",
         title: "Long Event",
-        category: "Exams",
+        category: "Exam",
         startDate: "2026-04-24",
         endDate: "2026-04-28",
         participants: [],
@@ -27,7 +27,7 @@ describe("buildMonthWeekEventLayouts", () => {
       {
         id: "evt-overlap",
         title: "Overlap",
-        category: "Group Events",
+        category: "Group Event",
         startDate: "2026-04-25",
         endDate: "2026-04-25",
         participants: [],

@@ -10,11 +10,12 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { EventBadge } from "@/components/planner/event-badge";
+import { PlannerEventForm } from "@/components/planner/event-form";
 import { PlannerStateProvider } from "@/components/planner/planner-state";
 import { usePlannerState } from "@/components/planner/planner-state";
 import { PlannerTabs } from "@/components/planner/planner-tabs";
@@ -23,6 +24,7 @@ import {
   defaultPlannerSemesterId,
   getPlannerSemester,
   plannerSemesters,
+  type PlannerEventCategory,
   type PlannerEvent,
 } from "@/lib/planner";
 
@@ -116,8 +118,15 @@ function PlannerShellFrame({
   buildSemesterHref: (nextSemesterId: string) => string;
   children: React.ReactNode;
 }) {
-  const { events, moveEventToDate, moveEventToInbox } = usePlannerState();
+  const { events, moveEventToDate, moveEventToInbox, createEvent } =
+    usePlannerState();
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<PlannerEventCategory>("Group Event");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [participants, setParticipants] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -169,6 +178,27 @@ function PlannerShellFrame({
     if (targetId.startsWith("date:")) {
       moveEventToDate(eventId, targetId.replace("date:", ""));
     }
+  }
+
+  function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    createEvent({
+      title,
+      category,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      participants: participants
+        .split(",")
+        .map((participant) => participant.trim())
+        .filter(Boolean),
+    });
+
+    setTitle("");
+    setStartDate("");
+    setEndDate("");
+    setParticipants("");
+    setIsCreateModalOpen(false);
   }
 
   return (
@@ -238,18 +268,32 @@ function PlannerShellFrame({
                 <div className="mt-3 space-y-2 text-xs text-slate-700">
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-                    Exams
+                    Exam
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    Group Events
+                    Group Event
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                    Private Events
+                    Private Event
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+                    Other
                   </div>
                 </div>
               </section>
+
+              {pathname === "/" ? (
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  + Add Event
+                </button>
+              ) : null}
 
               {pathname === "/" ? <SidebarInbox /> : null}
             </div>
@@ -266,6 +310,35 @@ function PlannerShellFrame({
           </div>
         ) : null}
       </DragOverlay>
+
+      {isCreateModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
+          onClick={() => setIsCreateModalOpen(false)}
+        >
+          <section
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <PlannerEventForm
+              heading="Add event"
+              submitLabel="Add event"
+              title={title}
+              category={category}
+              startDate={startDate}
+              endDate={endDate}
+              participants={participants}
+              onTitleChange={setTitle}
+              onCategoryChange={(nextCategory) => setCategory(nextCategory)}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+              onParticipantsChange={setParticipants}
+              onSubmit={handleCreateEvent}
+              onCancel={() => setIsCreateModalOpen(false)}
+            />
+          </section>
+        </div>
+      ) : null}
     </DndContext>
   );
 }

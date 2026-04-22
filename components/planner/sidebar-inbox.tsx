@@ -30,9 +30,6 @@ export function SidebarInbox() {
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
           Inbox
         </p>
-        <p className="mt-1 text-xs text-slate-600">
-          Unscheduled events. Drag onto dates.
-        </p>
       </div>
 
       <div className="space-y-2">

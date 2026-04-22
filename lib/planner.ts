@@ -1,8 +1,15 @@
 export type PlannerEventCategory =
-  | "Exams"
-  | "Group Events"
-  | "Private Events"
-  | "Inbox";
+  | "Exam"
+  | "Group Event"
+  | "Private Event"
+  | "Other";
+
+export const plannerEventCategories: PlannerEventCategory[] = [
+  "Exam",
+  "Group Event",
+  "Private Event",
+  "Other",
+];
 
 export type PlannerEvent = {
   id: string;
@@ -55,7 +62,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-1",
     title: "Semester kickoff picnic",
-    category: "Group Events",
+    category: "Group Event",
     startDate: "2026-04-11",
     endDate: "2026-04-11",
     participants: ["Maya", "Leo", "Nina"],
@@ -63,7 +70,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-2",
     title: "Course registration check-in",
-    category: "Private Events",
+    category: "Private Event",
     startDate: "2026-04-24",
     endDate: "2026-04-24",
     participants: ["Ava", "Mika"],
@@ -71,7 +78,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-3",
     title: "Library sprint",
-    category: "Exams",
+    category: "Exam",
     startDate: "2026-05-08",
     endDate: "2026-05-09",
     participants: ["Jules", "Nina", "Sam"],
@@ -79,7 +86,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-4",
     title: "Cottage weekend",
-    category: "Group Events",
+    category: "Group Event",
     startDate: "2026-06-19",
     endDate: "2026-06-21",
     participants: ["Maya", "Leo", "Tara"],
@@ -87,7 +94,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-5",
     title: "Midterm review dinner",
-    category: "Exams",
+    category: "Exam",
     startDate: "2026-07-03",
     endDate: "2026-07-03",
     participants: ["Ava", "Jules", "Nina"],
@@ -95,7 +102,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-6",
     title: "Lab prep block",
-    category: "Exams",
+    category: "Exam",
     startDate: "2026-08-14",
     endDate: "2026-08-14",
     participants: ["Sam", "Tara"],
@@ -103,7 +110,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-7",
     title: "Beach day idea",
-    category: "Inbox",
+    category: "Group Event",
     startDate: null,
     endDate: null,
     participants: ["Maya", "Leo", "Nina"],
@@ -111,7 +118,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-8",
     title: "Budget brunch",
-    category: "Inbox",
+    category: "Private Event",
     startDate: null,
     endDate: null,
     participants: ["Ava", "Sam"],
@@ -119,7 +126,7 @@ const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-9",
     title: "Last week wrap-up",
-    category: "Private Events",
+    category: "Private Event",
     startDate: "2026-09-18",
     endDate: "2026-09-18",
     participants: ["Jules", "Tara"],
@@ -130,7 +137,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-10",
     title: "Orientation retreat",
-    category: "Group Events",
+    category: "Group Event",
     startDate: "2026-10-10",
     endDate: "2026-10-12",
     participants: ["Maya", "Sam", "Tara"],
@@ -138,7 +145,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-11",
     title: "Midterm hack night",
-    category: "Exams",
+    category: "Exam",
     startDate: "2026-11-06",
     endDate: "2026-11-06",
     participants: ["Ava", "Jules", "Nina"],
@@ -146,7 +153,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-12",
     title: "Winter film festival",
-    category: "Group Events",
+    category: "Group Event",
     startDate: "2026-12-04",
     endDate: "2026-12-04",
     participants: ["Leo", "Mika", "Tara"],
@@ -154,7 +161,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-13",
     title: "January planning sprint",
-    category: "Private Events",
+    category: "Private Event",
     startDate: "2027-01-15",
     endDate: "2027-01-16",
     participants: ["Ava", "Maya", "Sam"],
@@ -162,7 +169,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-14",
     title: "Project week",
-    category: "Exams",
+    category: "Exam",
     startDate: "2027-02-09",
     endDate: "2027-02-12",
     participants: ["Jules", "Leo", "Nina"],
@@ -170,7 +177,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-15",
     title: "Spring break cabin",
-    category: "Group Events",
+    category: "Group Event",
     startDate: "2027-03-12",
     endDate: "2027-03-14",
     participants: ["Maya", "Leo", "Tara"],
@@ -178,7 +185,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-16",
     title: "Shared budget ideas",
-    category: "Inbox",
+    category: "Private Event",
     startDate: null,
     endDate: null,
     participants: ["Ava", "Mika", "Sam"],
@@ -186,7 +193,7 @@ const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-17",
     title: "Venue shortlist",
-    category: "Inbox",
+    category: "Group Event",
     startDate: null,
     endDate: null,
     participants: ["Jules", "Maya"],

@@ -14,12 +14,14 @@ function formatDateKeyLabel(dateKey: string) {
 
 function mobileCategoryTone(category: string) {
   switch (category) {
-    case "Exams":
+    case "Exam":
       return "border-violet-200 bg-violet-50 text-violet-900";
-    case "Group Events":
+    case "Group Event":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
-    case "Private Events":
+    case "Private Event":
       return "border-amber-200 bg-amber-50 text-amber-900";
+    case "Other":
+      return "border-sky-200 bg-sky-50 text-sky-900";
     default:
       return "border-stone-200 bg-stone-50 text-stone-700";
   }

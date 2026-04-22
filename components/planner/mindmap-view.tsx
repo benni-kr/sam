@@ -6,25 +6,25 @@ const categoryStyles: Record<
   string,
   { ring: string; badge: string; dot: string }
 > = {
-  Exams: {
+  Exam: {
     ring: "border-violet-200 bg-violet-50/80",
     badge: "bg-violet-100 text-violet-900",
     dot: "bg-violet-400",
   },
-  "Group Events": {
+  "Group Event": {
     ring: "border-emerald-200 bg-emerald-50/80",
     badge: "bg-emerald-100 text-emerald-900",
     dot: "bg-emerald-400",
   },
-  "Private Events": {
+  "Private Event": {
     ring: "border-amber-200 bg-amber-50/80",
     badge: "bg-amber-100 text-amber-900",
     dot: "bg-amber-400",
   },
-  Inbox: {
-    ring: "border-stone-200 bg-stone-50/80",
-    badge: "bg-stone-100 text-stone-700",
-    dot: "bg-stone-400",
+  Other: {
+    ring: "border-sky-200 bg-sky-50/80",
+    badge: "bg-sky-100 text-sky-900",
+    dot: "bg-sky-400",
   },
 };
 
