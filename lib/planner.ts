@@ -37,7 +37,7 @@ export type PlannerSemester = {
   events: PlannerEvent[];
 };
 
-export type PlannerViewKey = "calendar" | "mindmap" | "mobile";
+export type PlannerViewKey = "calendar" | "crosstables" | "mobile";
 
 export type PlannerView = {
   key: PlannerViewKey;
@@ -57,6 +57,8 @@ export const plannerSemesterIds: PlannerSemesterId[] = [
   "spring-2026",
   "fall-2026",
 ];
+
+export const SEMESTER_FRIENDS: string[] = ["Anna", "Paul", "Tom", "Lisa"];
 
 const springSemesterEvents: PlannerEvent[] = [
   {
@@ -247,14 +249,14 @@ export const plannerViews: PlannerView[] = [
     description: "6-month overview with inbox",
   },
   {
-    key: "mindmap",
-    label: "Mind maps",
-    href: "/mindmap",
-    description: "One map per category",
+    key: "crosstables",
+    label: "Table",
+    href: "/crosstables",
+    description: "Who's in cross table",
   },
   {
     key: "mobile",
-    label: "Mobile list",
+    label: "List",
     href: "/mobile",
     description: "Chronological compact view",
   },

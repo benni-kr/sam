@@ -5,7 +5,7 @@
 SAM (Semester Aktivity Manager) is a collaborative semester planning UI with three synchronized representations of the same event data:
 
 - Calendar view (`/`)
-- Category-focused mind map summary (`/mindmap`)
+- Category-focused crosstables matrix (`/crosstables`)
 - Chronological mobile-style timeline (`/mobile`)
 
 All views are driven by shared planner state and the same event model.
@@ -14,9 +14,10 @@ All views are driven by shared planner state and the same event model.
 
 - `app/(planner)/layout.tsx`: Shared planner chrome and route grouping
 - `app/(planner)/page.tsx`: Calendar route entry
-- `app/(planner)/mindmap/page.tsx`: Mind map route entry
+- `app/(planner)/crosstables/page.tsx`: Crosstables route entry
 - `app/(planner)/mobile/page.tsx`: Mobile route entry
 - `components/planner/planner-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay
+- `components/planner/crosstables-view.tsx`: Category participation matrix with per-cell toggles
 - `components/planner/planner-state.tsx`: State container and state transitions
 - `components/planner/event-form.tsx`: Shared create/edit form fields and delete confirmation
 - `components/planner/date-picker.tsx`: Custom popover date picker used by event forms
@@ -32,6 +33,7 @@ Core types live in `lib/planner.ts`:
 - `PlannerEvent`: Event identity, title, category, date range, participants
 - `PlannerMonth`: Year/month metadata for rendering
 - `PlannerSemester`: Semester identity, months, and events
+- `SEMESTER_FRIENDS`: Seed participant names used by the crosstables matrix
 
 Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sorting.
 
@@ -44,8 +46,8 @@ Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sortin
 3. Actions update only date placement fields (`startDate`, `endDate`).
 4. CRUD actions update event metadata in the semester that owns the event.
 5. Derived selectors feed all views:
-   - covering events per date
 
+- covering events per date
 - inbox events across all semesters
 - chronological events
 - category summaries
@@ -80,6 +82,13 @@ DnD is provided by `@dnd-kit/core`.
 - `PlannerShell` maps drag end targets to state actions:
   - `moveEventToDate`
   - `moveEventToInbox`
+
+## Crosstables Behavior
+
+- Crosstables render one matrix per category (rows: events, columns: participants).
+- Participant membership is updated via `toggleParticipant(eventId, participantName)`.
+- Date sorting keeps undated events at the bottom of each category table.
+- Crosstables-only sidebar filters (`hideFinished`, `hideUndated`) are URL-backed query params so view state is shareable.
 
 ## Event Forms
 
@@ -120,7 +129,7 @@ Validation gates:
 ## Known Constraints
 
 - Semester/event fixtures are currently static in `lib/planner.ts`
-- Mind map route is a structured summary, not a graph canvas yet
+- Crosstables route is a category-based participation matrix and not a graph canvas
 - Mobile route is timeline-style but not a separate responsive app shell
 
 ## Extension Guidance

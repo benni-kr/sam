@@ -22,12 +22,13 @@ type PlannerEventFormProps = {
   category: PlannerEventCategory;
   startDate: string;
   endDate: string;
-  participants: string;
+  participants: string[];
+  availableParticipants: string[];
   onTitleChange: (value: string) => void;
   onCategoryChange: (value: PlannerEventCategory) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
-  onParticipantsChange: (value: string) => void;
+  onParticipantsChange: (value: string[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
   deleteAction?: DeleteAction;
@@ -44,6 +45,7 @@ export function PlannerEventForm({
   startDate,
   endDate,
   participants,
+  availableParticipants,
   onTitleChange,
   onCategoryChange,
   onStartDateChange,
@@ -103,12 +105,37 @@ export function PlannerEventForm({
         />
       </div>
 
-      <input
-        value={participants}
-        onChange={(event) => onParticipantsChange(event.target.value)}
-        placeholder="People (comma separated)"
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
-      />
+      <div className="rounded-lg border border-slate-200 bg-white p-2">
+        <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Participants
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-1">
+          {availableParticipants.map((participantName) => {
+            const isSelected = participants.includes(participantName);
+
+            return (
+              <button
+                key={participantName}
+                type="button"
+                onClick={() => {
+                  onParticipantsChange(
+                    isSelected
+                      ? participants.filter((name) => name !== participantName)
+                      : [...participants, participantName],
+                  );
+                }}
+                className={`rounded-md border px-2 py-1 text-left text-xs transition-colors ${
+                  isSelected
+                    ? "border-slate-300 bg-slate-100 text-slate-900"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {participantName}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="flex gap-2">
         <button
