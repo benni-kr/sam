@@ -17,9 +17,11 @@ import {
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
+  plannerEventCategories,
   plannerSemesterIds,
   plannerSemesters,
   type PlannerCategorySummary,
+  type PlannerEventCategory,
   type PlannerEvent,
   type PlannerMonth,
   type PlannerSemester,
@@ -40,6 +42,24 @@ type PlannerStateContextValue = {
   chronologicalEvents: PlannerEvent[];
   moveEventToDate: (eventId: string, dateKey: string) => void;
   moveEventToInbox: (eventId: string) => void;
+  createEvent: (input: {
+    title: string;
+    category: PlannerEventCategory;
+    startDate: string | null;
+    endDate: string | null;
+    participants: string[];
+  }) => void;
+  updateEvent: (
+    eventId: string,
+    input: {
+      title: string;
+      category: PlannerEventCategory;
+      startDate: string | null;
+      endDate: string | null;
+      participants: string[];
+    },
+  ) => void;
+  deleteEvent: (eventId: string) => void;
 };
 
 type PlannerStateProviderProps = {
@@ -57,15 +77,38 @@ type PlannerAction =
   | {
       type: "MOVE_EVENT_TO_DATE";
       payload: {
-        semesterId: PlannerSemesterId;
         eventId: string;
         dateKey: string;
+        targetSemesterId: PlannerSemesterId;
       };
     }
   | {
       type: "MOVE_EVENT_TO_INBOX";
       payload: {
+        eventId: string;
+      };
+    }
+  | {
+      type: "CREATE_EVENT";
+      payload: {
         semesterId: PlannerSemesterId;
+        event: PlannerEvent;
+      };
+    }
+  | {
+      type: "UPDATE_EVENT";
+      payload: {
+        eventId: string;
+        title: string;
+        category: PlannerEventCategory;
+        startDate: string | null;
+        endDate: string | null;
+        participants: string[];
+      };
+    }
+  | {
+      type: "DELETE_EVENT";
+      payload: {
         eventId: string;
       };
     };
@@ -73,6 +116,8 @@ type PlannerAction =
 const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
 );
+
+export type PlannerEventsBySemester = EventsBySemester;
 
 /**
  * Converts a persisted date key to a stable midday Date instance.
@@ -93,6 +138,27 @@ function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
+}
+
+function normalizeDateRange(startDate: string | null, endDate: string | null) {
+  if (!startDate) {
+    return {
+      startDate: null,
+      endDate: null,
+    };
+  }
+
+  if (!endDate || endDate < startDate) {
+    return {
+      startDate,
+      endDate: startDate,
+    };
+  }
+
+  return {
+    startDate,
+    endDate,
+  };
 }
 
 function eventDurationInDays(event: PlannerEvent) {
@@ -130,7 +196,29 @@ function buildPlacementsBySemester(
   }, {} as PlannerPlacementsBySemester);
 }
 
-function plannerStateReducer(
+function findSemesterForEvent(
+  eventsBySemester: EventsBySemester,
+  eventId: string,
+): PlannerSemesterId | null {
+  for (const semesterId of plannerSemesterIds) {
+    const semesterEvents = eventsBySemester[semesterId] ?? [];
+
+    if (semesterEvents.some((event) => event.id === eventId)) {
+      return semesterId;
+    }
+  }
+
+  return null;
+}
+
+export function getInboxEventsFromState(eventsBySemester: EventsBySemester) {
+  return plannerSemesterIds
+    .flatMap((semesterId) => eventsBySemester[semesterId] ?? [])
+    .filter((event) => !event.startDate)
+    .sort((left, right) => left.title.localeCompare(right.title));
+}
+
+export function plannerStateReducer(
   state: EventsBySemester,
   action: PlannerAction,
 ): EventsBySemester {
@@ -175,31 +263,62 @@ function plannerStateReducer(
     }
 
     case "MOVE_EVENT_TO_DATE": {
-      const { semesterId, eventId, dateKey } = action.payload;
-      const semesterEvents = state[semesterId] ?? [];
+      const { eventId, dateKey, targetSemesterId } = action.payload;
+      const sourceSemesterId = findSemesterForEvent(state, eventId);
+
+      if (!sourceSemesterId) {
+        return state;
+      }
+
+      const sourceEvents = state[sourceSemesterId] ?? [];
+      const targetEvents = state[targetSemesterId] ?? [];
+      const event = sourceEvents.find((item) => item.id === eventId);
+
+      if (!event) {
+        return state;
+      }
+
+      const duration = eventDurationInDays(event);
+      const nextStartDate = dateKey;
+      const nextEndDate = toDateKey(addDays(toDate(dateKey), duration - 1));
+      const updatedEvent: PlannerEvent = {
+        ...event,
+        startDate: nextStartDate,
+        endDate: nextEndDate,
+      };
+
+      // If an inbox event is scheduled from another semester, rehome it into the
+      // currently active semester so it appears in the visible calendar.
+      if (sourceSemesterId !== targetSemesterId) {
+        return {
+          ...state,
+          [sourceSemesterId]: sourceEvents.filter(
+            (item) => item.id !== eventId,
+          ),
+          [targetSemesterId]: [...targetEvents, updatedEvent],
+        };
+      }
 
       return {
         ...state,
-        [semesterId]: semesterEvents.map((event) => {
-          if (event.id !== eventId) {
-            return event;
+        [targetSemesterId]: targetEvents.map((item) => {
+          if (item.id !== eventId) {
+            return item;
           }
 
-          const duration = eventDurationInDays(event);
-          const nextStartDate = dateKey;
-          const nextEndDate = toDateKey(addDays(toDate(dateKey), duration - 1));
-
-          return {
-            ...event,
-            startDate: nextStartDate,
-            endDate: nextEndDate,
-          };
+          return updatedEvent;
         }),
       };
     }
 
     case "MOVE_EVENT_TO_INBOX": {
-      const { semesterId, eventId } = action.payload;
+      const { eventId } = action.payload;
+      const semesterId = findSemesterForEvent(state, eventId);
+
+      if (!semesterId) {
+        return state;
+      }
+
       const semesterEvents = state[semesterId] ?? [];
 
       return {
@@ -215,6 +334,61 @@ function plannerStateReducer(
             endDate: null,
           };
         }),
+      };
+    }
+
+    case "CREATE_EVENT": {
+      const { semesterId, event } = action.payload;
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: [...semesterEvents, event],
+      };
+    }
+
+    case "UPDATE_EVENT": {
+      const semesterId = findSemesterForEvent(state, action.payload.eventId);
+
+      if (!semesterId) {
+        return state;
+      }
+
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: semesterEvents.map((event) => {
+          if (event.id !== action.payload.eventId) {
+            return event;
+          }
+
+          return {
+            ...event,
+            title: action.payload.title,
+            category: action.payload.category,
+            startDate: action.payload.startDate,
+            endDate: action.payload.endDate,
+            participants: action.payload.participants,
+          };
+        }),
+      };
+    }
+
+    case "DELETE_EVENT": {
+      const semesterId = findSemesterForEvent(state, action.payload.eventId);
+
+      if (!semesterId) {
+        return state;
+      }
+
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: semesterEvents.filter(
+          (event) => event.id !== action.payload.eventId,
+        ),
       };
     }
 
@@ -353,9 +527,9 @@ export function PlannerStateProvider({
   const activeSemester = getPlannerSemester(normalizedSemesterId);
   const events =
     eventsBySemester[normalizedSemesterId] ?? activeSemester.events;
+  const inboxEvents = getInboxEventsFromState(eventsBySemester);
 
   const value = useMemo<PlannerStateContextValue>(() => {
-    const inboxEvents = events.filter((event) => !event.startDate);
     const categorySummaries = buildCategorySummaries(events);
     const chronologicalEvents = sortChronological(events);
 
@@ -374,17 +548,74 @@ export function PlannerStateProvider({
       moveEventToDate: (eventId, dateKey) => {
         dispatch({
           type: "MOVE_EVENT_TO_DATE",
-          payload: { semesterId: normalizedSemesterId, eventId, dateKey },
+          payload: { eventId, dateKey, targetSemesterId: normalizedSemesterId },
         });
       },
       moveEventToInbox: (eventId) => {
         dispatch({
           type: "MOVE_EVENT_TO_INBOX",
-          payload: { semesterId: normalizedSemesterId, eventId },
+          payload: { eventId },
+        });
+      },
+      createEvent: (input) => {
+        const title = input.title.trim();
+
+        if (!title || !plannerEventCategories.includes(input.category)) {
+          return;
+        }
+
+        const normalizedDates = normalizeDateRange(
+          input.startDate,
+          input.endDate,
+        );
+
+        dispatch({
+          type: "CREATE_EVENT",
+          payload: {
+            semesterId: normalizedSemesterId,
+            event: {
+              id: `evt-${crypto.randomUUID()}`,
+              title,
+              category: input.category,
+              startDate: normalizedDates.startDate,
+              endDate: normalizedDates.endDate,
+              participants: input.participants,
+            },
+          },
+        });
+      },
+      updateEvent: (eventId, input) => {
+        const title = input.title.trim();
+
+        if (!title || !plannerEventCategories.includes(input.category)) {
+          return;
+        }
+
+        const normalizedDates = normalizeDateRange(
+          input.startDate,
+          input.endDate,
+        );
+
+        dispatch({
+          type: "UPDATE_EVENT",
+          payload: {
+            eventId,
+            title,
+            category: input.category,
+            startDate: normalizedDates.startDate,
+            endDate: normalizedDates.endDate,
+            participants: input.participants,
+          },
+        });
+      },
+      deleteEvent: (eventId) => {
+        dispatch({
+          type: "DELETE_EVENT",
+          payload: { eventId },
         });
       },
     };
-  }, [activeSemester, events, normalizedSemesterId]);
+  }, [activeSemester, events, inboxEvents, normalizedSemesterId]);
 
   return (
     <PlannerStateContext.Provider value={value}>

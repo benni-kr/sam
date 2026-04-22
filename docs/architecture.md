@@ -18,6 +18,8 @@ All views are driven by shared planner state and the same event model.
 - `app/(planner)/mobile/page.tsx`: Mobile route entry
 - `components/planner/planner-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay
 - `components/planner/planner-state.tsx`: State container and state transitions
+- `components/planner/event-form.tsx`: Shared create/edit form fields and delete confirmation
+- `components/planner/date-picker.tsx`: Custom popover date picker used by event forms
 - `components/planner/month-card.tsx`: Per-month calendar rendering
 - `components/planner/event-overlay.tsx`: Multi-day segment + lane calculation and row overlays
 - `lib/planner.ts`: Core domain types and static semester/event data
@@ -40,11 +42,13 @@ Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sortin
 1. Initial state is built from static semester fixtures.
 2. Persisted placements are hydrated and merged by event ID.
 3. Actions update only date placement fields (`startDate`, `endDate`).
-4. Derived selectors feed all views:
+4. CRUD actions update event metadata in the semester that owns the event.
+5. Derived selectors feed all views:
    - covering events per date
-   - inbox events
-   - chronological events
-   - category summaries
+
+- inbox events across all semesters
+- chronological events
+- category summaries
 
 This keeps all routes synchronized without duplicating logic.
 
@@ -76,6 +80,16 @@ DnD is provided by `@dnd-kit/core`.
 - `PlannerShell` maps drag end targets to state actions:
   - `moveEventToDate`
   - `moveEventToInbox`
+
+## Event Forms
+
+Create and edit flows share one reusable form component so the field layout and confirmation handling stay consistent.
+
+- Create is opened from the sidebar `+ Add Event` button in a centered modal.
+- Edit is opened from the event details modal and uses the same shared form.
+- Delete uses an inline confirmation block rather than a browser alert.
+
+The form uses a popover calendar picker instead of the native browser date input so the interaction stays visually consistent across browsers.
 
 ## Persistence
 

@@ -244,14 +244,14 @@ function getSegmentShape(roundLeft: boolean, roundRight: boolean) {
 
 function getEventTone(category: PlannerEvent["category"]) {
   switch (category) {
-    case "Exams":
+    case "Exam":
       return "border-violet-300 bg-violet-100 text-violet-900";
-    case "Group Events":
+    case "Group Event":
       return "border-emerald-300 bg-emerald-100 text-emerald-900";
-    case "Private Events":
+    case "Private Event":
       return "border-amber-300 bg-amber-100 text-amber-900";
-    case "Inbox":
-      return "border-slate-300 bg-slate-100 text-slate-700";
+    case "Other":
+      return "border-sky-300 bg-sky-100 text-sky-900";
     default:
       return "border-slate-300 bg-slate-100 text-slate-700";
   }

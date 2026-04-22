@@ -7,7 +7,9 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 - A fixed six-month calendar layout for April through September 2026
 - Monday-first week layout with visual weekend emphasis
 - Distinct striped placeholders for days outside each month
-- An unscheduled inbox area for floating events
+- A shared inbox for unscheduled events across semesters
+- Event creation, editing, and deletion flows in centered modals
+- A custom popover date picker for event dates
 - A grouped App Router structure for the calendar, mind map, and mobile views
 - Shared, typed event data and semester metadata in `lib/planner.ts`
 - Shared client-side planner state so all views stay synchronized
@@ -23,7 +25,8 @@ Semester Aktivity Manager is a collaborative semester planning app for friends. 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS v4
-- Future integrations planned for `@dnd-kit/core` and Supabase
+- `@dnd-kit/core` for drag and drop
+- `react-day-picker` and `date-fns` for the custom date picker
 
 ## Getting Started
 
@@ -121,3 +124,10 @@ npm run build
 ```
 
 Both commands should pass locally and in CI.
+
+## Current Behavior
+
+- The inbox is shared across semesters and only shows unscheduled events.
+- Events can be created, edited, and deleted from modal dialogs.
+- Dates are selected through a custom calendar popover rather than the native browser input.
+- Events remain color-coded by category across the calendar, inbox, mind map, and mobile views.
