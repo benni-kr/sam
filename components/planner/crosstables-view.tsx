@@ -83,10 +83,14 @@ export function CrosstablesView() {
   const todayDateKey = getTodayDateKey();
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
-  const crosstableEvents = dedupeEventsById([
-    ...events.filter((event) => Boolean(event.startDate)),
-    ...inboxEvents,
-  ]);
+  const crosstableEvents = useMemo(
+    () =>
+      dedupeEventsById([
+        ...events.filter((event) => Boolean(event.startDate)),
+        ...inboxEvents,
+      ]),
+    [events, inboxEvents],
+  );
 
   const filteredCrosstableEvents = crosstableEvents.filter((event) => {
     if (!event.startDate) {
@@ -108,12 +112,7 @@ export function CrosstablesView() {
   );
 
   useEffect(() => {
-    if (!editingEventId) {
-      return;
-    }
-
     if (!editingEvent) {
-      setEditingEventId(null);
       return;
     }
 
@@ -128,7 +127,7 @@ export function CrosstablesView() {
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [editingEvent, editingEventId]);
+  }, [editingEvent]);
 
   const participantNames = Array.from(
     new Set([
