@@ -38,16 +38,24 @@ const categoryStyles: Record<
  * Cross-table view to manage participants per event by category.
  */
 export function CrosstablesView() {
-  const { events, toggleParticipant } = usePlannerState();
+  const { events, inboxEvents, toggleParticipant } = usePlannerState();
+
+  const crosstableEvents = dedupeEventsById([
+    ...events.filter((event) => Boolean(event.startDate)),
+    ...inboxEvents,
+  ]);
 
   const participantNames = Array.from(
-    new Set([...SEMESTER_FRIENDS, ...events.flatMap((event) => event.participants)]),
+    new Set([
+      ...SEMESTER_FRIENDS,
+      ...crosstableEvents.flatMap((event) => event.participants),
+    ]),
   );
 
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
       acc[category] = sortCategoryEvents(
-        events.filter((event) => event.category === category),
+        crosstableEvents.filter((event) => event.category === category),
       );
       return acc;
     },
@@ -60,7 +68,9 @@ export function CrosstablesView() {
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
           Crosstables
         </p>
-        <h2 className="mt-1 text-2xl font-semibold text-slate-950">Who&apos;s in?</h2>
+        <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+          Who&apos;s in?
+        </h2>
       </header>
 
       <div className="grid gap-4">
@@ -75,11 +85,14 @@ export function CrosstablesView() {
             >
               <div className="mb-3 flex items-center gap-2 border-b border-black/5 pb-3">
                 <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
-                <h3 className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}>
+                <h3
+                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}
+                >
                   {category}
                 </h3>
                 <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  {categoryEvents.length} event{categoryEvents.length === 1 ? "" : "s"}
+                  {categoryEvents.length} event
+                  {categoryEvents.length === 1 ? "" : "s"}
                 </span>
               </div>
 
@@ -115,19 +128,28 @@ export function CrosstablesView() {
                       </tr>
                     ) : (
                       categoryEvents.map((event) => (
-                        <tr key={`${category}-${event.id}`} className="odd:bg-white even:bg-slate-50/50">
+                        <tr
+                          key={`${category}-${event.id}`}
+                          className="odd:bg-white even:bg-slate-50/50"
+                        >
                           <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-2">
-                            <p className="font-medium text-slate-900">{event.title}</p>
+                            <p className="font-medium text-slate-900">
+                              {event.title}
+                            </p>
                             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                              {event.startDate ?? "Undated"}
-                              {event.endDate && event.endDate !== event.startDate
-                                ? ` to ${event.endDate}`
+                              {event.startDate
+                                ? formatDisplayDate(event.startDate)
+                                : "Undated"}
+                              {event.endDate &&
+                              event.endDate !== event.startDate
+                                ? ` to ${formatDisplayDate(event.endDate)}`
                                 : ""}
                             </p>
                           </td>
 
                           {participantNames.map((participantName) => {
-                            const checked = event.participants.includes(participantName);
+                            const checked =
+                              event.participants.includes(participantName);
 
                             return (
                               <td
@@ -139,7 +161,10 @@ export function CrosstablesView() {
                                     type="checkbox"
                                     checked={checked}
                                     onChange={() =>
-                                      toggleParticipant(event.id, participantName)
+                                      toggleParticipant(
+                                        event.id,
+                                        participantName,
+                                      )
                                     }
                                     className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                                   />
@@ -186,4 +211,24 @@ function sortCategoryEvents(events: PlannerEvent[]) {
 
     return left.title.localeCompare(right.title);
   });
+}
+
+function formatDisplayDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-");
+
+  if (!year || !month || !day) {
+    return dateKey;
+  }
+
+  return `${day}.${month}.${year}`;
+}
+
+function dedupeEventsById(events: PlannerEvent[]) {
+  const eventMap = new Map<string, PlannerEvent>();
+
+  for (const event of events) {
+    eventMap.set(event.id, event);
+  }
+
+  return Array.from(eventMap.values());
 }
