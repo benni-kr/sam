@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { usePlannerState } from "@/components/planner/planner-state";
 import {
   SEMESTER_FRIENDS,
@@ -38,24 +40,42 @@ const categoryStyles: Record<
  * Cross-table view to manage participants per event by category.
  */
 export function CrosstablesView() {
+  const searchParams = useSearchParams();
   const { events, inboxEvents, toggleParticipant } = usePlannerState();
+  const hideFinished = searchParams.get("hideFinished") === "1";
+  const hideUndated = searchParams.get("hideUndated") === "1";
+  const todayDateKey = getTodayDateKey();
 
   const crosstableEvents = dedupeEventsById([
     ...events.filter((event) => Boolean(event.startDate)),
     ...inboxEvents,
   ]);
 
+  const filteredCrosstableEvents = crosstableEvents.filter((event) => {
+    if (!event.startDate) {
+      return !hideUndated;
+    }
+
+    if (!hideFinished) {
+      return true;
+    }
+
+    const endDate = event.endDate ?? event.startDate;
+
+    return endDate >= todayDateKey;
+  });
+
   const participantNames = Array.from(
     new Set([
       ...SEMESTER_FRIENDS,
-      ...crosstableEvents.flatMap((event) => event.participants),
+      ...filteredCrosstableEvents.flatMap((event) => event.participants),
     ]),
   );
 
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
       acc[category] = sortCategoryEvents(
-        crosstableEvents.filter((event) => event.category === category),
+        filteredCrosstableEvents.filter((event) => event.category === category),
       );
       return acc;
     },
@@ -231,4 +251,13 @@ function dedupeEventsById(events: PlannerEvent[]) {
   }
 
   return Array.from(eventMap.values());
+}
+
+function getTodayDateKey() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }

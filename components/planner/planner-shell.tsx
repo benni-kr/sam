@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { EventBadge } from "@/components/planner/event-badge";
 import { PlannerEventForm } from "@/components/planner/event-form";
@@ -38,10 +38,13 @@ type PlannerShellProps = {
 export function PlannerShell({ children }: PlannerShellProps) {
   const [semesterMenuOpen, setSemesterMenuOpen] = useState(false);
   const semesterMenuRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const semesterId = searchParams.get("semester") ?? defaultPlannerSemesterId;
   const activeSemester = getPlannerSemester(semesterId);
+  const hideFinished = searchParams.get("hideFinished") === "1";
+  const hideUndated = searchParams.get("hideUndated") === "1";
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -82,15 +85,37 @@ export function PlannerShell({ children }: PlannerShellProps) {
     return query ? `${pathname}?${query}` : pathname;
   }
 
+  function setCrosstablesFilterParam(
+    key: "hideFinished" | "hideUndated",
+    enabled: boolean,
+  ) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (enabled) {
+      params.set(key, "1");
+    } else {
+      params.delete(key);
+    }
+
+    const query = params.toString();
+    const nextHref = query ? `${pathname}?${query}` : pathname;
+
+    router.push(nextHref, { scroll: false });
+  }
+
   return (
     <PlannerStateProvider activeSemesterId={semesterId}>
       <PlannerShellFrame
+        pathname={pathname}
         semesterId={semesterId}
         activeSemester={activeSemester}
         semesterMenuOpen={semesterMenuOpen}
         semesterMenuRef={semesterMenuRef}
         setSemesterMenuOpen={setSemesterMenuOpen}
         buildSemesterHref={buildSemesterHref}
+        hideFinished={hideFinished}
+        hideUndated={hideUndated}
+        setCrosstablesFilterParam={setCrosstablesFilterParam}
       >
         {children}
       </PlannerShellFrame>
@@ -99,20 +124,31 @@ export function PlannerShell({ children }: PlannerShellProps) {
 }
 
 function PlannerShellFrame({
+  pathname,
   semesterId,
   activeSemester,
   semesterMenuOpen,
   semesterMenuRef,
   setSemesterMenuOpen,
   buildSemesterHref,
+  hideFinished,
+  hideUndated,
+  setCrosstablesFilterParam,
   children,
 }: {
+  pathname: string;
   semesterId: string;
   activeSemester: ReturnType<typeof getPlannerSemester>;
   semesterMenuOpen: boolean;
   semesterMenuRef: React.RefObject<HTMLDivElement | null>;
   setSemesterMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   buildSemesterHref: (nextSemesterId: string) => string;
+  hideFinished: boolean;
+  hideUndated: boolean;
+  setCrosstablesFilterParam: (
+    key: "hideFinished" | "hideUndated",
+    enabled: boolean,
+  ) => void;
   children: React.ReactNode;
 }) {
   const { events, moveEventToDate, moveEventToInbox, createEvent } =
@@ -290,7 +326,32 @@ function PlannerShellFrame({
                 + Add Event
               </button>
 
-              <SidebarInbox />
+              {pathname === "/crosstables" ? (
+                <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Table Filters
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <SidebarToggle
+                      label="Hide finished events"
+                      checked={hideFinished}
+                      onToggle={(checked) =>
+                        setCrosstablesFilterParam("hideFinished", checked)
+                      }
+                    />
+
+                    <SidebarToggle
+                      label="Hide undated events"
+                      checked={hideUndated}
+                      onToggle={(checked) =>
+                        setCrosstablesFilterParam("hideUndated", checked)
+                      }
+                    />
+                  </div>
+                </section>
+              ) : null}
+
+              {pathname === "/crosstables" ? null : <SidebarInbox />}
             </div>
           </aside>
 
@@ -335,5 +396,39 @@ function PlannerShellFrame({
         </div>
       ) : null}
     </DndContext>
+  );
+}
+
+function SidebarToggle({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs text-slate-700">
+      <span>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onToggle(!checked)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
+          checked
+            ? "border-slate-900 bg-slate-900"
+            : "border-slate-300 bg-slate-200"
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? "translate-x-5" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
   );
 }
