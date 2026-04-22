@@ -58,6 +58,13 @@ export const plannerSemesterIds: PlannerSemesterId[] = [
   "fall-2026",
 ];
 
+export const SEMESTER_FRIENDS: string[] = [
+  "Anna",
+  "Paul",
+  "Tom",
+  "Lisa",
+];
+
 const springSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-1",

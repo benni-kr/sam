@@ -60,6 +60,7 @@ type PlannerStateContextValue = {
     },
   ) => void;
   deleteEvent: (eventId: string) => void;
+  toggleParticipant: (eventId: string, participantName: string) => void;
 };
 
 type PlannerStateProviderProps = {
@@ -110,6 +111,13 @@ type PlannerAction =
       type: "DELETE_EVENT";
       payload: {
         eventId: string;
+      };
+    }
+  | {
+      type: "TOGGLE_PARTICIPANT";
+      payload: {
+        eventId: string;
+        participantName: string;
       };
     };
 
@@ -392,6 +400,41 @@ export function plannerStateReducer(
       };
     }
 
+    case "TOGGLE_PARTICIPANT": {
+      const { eventId, participantName } = action.payload;
+      const trimmedName = participantName.trim();
+
+      if (!trimmedName) {
+        return state;
+      }
+
+      const semesterId = findSemesterForEvent(state, eventId);
+
+      if (!semesterId) {
+        return state;
+      }
+
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: semesterEvents.map((event) => {
+          if (event.id !== eventId) {
+            return event;
+          }
+
+          const hasParticipant = event.participants.includes(trimmedName);
+
+          return {
+            ...event,
+            participants: hasParticipant
+              ? event.participants.filter((name) => name !== trimmedName)
+              : [...event.participants, trimmedName],
+          };
+        }),
+      };
+    }
+
     default:
       return state;
   }
@@ -612,6 +655,12 @@ export function PlannerStateProvider({
         dispatch({
           type: "DELETE_EVENT",
           payload: { eventId },
+        });
+      },
+      toggleParticipant: (eventId, participantName) => {
+        dispatch({
+          type: "TOGGLE_PARTICIPANT",
+          payload: { eventId, participantName },
         });
       },
     };
