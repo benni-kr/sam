@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { PlannerEventForm } from "@/components/planner/event-form";
-import { usePlannerState } from "@/components/planner/planner-state";
+import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { usePlannerState } from "@/features/planner/state/planner-state";
 import {
   plannerEventCategories,
   type PlannerEvent,
   type PlannerEventCategory,
-} from "@/lib/planner";
+} from "@/features/planner/lib/planner";
 
 const categoryStyles: Record<
   string,

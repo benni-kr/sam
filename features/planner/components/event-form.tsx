@@ -2,11 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 
-import { DatePicker } from "@/components/planner/date-picker";
+import { DatePicker } from "@/features/planner/components/date-picker";
 import {
   plannerEventCategories,
   type PlannerEventCategory,
-} from "@/lib/planner";
+} from "@/features/planner/lib/planner";
 
 type DeleteAction = {
   label: string;

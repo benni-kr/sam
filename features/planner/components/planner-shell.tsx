@@ -14,19 +14,19 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { EventBadge } from "@/components/planner/event-badge";
-import { PlannerEventForm } from "@/components/planner/event-form";
-import { PlannerStateProvider } from "@/components/planner/planner-state";
-import { usePlannerState } from "@/components/planner/planner-state";
-import { PlannerTabs } from "@/components/planner/planner-tabs";
-import { SidebarInbox } from "@/components/planner/sidebar-inbox";
+import { EventBadge } from "@/features/planner/components/event-badge";
+import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { PlannerStateProvider } from "@/features/planner/state/planner-state";
+import { usePlannerState } from "@/features/planner/state/planner-state";
+import { PlannerTabs } from "@/features/planner/components/planner-tabs";
+import { SidebarInbox } from "@/features/planner/components/sidebar-inbox";
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
   plannerSemesters,
   type PlannerEventCategory,
   type PlannerEvent,
-} from "@/lib/planner";
+} from "@/features/planner/lib/planner";
 
 type PlannerShellProps = {
   children: React.ReactNode;

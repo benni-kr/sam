@@ -13,7 +13,7 @@ import {
 import {
   resolvePlannerEventStore,
   type PlannerPlacementsBySemester,
-} from "@/lib/planner-persistence";
+} from "@/features/planner/lib/planner-persistence";
 
 import {
   SEMESTER_FRIENDS,
@@ -28,7 +28,7 @@ import {
   type PlannerMonth,
   type PlannerSemester,
   type PlannerSemesterId,
-} from "@/lib/planner";
+} from "@/features/planner/lib/planner";
 
 type EventsBySemester = Record<PlannerSemesterId, PlannerEvent[]>;
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Calendar, List, Table } from "lucide-react";
 
-import { defaultPlannerSemesterId, plannerViews } from "@/lib/planner";
+import { defaultPlannerSemesterId, plannerViews } from "@/features/planner/lib/planner";
 
 type PlannerTabsProps = {
   activeSemesterId?: string | null;

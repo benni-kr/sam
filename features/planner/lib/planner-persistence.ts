@@ -1,4 +1,4 @@
-import { plannerSemesterIds, type PlannerSemesterId } from "@/lib/planner";
+import { plannerSemesterIds, type PlannerSemesterId } from "@/features/planner/lib/planner";
 
 export type PlannerEventPlacement = {
   id: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePlannerState } from "@/components/planner/planner-state";
+import { usePlannerState } from "@/features/planner/state/planner-state";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
