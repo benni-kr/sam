@@ -4,7 +4,10 @@ import {
   getInboxEventsFromState,
   plannerStateReducer,
 } from "../../features/planner/state/planner-state";
-import { plannerSemesters, type PlannerEvent } from "../../features/planner/lib/planner";
+import {
+  plannerSemesters,
+  type PlannerEvent,
+} from "../../features/planner/lib/planner";
 
 const semesterIds = plannerSemesters.map((semester) => semester.id) as [
   (typeof plannerSemesters)[number]["id"],
