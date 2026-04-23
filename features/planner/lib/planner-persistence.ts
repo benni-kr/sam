@@ -1,4 +1,5 @@
 import {
+  defaultPlannerSemesterId,
   plannerEventCategories,
   plannerSemesterIds,
   type PlannerEvent,
@@ -14,21 +15,29 @@ export type PlannerEventStore = {
   saveEventsBySemester: (
     eventsBySemester: PlannerEventsBySemester,
   ) => Promise<void>;
+  loadFriends: () => Promise<string[] | null>;
+  saveFriends: (friends: string[]) => Promise<void>;
 };
 
 const SUPABASE_EVENTS_TABLE = "planner_events";
+const SUPABASE_FRIENDS_TABLE = "planner_friends";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
 const DEFAULT_PLANNER_SCOPE = "default";
 
 type SupabaseEventRow = {
   planner_scope: string;
-  semester_id: PlannerSemesterId;
+  semester_id: PlannerSemesterId | null;
   event_id: string;
   title: string;
   category: string;
   start_date: string | null;
   end_date: string | null;
   participants: unknown;
+};
+
+type SupabaseFriendRow = {
+  planner_scope: string;
+  friend_name: string;
 };
 
 function shouldLogPersistenceHealth() {
@@ -79,6 +88,26 @@ function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
+function dedupeNames(names: string[]) {
+  const uniqueByLowerCase = new Map<string, string>();
+
+  for (const name of names) {
+    const normalized = name.trim();
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLocaleLowerCase();
+
+    if (!uniqueByLowerCase.has(key)) {
+      uniqueByLowerCase.set(key, normalized);
+    }
+  }
+
+  return Array.from(uniqueByLowerCase.values());
+}
+
 function eventsBySemesterToRows(
   eventsBySemester: PlannerEventsBySemester,
   plannerScope: string,
@@ -91,7 +120,7 @@ function eventsBySemesterToRows(
     for (const event of semesterEvents) {
       rows.push({
         planner_scope: plannerScope,
-        semester_id: semesterId,
+        semester_id: event.startDate ? semesterId : null,
         event_id: event.id,
         title: event.title,
         category: event.category,
@@ -109,25 +138,46 @@ function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
   const eventsBySemester: PlannerEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
-    const semesterRows = rows.filter((row) => row.semester_id === semesterId);
+    eventsBySemester[semesterId] = [];
+  }
 
-    if (semesterRows.length === 0) {
+  for (const row of rows) {
+    if (!isCategoryValue(row.category)) {
       continue;
     }
 
-    eventsBySemester[semesterId] = semesterRows
-      .filter((row) => isCategoryValue(row.category))
-      .map((row) => ({
-        id: row.event_id,
-        title: row.title,
-        category: row.category as PlannerEvent["category"],
-        startDate: row.start_date,
-        endDate: row.end_date,
-        participants: normalizeParticipants(row.participants),
-      }));
+    const targetSemesterId =
+      row.semester_id && plannerSemesterIds.includes(row.semester_id)
+        ? row.semester_id
+        : defaultPlannerSemesterId;
+
+    eventsBySemester[targetSemesterId]?.push({
+      id: row.event_id,
+      title: row.title,
+      category: row.category as PlannerEvent["category"],
+      startDate: row.start_date,
+      endDate: row.end_date,
+      participants: normalizeParticipants(row.participants),
+    });
   }
 
   return eventsBySemester;
+}
+
+function friendsToRows(
+  friends: string[],
+  plannerScope: string,
+): SupabaseFriendRow[] {
+  return dedupeNames(friends).map((friendName) => ({
+    planner_scope: plannerScope,
+    friend_name: friendName,
+  }));
+}
+
+function rowsToFriends(rows: SupabaseFriendRow[]) {
+  return dedupeNames(rows.map((row) => row.friend_name)).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function getSupabaseConfig() {
@@ -168,6 +218,12 @@ function createSupabaseUnavailableStore(): PlannerEventStore {
       return null;
     },
     async saveEventsBySemester() {
+      // Intentionally no-op when Supabase is not configured.
+    },
+    async loadFriends() {
+      return null;
+    },
+    async saveFriends() {
       // Intentionally no-op when Supabase is not configured.
     },
   };
@@ -215,7 +271,7 @@ async function upsertSupabaseEventsBySemester(
     return;
   }
 
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,semester_id,event_id`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -232,6 +288,98 @@ async function upsertSupabaseEventsBySemester(
   }
 }
 
+async function fetchSupabaseFriends(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?select=planner_scope,friend_name&planner_scope=eq.${encodeURIComponent(config.plannerScope)}&order=friend_name.asc`;
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status === 404
+    ) {
+      logPersistenceHealth(
+        `Planner friends unavailable from Supabase (${response.status}); falling back to bootstrap list.`,
+      );
+      return null;
+    }
+
+    throw new Error("Failed to load planner friends from Supabase.");
+  }
+
+  const rows = (await response.json()) as SupabaseFriendRow[];
+  return rowsToFriends(rows);
+}
+
+async function upsertSupabaseFriends(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  friends: string[],
+) {
+  const rows = friendsToRows(friends, config.plannerScope);
+  const deleteEndpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const deleteResponse = await fetch(deleteEndpoint, {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!deleteResponse.ok) {
+    if (
+      deleteResponse.status === 401 ||
+      deleteResponse.status === 403 ||
+      deleteResponse.status === 404
+    ) {
+      logPersistenceHealth(
+        `Planner friends delete skipped in Supabase (${deleteResponse.status}).`,
+      );
+      return;
+    }
+
+    throw new Error("Failed to clear planner friends in Supabase.");
+  }
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+
+  if (!response.ok) {
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status === 404
+    ) {
+      logPersistenceHealth(
+        `Planner friends write skipped in Supabase (${response.status}).`,
+      );
+      return;
+    }
+
+    throw new Error("Failed to save planner friends to Supabase.");
+  }
+}
+
 export const supabasePlannerEventStore: PlannerEventStore = {
   async loadEventsBySemester() {
     const config = requireSupabaseConfig();
@@ -241,6 +389,16 @@ export const supabasePlannerEventStore: PlannerEventStore = {
   async saveEventsBySemester(eventsBySemester) {
     const config = requireSupabaseConfig();
     await upsertSupabaseEventsBySemester(config, eventsBySemester);
+  },
+
+  async loadFriends() {
+    const config = requireSupabaseConfig();
+    return fetchSupabaseFriends(config);
+  },
+
+  async saveFriends(friends) {
+    const config = requireSupabaseConfig();
+    await upsertSupabaseFriends(config, friends);
   },
 };
 

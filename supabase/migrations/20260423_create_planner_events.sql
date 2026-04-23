@@ -1,6 +1,6 @@
 create table if not exists public.planner_events (
   planner_scope text not null default 'default',
-  semester_id text not null,
+  semester_id text,
   event_id text not null,
   title text not null,
   category text not null,
@@ -8,7 +8,7 @@ create table if not exists public.planner_events (
   end_date text,
   participants jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now(),
-  constraint planner_events_pkey primary key (planner_scope, semester_id, event_id),
+  constraint planner_events_pkey primary key (planner_scope, event_id),
   constraint planner_events_category_check check (
     category in ('Exam', 'Group Event', 'Private Event', 'Other')
   )

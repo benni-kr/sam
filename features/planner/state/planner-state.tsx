@@ -261,28 +261,20 @@ function buildEventsBySemesterSnapshot(
   }, {} as PlannerEventsBySemester);
 }
 
-function hasAnyEvents(eventsBySemester: PlannerEventsBySemester | null) {
-  if (!eventsBySemester) {
-    return false;
-  }
-
-  return plannerSemesterIds.some(
-    (semesterId) => (eventsBySemester[semesterId] ?? []).length > 0,
-  );
-}
-
-function collectParticipantsFromEventsBySemester(
+function filterEventsByFriends(
   eventsBySemester: PlannerEventsBySemester,
+  friends: string[],
 ) {
-  return dedupeParticipantNames(
-    plannerSemesterIds.flatMap((semesterId) =>
-      (eventsBySemester[semesterId] ?? []).flatMap((event) =>
-        event.participants.map((participant) =>
-          normalizeFriendName(participant),
-        ),
-      ),
-    ),
-  );
+  return plannerSemesterIds.reduce((acc, semesterId) => {
+    const semesterEvents = eventsBySemester[semesterId] ?? [];
+
+    acc[semesterId] = semesterEvents.map((event) => ({
+      ...event,
+      participants: filterParticipantsByFriends(event.participants, friends),
+    }));
+
+    return acc;
+  }, {} as PlannerEventsBySemester);
 }
 
 function findSemesterForEvent(
@@ -315,7 +307,7 @@ export function plannerStateReducer(
     case "HYDRATE_FROM_STORE": {
       const { eventsBySemester } = action.payload;
 
-      if (!eventsBySemester || !hasAnyEvents(eventsBySemester)) {
+      if (!eventsBySemester) {
         return state;
       }
 
@@ -631,38 +623,35 @@ export function PlannerStateProvider({
   useEffect(() => {
     let cancelled = false;
 
-    void eventStore.current
-      .loadEventsBySemester()
-      .then((eventsBySemester) => {
+    void Promise.all([
+      eventStore.current.loadEventsBySemester(),
+      eventStore.current.loadFriends(),
+    ])
+      .then(([eventsBySemester, friendsFromStore]) => {
         if (cancelled) {
           return;
         }
 
-        if (eventsBySemester && hasAnyEvents(eventsBySemester)) {
-          const persistedParticipants =
-            collectParticipantsFromEventsBySemester(eventsBySemester);
+        const hydratedFriends = dedupeParticipantNames(
+          friendsFromStore && friendsFromStore.length > 0
+            ? friendsFromStore
+            : [...SEMESTER_FRIENDS],
+        ).sort((left, right) => left.localeCompare(right));
 
-          if (persistedParticipants.length > 0) {
-            setFriends((current) =>
-              dedupeParticipantNames([
-                ...current,
-                ...persistedParticipants,
-              ]).sort((left, right) => left.localeCompare(right)),
-            );
-          }
-        }
+        setFriends(hydratedFriends);
 
         dispatch({
           type: "HYDRATE_FROM_STORE",
-          payload: { eventsBySemester },
+          payload: {
+            eventsBySemester: eventsBySemester
+              ? filterEventsByFriends(eventsBySemester, hydratedFriends)
+              : eventsBySemester,
+          },
         });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          console.error(
-            "Failed to hydrate planner events from Supabase.",
-            error,
-          );
+          console.error("Failed to hydrate planner data from Supabase.", error);
         }
       })
       .finally(() => {
@@ -675,6 +664,16 @@ export function PlannerStateProvider({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!didHydrateFromStorage.current) {
+      return;
+    }
+
+    void eventStore.current.saveFriends(friends).catch((error: unknown) => {
+      console.error("Failed to persist planner friends to Supabase.", error);
+    });
+  }, [friends]);
 
   useEffect(() => {
     if (!didHydrateFromStorage.current) {
