@@ -41,7 +41,7 @@ Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sortin
 
 SAM enforces a managed friends workflow:
 
-1. A canonical `friends` list is initialized from `SEMESTER_FRIENDS` plus all participant names from seed events.
+1. A canonical `friends` list is initialized from `SEMESTER_FRIENDS` and enriched from persisted events after hydration.
 2. Event participants are only selected from this friends list during create/edit.
 3. Renaming a friend updates that name across all events.
 4. Removing a friend removes that participant from all events.
@@ -52,9 +52,9 @@ This keeps participant data consistent and prevents orphaned or stale names.
 
 `PlannerStateProvider` is the single source of truth for planner interactions.
 
-1. Initial state is built from static semester fixtures and friends list.
-2. Persisted placements are hydrated and merged by event ID.
-3. Actions update date placement fields (`startDate`, `endDate`), event metadata (title, category, participants), and friend list operations (add, rename, remove).
+1. Initial state is built from static semester fixtures and friends list (bootstrap default).
+2. Persisted semester events are hydrated from storage/sync and replace bootstrap defaults when available.
+3. Actions update full event records (title, category, participants, `startDate`, `endDate`) and friend list operations (add, rename, remove).
 4. Friend mutations trigger participant cleanup across events when removing or renaming.
 5. Derived selectors feed all views:
 
@@ -124,13 +124,20 @@ The form uses a popover calendar picker instead of the native browser date input
 
 Persistence is adapter-based.
 
-- Local mode: localStorage (`sam.planner.placements.v1`)
-- Supabase mode: REST sync with local-first fallback behavior
+- Local mode: localStorage (`sam.planner.events.v1`)
+- Supabase mode: REST sync with local-first fallback behavior for full event objects
+- Supabase records are partitioned by `planner_scope` to isolate environments/deployments
 
 Store resolution:
 
 - `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` + valid Supabase env vars enables remote sync
+- `NEXT_PUBLIC_SAM_PLANNER_SCOPE` selects the logical data partition (default: `default`)
 - Otherwise local mode is used
+
+Source-of-truth behavior:
+
+- Seed fixtures are used only as bootstrap defaults.
+- Once local or Supabase event data exists, persisted data becomes authoritative.
 
 ## Testing and Quality Gates
 
@@ -152,6 +159,7 @@ Validation gates:
 - Crosstables route is a category-based participation matrix and not a graph canvas
 - Mobile route is timeline-style but not a separate responsive app shell
 - Friend renames and removals affect all events globally; no event-level friend isolation
+- Current Supabase policies allow anon access to planner rows; production rollout should tighten RLS with auth-bound ownership
 
 ## Extension Guidance
 

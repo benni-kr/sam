@@ -1,31 +1,35 @@
-import { plannerSemesterIds, type PlannerSemesterId } from "@/features/planner/lib/planner";
+import {
+  plannerEventCategories,
+  plannerSemesterIds,
+  type PlannerEvent,
+  type PlannerSemesterId,
+} from "@/features/planner/lib/planner";
 
-export type PlannerEventPlacement = {
-  id: string;
-  startDate: string | null;
-  endDate: string | null;
-};
-
-export type PlannerPlacementsBySemester = Partial<
-  Record<PlannerSemesterId, PlannerEventPlacement[]>
+export type PlannerEventsBySemester = Partial<
+  Record<PlannerSemesterId, PlannerEvent[]>
 >;
 
 export type PlannerEventStore = {
-  loadPlacements: () => Promise<PlannerPlacementsBySemester | null>;
-  savePlacements: (placements: PlannerPlacementsBySemester) => Promise<void>;
+  loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
+  saveEventsBySemester: (eventsBySemester: PlannerEventsBySemester) => Promise<void>;
 };
 
 export type PlannerStoreMode = "local" | "supabase";
 
-const LOCAL_STORAGE_KEY = "sam.planner.placements.v1";
-const SUPABASE_PLACEMENTS_TABLE = "planner_event_placements";
+const LOCAL_STORAGE_KEY_BASE = "sam.planner.events.v1";
+const SUPABASE_EVENTS_TABLE = "planner_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
+const DEFAULT_PLANNER_SCOPE = "default";
 
-type SupabasePlacementRow = {
+type SupabaseEventRow = {
+  planner_scope: string;
   semester_id: PlannerSemesterId;
   event_id: string;
+  title: string;
+  category: string;
   start_date: string | null;
   end_date: string | null;
+  participants: unknown;
 };
 
 function shouldLogPersistenceHealth() {
@@ -43,11 +47,54 @@ function logPersistenceHealth(message: string) {
   console.info(`${PERSISTENCE_LOG_PREFIX} ${message}`);
 }
 
+function normalizePlannerScope(rawScope: string | undefined) {
+  const normalized = (rawScope ?? "")
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || DEFAULT_PLANNER_SCOPE;
+}
+
+function getPlannerScope() {
+  return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
+}
+
+function getLocalStorageKey() {
+  const plannerScope = getPlannerScope();
+
+  if (plannerScope === DEFAULT_PLANNER_SCOPE) {
+    return LOCAL_STORAGE_KEY_BASE;
+  }
+
+  return `${LOCAL_STORAGE_KEY_BASE}.${plannerScope}`;
+}
+
 function isDateValue(value: unknown) {
   return value === null || typeof value === "string";
 }
 
-function isPlacement(value: unknown): value is PlannerEventPlacement {
+function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
+  return (
+    typeof value === "string" &&
+    plannerEventCategories.includes(value as PlannerEvent["category"])
+  );
+}
+
+function normalizeParticipants(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as string[];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function isPlannerEvent(value: unknown): value is PlannerEvent {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -56,20 +103,23 @@ function isPlacement(value: unknown): value is PlannerEventPlacement {
 
   return (
     typeof candidate.id === "string" &&
+    typeof candidate.title === "string" &&
+    isCategoryValue(candidate.category) &&
     isDateValue(candidate.startDate) &&
-    isDateValue(candidate.endDate)
+    isDateValue(candidate.endDate) &&
+    Array.isArray(candidate.participants)
   );
 }
 
-function normalizePlacements(
+function normalizeEventsBySemester(
   value: unknown,
-): PlannerPlacementsBySemester | null {
+): PlannerEventsBySemester | null {
   if (!value || typeof value !== "object") {
     return null;
   }
 
   const candidate = value as Record<string, unknown>;
-  const normalized: PlannerPlacementsBySemester = {};
+  const normalized: PlannerEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
     const semesterValue = candidate[semesterId];
@@ -82,26 +132,34 @@ function normalizePlacements(
       continue;
     }
 
-    normalized[semesterId] = semesterValue.filter(isPlacement);
+    normalized[semesterId] = semesterValue.filter(isPlannerEvent).map((event) => ({
+      ...event,
+      participants: normalizeParticipants(event.participants),
+    }));
   }
 
   return normalized;
 }
 
-function placementsToRows(
-  placements: PlannerPlacementsBySemester,
-): SupabasePlacementRow[] {
-  const rows: SupabasePlacementRow[] = [];
+function eventsBySemesterToRows(
+  eventsBySemester: PlannerEventsBySemester,
+  plannerScope: string,
+): SupabaseEventRow[] {
+  const rows: SupabaseEventRow[] = [];
 
   for (const semesterId of plannerSemesterIds) {
-    const semesterPlacements = placements[semesterId] ?? [];
+    const semesterEvents = eventsBySemester[semesterId] ?? [];
 
-    for (const placement of semesterPlacements) {
+    for (const event of semesterEvents) {
       rows.push({
+        planner_scope: plannerScope,
         semester_id: semesterId,
-        event_id: placement.id,
-        start_date: placement.startDate,
-        end_date: placement.endDate,
+        event_id: event.id,
+        title: event.title,
+        category: event.category,
+        start_date: event.startDate,
+        end_date: event.endDate,
+        participants: event.participants,
       });
     }
   }
@@ -109,8 +167,8 @@ function placementsToRows(
   return rows;
 }
 
-function rowsToPlacements(rows: SupabasePlacementRow[]) {
-  const placements: PlannerPlacementsBySemester = {};
+function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
+  const eventsBySemester: PlannerEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
     const semesterRows = rows.filter((row) => row.semester_id === semesterId);
@@ -119,19 +177,25 @@ function rowsToPlacements(rows: SupabasePlacementRow[]) {
       continue;
     }
 
-    placements[semesterId] = semesterRows.map((row) => ({
-      id: row.event_id,
-      startDate: row.start_date,
-      endDate: row.end_date,
-    }));
+    eventsBySemester[semesterId] = semesterRows
+      .filter((row) => isCategoryValue(row.category))
+      .map((row) => ({
+        id: row.event_id,
+        title: row.title,
+        category: row.category as PlannerEvent["category"],
+        startDate: row.start_date,
+        endDate: row.end_date,
+        participants: normalizeParticipants(row.participants),
+      }));
   }
 
-  return placements;
+  return eventsBySemester;
 }
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const plannerScope = getPlannerScope();
 
   if (!url || !anonKey) {
     return null;
@@ -140,13 +204,14 @@ function getSupabaseConfig() {
   return {
     url,
     anonKey,
+    plannerScope,
   };
 }
 
-async function fetchSupabasePlacements(
+async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_PLACEMENTS_TABLE}?select=semester_id,event_id,start_date,end_date`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
   const response = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -156,19 +221,36 @@ async function fetchSupabasePlacements(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to load planner placements from Supabase.");
+    throw new Error("Failed to load planner events from Supabase.");
   }
 
-  const rows = (await response.json()) as SupabasePlacementRow[];
-  return rowsToPlacements(rows);
+  const rows = (await response.json()) as SupabaseEventRow[];
+  return rowsToEventsBySemester(rows);
 }
 
-async function upsertSupabasePlacements(
+async function upsertSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-  placements: PlannerPlacementsBySemester,
+  eventsBySemester: PlannerEventsBySemester,
 ) {
-  const rows = placementsToRows(placements);
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_PLACEMENTS_TABLE}?on_conflict=semester_id,event_id`;
+  const rows = eventsBySemesterToRows(eventsBySemester, config.plannerScope);
+  const deleteEndpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const deleteResponse = await fetch(deleteEndpoint, {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!deleteResponse.ok) {
+    throw new Error("Failed to clear planner events in Supabase.");
+  }
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,semester_id,event_id`;
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -181,38 +263,38 @@ async function upsertSupabasePlacements(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to save planner placements to Supabase.");
+    throw new Error("Failed to save planner events to Supabase.");
   }
 }
 
 export const localPlannerEventStore: PlannerEventStore = {
-  async loadPlacements() {
+  async loadEventsBySemester() {
     if (typeof window === "undefined") {
       return null;
     }
 
     try {
-      const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+      const raw = window.localStorage.getItem(getLocalStorageKey());
 
       if (!raw) {
         return null;
       }
 
       const parsed = JSON.parse(raw) as unknown;
-      return normalizePlacements(parsed);
+      return normalizeEventsBySemester(parsed);
     } catch {
       return null;
     }
   },
 
-  async savePlacements(placements) {
+  async saveEventsBySemester(eventsBySemester) {
     if (typeof window === "undefined") {
       return;
     }
 
     try {
-      const serialized = JSON.stringify(placements);
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, serialized);
+      const serialized = JSON.stringify(eventsBySemester);
+      window.localStorage.setItem(getLocalStorageKey(), serialized);
     } catch {
       // Ignore write failures so planner interactions remain responsive.
     }
@@ -224,7 +306,7 @@ function hasSupabaseClientConfig() {
 }
 
 export const supabasePlannerEventStore: PlannerEventStore = {
-  async loadPlacements() {
+  async loadEventsBySemester() {
     const config = getSupabaseConfig();
 
     if (!config) {
@@ -232,13 +314,13 @@ export const supabasePlannerEventStore: PlannerEventStore = {
     }
 
     try {
-      return await fetchSupabasePlacements(config);
+      return await fetchSupabaseEventsBySemester(config);
     } catch {
       return null;
     }
   },
 
-  async savePlacements(placements) {
+  async saveEventsBySemester(eventsBySemester) {
     const config = getSupabaseConfig();
 
     if (!config) {
@@ -246,7 +328,7 @@ export const supabasePlannerEventStore: PlannerEventStore = {
     }
 
     try {
-      await upsertSupabasePlacements(config, placements);
+      await upsertSupabaseEventsBySemester(config, eventsBySemester);
     } catch {
       return;
     }
@@ -259,16 +341,16 @@ function createSupabaseFallbackStore(): PlannerEventStore {
   let didLogSupabaseSaveFallback = false;
 
   return {
-    async loadPlacements() {
-      const supabasePlacements =
-        await supabasePlannerEventStore.loadPlacements();
+    async loadEventsBySemester() {
+      const supabaseEventsBySemester =
+        await supabasePlannerEventStore.loadEventsBySemester();
 
-      if (supabasePlacements) {
+      if (supabaseEventsBySemester) {
         if (!didLogSupabaseLoadSuccess) {
           logPersistenceHealth("Supabase load succeeded.");
           didLogSupabaseLoadSuccess = true;
         }
-        return supabasePlacements;
+        return supabaseEventsBySemester;
       }
 
       if (!didLogSupabaseLoadFallback) {
@@ -278,12 +360,12 @@ function createSupabaseFallbackStore(): PlannerEventStore {
         didLogSupabaseLoadFallback = true;
       }
 
-      return localPlannerEventStore.loadPlacements();
+      return localPlannerEventStore.loadEventsBySemester();
     },
 
-    async savePlacements(placements) {
+    async saveEventsBySemester(eventsBySemester) {
       // Persist locally first for resilience, then attempt remote sync.
-      await localPlannerEventStore.savePlacements(placements);
+      await localPlannerEventStore.saveEventsBySemester(eventsBySemester);
 
       const config = getSupabaseConfig();
 
@@ -297,19 +379,22 @@ function createSupabaseFallbackStore(): PlannerEventStore {
         return;
       }
 
-      await supabasePlannerEventStore.savePlacements(placements);
+      await supabasePlannerEventStore.saveEventsBySemester(eventsBySemester);
     },
   };
 }
 
 export function resolvePlannerEventStore(): PlannerEventStore {
   const configuredMode = process.env.NEXT_PUBLIC_SAM_PLANNER_STORE;
+  const plannerScope = getPlannerScope();
 
   if (configuredMode === "supabase" && hasSupabaseClientConfig()) {
-    logPersistenceHealth("Store mode: supabase with local fallback enabled.");
+    logPersistenceHealth(
+      `Store mode: supabase with local fallback enabled (scope: ${plannerScope}).`,
+    );
     return createSupabaseFallbackStore();
   }
 
-  logPersistenceHealth("Store mode: local storage.");
+  logPersistenceHealth(`Store mode: local storage (scope: ${plannerScope}).`);
   return localPlannerEventStore;
 }

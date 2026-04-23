@@ -12,7 +12,7 @@ import {
 
 import {
   resolvePlannerEventStore,
-  type PlannerPlacementsBySemester,
+  type PlannerEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
 
 import {
@@ -76,9 +76,9 @@ type PlannerStateProviderProps = {
 
 type PlannerAction =
   | {
-      type: "HYDRATE_FROM_STORAGE";
+      type: "HYDRATE_FROM_STORE";
       payload: {
-        placements: PlannerPlacementsBySemester | null;
+        eventsBySemester: PlannerEventsBySemester | null;
       };
     }
   | {
@@ -144,8 +144,6 @@ const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
 );
 
-export type PlannerEventsBySemester = EventsBySemester;
-
 /**
  * Converts a persisted date key to a stable midday Date instance.
  */
@@ -208,12 +206,9 @@ function initializeEventsBySemester(): EventsBySemester {
 }
 
 function initializeFriends() {
-  return dedupeParticipantNames([
-    ...SEMESTER_FRIENDS,
-    ...plannerSemesters.flatMap((semester) =>
-      semester.events.flatMap((event) => event.participants),
-    ),
-  ]).sort((left, right) => left.localeCompare(right));
+  return dedupeParticipantNames([...SEMESTER_FRIENDS]).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function normalizeFriendName(name: string) {
@@ -251,20 +246,41 @@ function filterParticipantsByFriends(
   );
 }
 
-function buildPlacementsBySemester(
+function buildEventsBySemesterSnapshot(
   eventsBySemester: EventsBySemester,
-): PlannerPlacementsBySemester {
+): PlannerEventsBySemester {
   return plannerSemesterIds.reduce((acc, semesterId) => {
     const semesterEvents = eventsBySemester[semesterId] ?? [];
 
     acc[semesterId] = semesterEvents.map((event) => ({
-      id: event.id,
-      startDate: event.startDate,
-      endDate: event.endDate,
+      ...event,
+      participants: [...event.participants],
     }));
 
     return acc;
-  }, {} as PlannerPlacementsBySemester);
+  }, {} as PlannerEventsBySemester);
+}
+
+function hasAnyEvents(eventsBySemester: PlannerEventsBySemester | null) {
+  if (!eventsBySemester) {
+    return false;
+  }
+
+  return plannerSemesterIds.some(
+    (semesterId) => (eventsBySemester[semesterId] ?? []).length > 0,
+  );
+}
+
+function collectParticipantsFromEventsBySemester(
+  eventsBySemester: PlannerEventsBySemester,
+) {
+  return dedupeParticipantNames(
+    plannerSemesterIds.flatMap((semesterId) =>
+      (eventsBySemester[semesterId] ?? []).flatMap((event) =>
+        event.participants.map((participant) => normalizeFriendName(participant)),
+      ),
+    ),
+  );
 }
 
 function findSemesterForEvent(
@@ -294,40 +310,21 @@ export function plannerStateReducer(
   action: PlannerAction,
 ): EventsBySemester {
   switch (action.type) {
-    case "HYDRATE_FROM_STORAGE": {
-      const { placements } = action.payload;
+    case "HYDRATE_FROM_STORE": {
+      const { eventsBySemester } = action.payload;
 
-      if (!placements) {
+      if (!eventsBySemester || !hasAnyEvents(eventsBySemester)) {
         return state;
       }
 
       const nextState: EventsBySemester = { ...state };
 
       for (const semesterId of plannerSemesterIds) {
-        const semesterEvents = state[semesterId] ?? [];
-        const semesterPlacements = placements[semesterId];
-
-        if (!semesterPlacements || semesterPlacements.length === 0) {
-          continue;
-        }
-
-        const placementByEventId = new Map(
-          semesterPlacements.map((placement) => [placement.id, placement]),
-        );
-
-        nextState[semesterId] = semesterEvents.map((event) => {
-          const placement = placementByEventId.get(event.id);
-
-          if (!placement) {
-            return event;
-          }
-
-          return {
-            ...event,
-            startDate: placement.startDate,
-            endDate: placement.endDate,
-          };
-        });
+        const semesterEvents = eventsBySemester[semesterId] ?? [];
+        nextState[semesterId] = semesterEvents.map((event) => ({
+          ...event,
+          participants: [...event.participants],
+        }));
       }
 
       return nextState;
@@ -633,15 +630,30 @@ export function PlannerStateProvider({
     let cancelled = false;
 
     void eventStore.current
-      .loadPlacements()
-      .then((placements) => {
+      .loadEventsBySemester()
+      .then((eventsBySemester) => {
         if (cancelled) {
           return;
         }
 
+        if (eventsBySemester && hasAnyEvents(eventsBySemester)) {
+          const persistedParticipants = collectParticipantsFromEventsBySemester(
+            eventsBySemester,
+          );
+
+          if (persistedParticipants.length > 0) {
+            setFriends((current) =>
+              dedupeParticipantNames([
+                ...current,
+                ...persistedParticipants,
+              ]).sort((left, right) => left.localeCompare(right)),
+            );
+          }
+        }
+
         dispatch({
-          type: "HYDRATE_FROM_STORAGE",
-          payload: { placements },
+          type: "HYDRATE_FROM_STORE",
+          payload: { eventsBySemester },
         });
       })
       .finally(() => {
@@ -660,8 +672,8 @@ export function PlannerStateProvider({
       return;
     }
 
-    const placements = buildPlacementsBySemester(eventsBySemester);
-    void eventStore.current.savePlacements(placements);
+    const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
+    void eventStore.current.saveEventsBySemester(snapshot);
   }, [eventsBySemester]);
 
   const normalizedSemesterId = (
