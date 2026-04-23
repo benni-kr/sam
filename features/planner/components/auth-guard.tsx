@@ -10,11 +10,13 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Check if we already have a valid session in localStorage
     const token = window.localStorage.getItem("sam_auth_token");
-    if (token) {
-      setIsAuthenticated(true);
-    }
+
+    // We intentionally set state in this effect because we must wait for the
+    // client to mount before reading localStorage to avoid Next.js SSR errors.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (token) setIsAuthenticated(true);
+
     setIsChecking(false);
   }, []);
 
@@ -50,13 +52,18 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       // Save the real user token to local storage
       window.localStorage.setItem("sam_auth_token", data.access_token);
       setIsAuthenticated(true);
-    } catch (err: any) {
-      setError(err.message || "Failed to log in");
+    } catch (err: unknown) {
+      // FIX: Replaced 'any' with 'unknown' and added a type check
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to log in");
+      }
     }
   }
 
   if (isChecking) {
-    return null; // or a tiny loading spinner
+    return null;
   }
 
   if (isAuthenticated) {
