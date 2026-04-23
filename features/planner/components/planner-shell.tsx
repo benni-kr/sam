@@ -509,8 +509,8 @@ function PlannerShellFrame({
                         Remove {friend} from all events?
                         <br />
                         <span className="font-normal opacity-80 mt-1 block">
-                          (Be careful, it's always easier to lose friends than
-                          to make new ones!)
+                          (Be careful, it&apos;s always easier to lose friends
+                          than to make new ones!)
                         </span>
                       </p>
                       <div className="flex gap-2">

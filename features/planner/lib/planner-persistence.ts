@@ -212,23 +212,6 @@ function hasSupabaseConfig() {
   return Boolean(getSupabaseConfig());
 }
 
-function createSupabaseUnavailableStore(): PlannerEventStore {
-  return {
-    async loadEventsBySemester() {
-      return null;
-    },
-    async saveEventsBySemester() {
-      // Intentionally no-op when Supabase is not configured.
-    },
-    async loadFriends() {
-      return null;
-    },
-    async saveFriends() {
-      // Intentionally no-op when Supabase is not configured.
-    },
-  };
-}
-
 async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
