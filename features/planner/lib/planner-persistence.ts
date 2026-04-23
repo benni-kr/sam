@@ -79,7 +79,6 @@ function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
-
 function eventsBySemesterToRows(
   eventsBySemester: PlannerEventsBySemester,
   plannerScope: string,
@@ -243,7 +242,7 @@ export const supabasePlannerEventStore: PlannerEventStore = {
     const config = requireSupabaseConfig();
     await upsertSupabaseEventsBySemester(config, eventsBySemester);
   },
-}
+};
 
 export function resolvePlannerEventStore(): PlannerEventStore {
   const plannerScope = getPlannerScope();

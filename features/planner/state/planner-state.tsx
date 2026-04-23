@@ -659,7 +659,10 @@ export function PlannerStateProvider({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          console.error("Failed to hydrate planner events from Supabase.", error);
+          console.error(
+            "Failed to hydrate planner events from Supabase.",
+            error,
+          );
         }
       })
       .finally(() => {
@@ -679,9 +682,11 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
-    void eventStore.current.saveEventsBySemester(snapshot).catch((error: unknown) => {
-      console.error("Failed to persist planner events to Supabase.", error);
-    });
+    void eventStore.current
+      .saveEventsBySemester(snapshot)
+      .catch((error: unknown) => {
+        console.error("Failed to persist planner events to Supabase.", error);
+      });
   }, [eventsBySemester]);
 
   const normalizedSemesterId = (
