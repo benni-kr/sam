@@ -122,22 +122,20 @@ The form uses a popover calendar picker instead of the native browser date input
 
 ## Persistence
 
-Persistence is adapter-based.
+Persistence is Supabase-backed.
 
-- Local mode: localStorage (`sam.planner.events.v1`)
-- Supabase mode: REST sync with local-first fallback behavior for full event objects
+- Supabase sync persists full event objects
 - Supabase records are partitioned by `planner_scope` to isolate environments/deployments
 
 Store resolution:
 
-- `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` + valid Supabase env vars enables remote sync
+- Valid Supabase env vars are required for runtime
 - `NEXT_PUBLIC_SAM_PLANNER_SCOPE` selects the logical data partition (default: `default`)
-- Otherwise local mode is used
 
 Source-of-truth behavior:
 
 - Seed fixtures are used only as bootstrap defaults.
-- Once local or Supabase event data exists, persisted data becomes authoritative.
+- Once persisted Supabase event data exists, it becomes authoritative.
 
 ## Testing and Quality Gates
 

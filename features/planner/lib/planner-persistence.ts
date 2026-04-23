@@ -11,12 +11,11 @@ export type PlannerEventsBySemester = Partial<
 
 export type PlannerEventStore = {
   loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
-  saveEventsBySemester: (eventsBySemester: PlannerEventsBySemester) => Promise<void>;
+  saveEventsBySemester: (
+    eventsBySemester: PlannerEventsBySemester,
+  ) => Promise<void>;
 };
 
-export type PlannerStoreMode = "local" | "supabase";
-
-const LOCAL_STORAGE_KEY_BASE = "sam.planner.events.v1";
 const SUPABASE_EVENTS_TABLE = "planner_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
 const DEFAULT_PLANNER_SCOPE = "default";
@@ -62,20 +61,6 @@ function getPlannerScope() {
   return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
 }
 
-function getLocalStorageKey() {
-  const plannerScope = getPlannerScope();
-
-  if (plannerScope === DEFAULT_PLANNER_SCOPE) {
-    return LOCAL_STORAGE_KEY_BASE;
-  }
-
-  return `${LOCAL_STORAGE_KEY_BASE}.${plannerScope}`;
-}
-
-function isDateValue(value: unknown) {
-  return value === null || typeof value === "string";
-}
-
 function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
   return (
     typeof value === "string" &&
@@ -94,52 +79,6 @@ function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
-function isPlannerEvent(value: unknown): value is PlannerEvent {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Record<string, unknown>;
-
-  return (
-    typeof candidate.id === "string" &&
-    typeof candidate.title === "string" &&
-    isCategoryValue(candidate.category) &&
-    isDateValue(candidate.startDate) &&
-    isDateValue(candidate.endDate) &&
-    Array.isArray(candidate.participants)
-  );
-}
-
-function normalizeEventsBySemester(
-  value: unknown,
-): PlannerEventsBySemester | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const candidate = value as Record<string, unknown>;
-  const normalized: PlannerEventsBySemester = {};
-
-  for (const semesterId of plannerSemesterIds) {
-    const semesterValue = candidate[semesterId];
-
-    if (semesterValue === undefined) {
-      continue;
-    }
-
-    if (!Array.isArray(semesterValue)) {
-      continue;
-    }
-
-    normalized[semesterId] = semesterValue.filter(isPlannerEvent).map((event) => ({
-      ...event,
-      participants: normalizeParticipants(event.participants),
-    }));
-  }
-
-  return normalized;
-}
 
 function eventsBySemesterToRows(
   eventsBySemester: PlannerEventsBySemester,
@@ -208,6 +147,33 @@ function getSupabaseConfig() {
   };
 }
 
+function requireSupabaseConfig() {
+  const config = getSupabaseConfig();
+
+  if (!config) {
+    throw new Error(
+      "Supabase configuration missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
+  }
+
+  return config;
+}
+
+function hasSupabaseConfig() {
+  return Boolean(getSupabaseConfig());
+}
+
+function createSupabaseUnavailableStore(): PlannerEventStore {
+  return {
+    async loadEventsBySemester() {
+      return null;
+    },
+    async saveEventsBySemester() {
+      // Intentionally no-op when Supabase is not configured.
+    },
+  };
+}
+
 async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
@@ -267,134 +233,33 @@ async function upsertSupabaseEventsBySemester(
   }
 }
 
-export const localPlannerEventStore: PlannerEventStore = {
-  async loadEventsBySemester() {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(getLocalStorageKey());
-
-      if (!raw) {
-        return null;
-      }
-
-      const parsed = JSON.parse(raw) as unknown;
-      return normalizeEventsBySemester(parsed);
-    } catch {
-      return null;
-    }
-  },
-
-  async saveEventsBySemester(eventsBySemester) {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const serialized = JSON.stringify(eventsBySemester);
-      window.localStorage.setItem(getLocalStorageKey(), serialized);
-    } catch {
-      // Ignore write failures so planner interactions remain responsive.
-    }
-  },
-};
-
-function hasSupabaseClientConfig() {
-  return Boolean(getSupabaseConfig());
-}
-
 export const supabasePlannerEventStore: PlannerEventStore = {
   async loadEventsBySemester() {
-    const config = getSupabaseConfig();
-
-    if (!config) {
-      return null;
-    }
-
-    try {
-      return await fetchSupabaseEventsBySemester(config);
-    } catch {
-      return null;
-    }
+    const config = requireSupabaseConfig();
+    return fetchSupabaseEventsBySemester(config);
   },
 
   async saveEventsBySemester(eventsBySemester) {
-    const config = getSupabaseConfig();
-
-    if (!config) {
-      return;
-    }
-
-    try {
-      await upsertSupabaseEventsBySemester(config, eventsBySemester);
-    } catch {
-      return;
-    }
+    const config = requireSupabaseConfig();
+    await upsertSupabaseEventsBySemester(config, eventsBySemester);
   },
-};
-
-function createSupabaseFallbackStore(): PlannerEventStore {
-  let didLogSupabaseLoadSuccess = false;
-  let didLogSupabaseLoadFallback = false;
-  let didLogSupabaseSaveFallback = false;
-
-  return {
-    async loadEventsBySemester() {
-      const supabaseEventsBySemester =
-        await supabasePlannerEventStore.loadEventsBySemester();
-
-      if (supabaseEventsBySemester) {
-        if (!didLogSupabaseLoadSuccess) {
-          logPersistenceHealth("Supabase load succeeded.");
-          didLogSupabaseLoadSuccess = true;
-        }
-        return supabaseEventsBySemester;
-      }
-
-      if (!didLogSupabaseLoadFallback) {
-        logPersistenceHealth(
-          "Supabase load unavailable, falling back to local storage.",
-        );
-        didLogSupabaseLoadFallback = true;
-      }
-
-      return localPlannerEventStore.loadEventsBySemester();
-    },
-
-    async saveEventsBySemester(eventsBySemester) {
-      // Persist locally first for resilience, then attempt remote sync.
-      await localPlannerEventStore.saveEventsBySemester(eventsBySemester);
-
-      const config = getSupabaseConfig();
-
-      if (!config) {
-        if (!didLogSupabaseSaveFallback) {
-          logPersistenceHealth(
-            "Supabase save skipped due to missing configuration; local storage remains active.",
-          );
-          didLogSupabaseSaveFallback = true;
-        }
-        return;
-      }
-
-      await supabasePlannerEventStore.saveEventsBySemester(eventsBySemester);
-    },
-  };
 }
 
 export function resolvePlannerEventStore(): PlannerEventStore {
-  const configuredMode = process.env.NEXT_PUBLIC_SAM_PLANNER_STORE;
   const plannerScope = getPlannerScope();
 
-  if (configuredMode === "supabase" && hasSupabaseClientConfig()) {
+  if (!hasSupabaseConfig()) {
+    if (process.env.NODE_ENV === "production") {
+      requireSupabaseConfig();
+    }
+
     logPersistenceHealth(
-      `Store mode: supabase with local fallback enabled (scope: ${plannerScope}).`,
+      `Supabase config missing; running without persistence in ${process.env.NODE_ENV ?? "unknown"} mode.`,
     );
-    return createSupabaseFallbackStore();
+
+    return createSupabaseUnavailableStore();
   }
 
-  logPersistenceHealth(`Store mode: local storage (scope: ${plannerScope}).`);
-  return localPlannerEventStore;
+  logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
+  return supabasePlannerEventStore;
 }

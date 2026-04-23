@@ -277,7 +277,9 @@ function collectParticipantsFromEventsBySemester(
   return dedupeParticipantNames(
     plannerSemesterIds.flatMap((semesterId) =>
       (eventsBySemester[semesterId] ?? []).flatMap((event) =>
-        event.participants.map((participant) => normalizeFriendName(participant)),
+        event.participants.map((participant) =>
+          normalizeFriendName(participant),
+        ),
       ),
     ),
   );
@@ -637,9 +639,8 @@ export function PlannerStateProvider({
         }
 
         if (eventsBySemester && hasAnyEvents(eventsBySemester)) {
-          const persistedParticipants = collectParticipantsFromEventsBySemester(
-            eventsBySemester,
-          );
+          const persistedParticipants =
+            collectParticipantsFromEventsBySemester(eventsBySemester);
 
           if (persistedParticipants.length > 0) {
             setFriends((current) =>
@@ -655,6 +656,11 @@ export function PlannerStateProvider({
           type: "HYDRATE_FROM_STORE",
           payload: { eventsBySemester },
         });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          console.error("Failed to hydrate planner events from Supabase.", error);
+        }
       })
       .finally(() => {
         if (!cancelled) {
@@ -673,7 +679,9 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
-    void eventStore.current.saveEventsBySemester(snapshot);
+    void eventStore.current.saveEventsBySemester(snapshot).catch((error: unknown) => {
+      console.error("Failed to persist planner events to Supabase.", error);
+    });
   }, [eventsBySemester]);
 
   const normalizedSemesterId = (
