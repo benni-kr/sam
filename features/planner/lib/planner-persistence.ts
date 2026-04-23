@@ -237,7 +237,7 @@ async function fetchSupabaseEventsBySemester(
     method: "GET",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
     },
   });
 
@@ -276,7 +276,7 @@ async function upsertSupabaseEventsBySemester(
     method: "POST",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=minimal",
     },
