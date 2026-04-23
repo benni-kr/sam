@@ -200,7 +200,7 @@ function eventDurationInDays(event: PlannerEvent) {
 
 function initializeEventsBySemester(): EventsBySemester {
   return plannerSemesters.reduce((acc, semester) => {
-    acc[semester.id] = semester.events.map((event) => ({ ...event }));
+    acc[semester.id] = [];
     return acc;
   }, {} as EventsBySemester);
 }

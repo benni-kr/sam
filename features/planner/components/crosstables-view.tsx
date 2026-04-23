@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { Check } from "lucide-react";
 
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { usePlannerState } from "@/features/planner/state/planner-state";
@@ -255,9 +256,7 @@ export function CrosstablesView() {
                                     className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent opacity-0 transition-[opacity,background-color] hover:bg-slate-100 peer-checked:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400 peer-focus-visible:ring-offset-1 ${checkboxStyles.mark}`}
                                     aria-hidden="true"
                                   >
-                                    <span className="text-3xl leading-none">
-                                      ×
-                                    </span>
+                                    <Check size={18} strokeWidth={3} />
                                   </span>
                                   <span className="sr-only">
                                     Toggle {participantName} for {event.title}
