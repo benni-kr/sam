@@ -1,31 +1,43 @@
-import { plannerSemesterIds, type PlannerSemesterId } from "@/features/planner/lib/planner";
+import {
+  defaultPlannerSemesterId,
+  plannerEventCategories,
+  plannerSemesterIds,
+  type PlannerEvent,
+  type PlannerSemesterId,
+} from "@/features/planner/lib/planner";
 
-export type PlannerEventPlacement = {
-  id: string;
-  startDate: string | null;
-  endDate: string | null;
-};
-
-export type PlannerPlacementsBySemester = Partial<
-  Record<PlannerSemesterId, PlannerEventPlacement[]>
+export type PlannerEventsBySemester = Partial<
+  Record<PlannerSemesterId, PlannerEvent[]>
 >;
 
 export type PlannerEventStore = {
-  loadPlacements: () => Promise<PlannerPlacementsBySemester | null>;
-  savePlacements: (placements: PlannerPlacementsBySemester) => Promise<void>;
+  loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
+  saveEventsBySemester: (
+    eventsBySemester: PlannerEventsBySemester,
+  ) => Promise<void>;
+  loadFriends: () => Promise<string[] | null>;
+  saveFriends: (friends: string[]) => Promise<void>;
 };
 
-export type PlannerStoreMode = "local" | "supabase";
-
-const LOCAL_STORAGE_KEY = "sam.planner.placements.v1";
-const SUPABASE_PLACEMENTS_TABLE = "planner_event_placements";
+const SUPABASE_EVENTS_TABLE = "planner_events";
+const SUPABASE_FRIENDS_TABLE = "planner_friends";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
+const DEFAULT_PLANNER_SCOPE = "default";
 
-type SupabasePlacementRow = {
-  semester_id: PlannerSemesterId;
+type SupabaseEventRow = {
+  planner_scope: string;
+  semester_id: PlannerSemesterId | null;
   event_id: string;
+  title: string;
+  category: string;
   start_date: string | null;
   end_date: string | null;
+  participants: unknown;
+};
+
+type SupabaseFriendRow = {
+  planner_scope: string;
+  friend_name: string;
 };
 
 function shouldLogPersistenceHealth() {
@@ -43,65 +55,78 @@ function logPersistenceHealth(message: string) {
   console.info(`${PERSISTENCE_LOG_PREFIX} ${message}`);
 }
 
-function isDateValue(value: unknown) {
-  return value === null || typeof value === "string";
+function normalizePlannerScope(rawScope: string | undefined) {
+  const normalized = (rawScope ?? "")
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || DEFAULT_PLANNER_SCOPE;
 }
 
-function isPlacement(value: unknown): value is PlannerEventPlacement {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
+function getPlannerScope() {
+  return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
+}
 
-  const candidate = value as Record<string, unknown>;
-
+function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
   return (
-    typeof candidate.id === "string" &&
-    isDateValue(candidate.startDate) &&
-    isDateValue(candidate.endDate)
+    typeof value === "string" &&
+    plannerEventCategories.includes(value as PlannerEvent["category"])
   );
 }
 
-function normalizePlacements(
-  value: unknown,
-): PlannerPlacementsBySemester | null {
-  if (!value || typeof value !== "object") {
-    return null;
+function normalizeParticipants(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as string[];
   }
 
-  const candidate = value as Record<string, unknown>;
-  const normalized: PlannerPlacementsBySemester = {};
-
-  for (const semesterId of plannerSemesterIds) {
-    const semesterValue = candidate[semesterId];
-
-    if (semesterValue === undefined) {
-      continue;
-    }
-
-    if (!Array.isArray(semesterValue)) {
-      continue;
-    }
-
-    normalized[semesterId] = semesterValue.filter(isPlacement);
-  }
-
-  return normalized;
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((name) => name.trim())
+    .filter(Boolean);
 }
 
-function placementsToRows(
-  placements: PlannerPlacementsBySemester,
-): SupabasePlacementRow[] {
-  const rows: SupabasePlacementRow[] = [];
+function dedupeNames(names: string[]) {
+  const uniqueByLowerCase = new Map<string, string>();
+
+  for (const name of names) {
+    const normalized = name.trim();
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLocaleLowerCase();
+
+    if (!uniqueByLowerCase.has(key)) {
+      uniqueByLowerCase.set(key, normalized);
+    }
+  }
+
+  return Array.from(uniqueByLowerCase.values());
+}
+
+function eventsBySemesterToRows(
+  eventsBySemester: PlannerEventsBySemester,
+  plannerScope: string,
+): SupabaseEventRow[] {
+  const rows: SupabaseEventRow[] = [];
 
   for (const semesterId of plannerSemesterIds) {
-    const semesterPlacements = placements[semesterId] ?? [];
+    const semesterEvents = eventsBySemester[semesterId] ?? [];
 
-    for (const placement of semesterPlacements) {
+    for (const event of semesterEvents) {
       rows.push({
-        semester_id: semesterId,
-        event_id: placement.id,
-        start_date: placement.startDate,
-        end_date: placement.endDate,
+        planner_scope: plannerScope,
+        semester_id: event.startDate ? semesterId : null,
+        event_id: event.id,
+        title: event.title,
+        category: event.category,
+        start_date: event.startDate,
+        end_date: event.endDate,
+        participants: event.participants,
       });
     }
   }
@@ -109,29 +134,56 @@ function placementsToRows(
   return rows;
 }
 
-function rowsToPlacements(rows: SupabasePlacementRow[]) {
-  const placements: PlannerPlacementsBySemester = {};
+function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
+  const eventsBySemester: PlannerEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
-    const semesterRows = rows.filter((row) => row.semester_id === semesterId);
+    eventsBySemester[semesterId] = [];
+  }
 
-    if (semesterRows.length === 0) {
+  for (const row of rows) {
+    if (!isCategoryValue(row.category)) {
       continue;
     }
 
-    placements[semesterId] = semesterRows.map((row) => ({
+    const targetSemesterId =
+      row.semester_id && plannerSemesterIds.includes(row.semester_id)
+        ? row.semester_id
+        : defaultPlannerSemesterId;
+
+    eventsBySemester[targetSemesterId]?.push({
       id: row.event_id,
+      title: row.title,
+      category: row.category as PlannerEvent["category"],
       startDate: row.start_date,
       endDate: row.end_date,
-    }));
+      participants: normalizeParticipants(row.participants),
+    });
   }
 
-  return placements;
+  return eventsBySemester;
+}
+
+function friendsToRows(
+  friends: string[],
+  plannerScope: string,
+): SupabaseFriendRow[] {
+  return dedupeNames(friends).map((friendName) => ({
+    planner_scope: plannerScope,
+    friend_name: friendName,
+  }));
+}
+
+function rowsToFriends(rows: SupabaseFriendRow[]) {
+  return dedupeNames(rows.map((row) => row.friend_name)).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const plannerScope = getPlannerScope();
 
   if (!url || !anonKey) {
     return null;
@@ -140,13 +192,47 @@ function getSupabaseConfig() {
   return {
     url,
     anonKey,
+    plannerScope,
   };
 }
 
-async function fetchSupabasePlacements(
+function requireSupabaseConfig() {
+  const config = getSupabaseConfig();
+
+  if (!config) {
+    throw new Error(
+      "Supabase configuration missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
+  }
+
+  return config;
+}
+
+function hasSupabaseConfig() {
+  return Boolean(getSupabaseConfig());
+}
+
+function createSupabaseUnavailableStore(): PlannerEventStore {
+  return {
+    async loadEventsBySemester() {
+      return null;
+    },
+    async saveEventsBySemester() {
+      // Intentionally no-op when Supabase is not configured.
+    },
+    async loadFriends() {
+      return null;
+    },
+    async saveFriends() {
+      // Intentionally no-op when Supabase is not configured.
+    },
+  };
+}
+
+async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_PLACEMENTS_TABLE}?select=semester_id,event_id,start_date,end_date`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
   const response = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -156,19 +242,36 @@ async function fetchSupabasePlacements(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to load planner placements from Supabase.");
+    throw new Error("Failed to load planner events from Supabase.");
   }
 
-  const rows = (await response.json()) as SupabasePlacementRow[];
-  return rowsToPlacements(rows);
+  const rows = (await response.json()) as SupabaseEventRow[];
+  return rowsToEventsBySemester(rows);
 }
 
-async function upsertSupabasePlacements(
+async function upsertSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-  placements: PlannerPlacementsBySemester,
+  eventsBySemester: PlannerEventsBySemester,
 ) {
-  const rows = placementsToRows(placements);
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_PLACEMENTS_TABLE}?on_conflict=semester_id,event_id`;
+  const rows = eventsBySemesterToRows(eventsBySemester, config.plannerScope);
+  const deleteEndpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const deleteResponse = await fetch(deleteEndpoint, {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!deleteResponse.ok) {
+    throw new Error("Failed to clear planner events in Supabase.");
+  }
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -181,135 +284,139 @@ async function upsertSupabasePlacements(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to save planner placements to Supabase.");
+    throw new Error("Failed to save planner events to Supabase.");
   }
 }
 
-export const localPlannerEventStore: PlannerEventStore = {
-  async loadPlacements() {
-    if (typeof window === "undefined") {
+async function fetchSupabaseFriends(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?select=planner_scope,friend_name&planner_scope=eq.${encodeURIComponent(config.plannerScope)}&order=friend_name.asc`;
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status === 404
+    ) {
+      logPersistenceHealth(
+        `Planner friends unavailable from Supabase (${response.status}); falling back to bootstrap list.`,
+      );
       return null;
     }
 
-    try {
-      const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+    throw new Error("Failed to load planner friends from Supabase.");
+  }
 
-      if (!raw) {
-        return null;
-      }
+  const rows = (await response.json()) as SupabaseFriendRow[];
+  return rowsToFriends(rows);
+}
 
-      const parsed = JSON.parse(raw) as unknown;
-      return normalizePlacements(parsed);
-    } catch {
-      return null;
-    }
-  },
+async function upsertSupabaseFriends(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  friends: string[],
+) {
+  const rows = friendsToRows(friends, config.plannerScope);
+  const deleteEndpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const deleteResponse = await fetch(deleteEndpoint, {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
 
-  async savePlacements(placements) {
-    if (typeof window === "undefined") {
+  if (!deleteResponse.ok) {
+    if (
+      deleteResponse.status === 401 ||
+      deleteResponse.status === 403 ||
+      deleteResponse.status === 404
+    ) {
+      logPersistenceHealth(
+        `Planner friends delete skipped in Supabase (${deleteResponse.status}).`,
+      );
       return;
     }
 
-    try {
-      const serialized = JSON.stringify(placements);
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, serialized);
-    } catch {
-      // Ignore write failures so planner interactions remain responsive.
-    }
-  },
-};
+    throw new Error("Failed to clear planner friends in Supabase.");
+  }
 
-function hasSupabaseClientConfig() {
-  return Boolean(getSupabaseConfig());
+  if (rows.length === 0) {
+    return;
+  }
+
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+
+  if (!response.ok) {
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status === 404
+    ) {
+      logPersistenceHealth(
+        `Planner friends write skipped in Supabase (${response.status}).`,
+      );
+      return;
+    }
+
+    throw new Error("Failed to save planner friends to Supabase.");
+  }
 }
 
 export const supabasePlannerEventStore: PlannerEventStore = {
-  async loadPlacements() {
-    const config = getSupabaseConfig();
-
-    if (!config) {
-      return null;
-    }
-
-    try {
-      return await fetchSupabasePlacements(config);
-    } catch {
-      return null;
-    }
+  async loadEventsBySemester() {
+    const config = requireSupabaseConfig();
+    return fetchSupabaseEventsBySemester(config);
   },
 
-  async savePlacements(placements) {
-    const config = getSupabaseConfig();
+  async saveEventsBySemester(eventsBySemester) {
+    const config = requireSupabaseConfig();
+    await upsertSupabaseEventsBySemester(config, eventsBySemester);
+  },
 
-    if (!config) {
-      return;
-    }
+  async loadFriends() {
+    const config = requireSupabaseConfig();
+    return fetchSupabaseFriends(config);
+  },
 
-    try {
-      await upsertSupabasePlacements(config, placements);
-    } catch {
-      return;
-    }
+  async saveFriends(friends) {
+    const config = requireSupabaseConfig();
+    await upsertSupabaseFriends(config, friends);
   },
 };
 
-function createSupabaseFallbackStore(): PlannerEventStore {
-  let didLogSupabaseLoadSuccess = false;
-  let didLogSupabaseLoadFallback = false;
-  let didLogSupabaseSaveFallback = false;
-
-  return {
-    async loadPlacements() {
-      const supabasePlacements =
-        await supabasePlannerEventStore.loadPlacements();
-
-      if (supabasePlacements) {
-        if (!didLogSupabaseLoadSuccess) {
-          logPersistenceHealth("Supabase load succeeded.");
-          didLogSupabaseLoadSuccess = true;
-        }
-        return supabasePlacements;
-      }
-
-      if (!didLogSupabaseLoadFallback) {
-        logPersistenceHealth(
-          "Supabase load unavailable, falling back to local storage.",
-        );
-        didLogSupabaseLoadFallback = true;
-      }
-
-      return localPlannerEventStore.loadPlacements();
-    },
-
-    async savePlacements(placements) {
-      // Persist locally first for resilience, then attempt remote sync.
-      await localPlannerEventStore.savePlacements(placements);
-
-      const config = getSupabaseConfig();
-
-      if (!config) {
-        if (!didLogSupabaseSaveFallback) {
-          logPersistenceHealth(
-            "Supabase save skipped due to missing configuration; local storage remains active.",
-          );
-          didLogSupabaseSaveFallback = true;
-        }
-        return;
-      }
-
-      await supabasePlannerEventStore.savePlacements(placements);
-    },
-  };
-}
-
 export function resolvePlannerEventStore(): PlannerEventStore {
-  const configuredMode = process.env.NEXT_PUBLIC_SAM_PLANNER_STORE;
+  const plannerScope = getPlannerScope();
 
-  if (configuredMode === "supabase" && hasSupabaseClientConfig()) {
-    logPersistenceHealth("Store mode: supabase with local fallback enabled.");
-    return createSupabaseFallbackStore();
+  if (!hasSupabaseConfig()) {
+    if (process.env.NODE_ENV === "production") {
+      requireSupabaseConfig();
+    }
+
+    logPersistenceHealth(
+      `Supabase config missing; running without persistence in ${process.env.NODE_ENV ?? "unknown"} mode.`,
+    );
+
+    return createSupabaseUnavailableStore();
   }
 
-  logPersistenceHealth("Store mode: local storage.");
-  return localPlannerEventStore;
+  logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
+  return supabasePlannerEventStore;
 }

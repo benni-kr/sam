@@ -12,7 +12,7 @@ import {
 
 import {
   resolvePlannerEventStore,
-  type PlannerPlacementsBySemester,
+  type PlannerEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
 
 import {
@@ -76,9 +76,9 @@ type PlannerStateProviderProps = {
 
 type PlannerAction =
   | {
-      type: "HYDRATE_FROM_STORAGE";
+      type: "HYDRATE_FROM_STORE";
       payload: {
-        placements: PlannerPlacementsBySemester | null;
+        eventsBySemester: PlannerEventsBySemester | null;
       };
     }
   | {
@@ -144,8 +144,6 @@ const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
 );
 
-export type PlannerEventsBySemester = EventsBySemester;
-
 /**
  * Converts a persisted date key to a stable midday Date instance.
  */
@@ -208,12 +206,9 @@ function initializeEventsBySemester(): EventsBySemester {
 }
 
 function initializeFriends() {
-  return dedupeParticipantNames([
-    ...SEMESTER_FRIENDS,
-    ...plannerSemesters.flatMap((semester) =>
-      semester.events.flatMap((event) => event.participants),
-    ),
-  ]).sort((left, right) => left.localeCompare(right));
+  return dedupeParticipantNames([...SEMESTER_FRIENDS]).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function normalizeFriendName(name: string) {
@@ -251,20 +246,35 @@ function filterParticipantsByFriends(
   );
 }
 
-function buildPlacementsBySemester(
+function buildEventsBySemesterSnapshot(
   eventsBySemester: EventsBySemester,
-): PlannerPlacementsBySemester {
+): PlannerEventsBySemester {
   return plannerSemesterIds.reduce((acc, semesterId) => {
     const semesterEvents = eventsBySemester[semesterId] ?? [];
 
     acc[semesterId] = semesterEvents.map((event) => ({
-      id: event.id,
-      startDate: event.startDate,
-      endDate: event.endDate,
+      ...event,
+      participants: [...event.participants],
     }));
 
     return acc;
-  }, {} as PlannerPlacementsBySemester);
+  }, {} as PlannerEventsBySemester);
+}
+
+function filterEventsByFriends(
+  eventsBySemester: PlannerEventsBySemester,
+  friends: string[],
+) {
+  return plannerSemesterIds.reduce((acc, semesterId) => {
+    const semesterEvents = eventsBySemester[semesterId] ?? [];
+
+    acc[semesterId] = semesterEvents.map((event) => ({
+      ...event,
+      participants: filterParticipantsByFriends(event.participants, friends),
+    }));
+
+    return acc;
+  }, {} as PlannerEventsBySemester);
 }
 
 function findSemesterForEvent(
@@ -294,40 +304,21 @@ export function plannerStateReducer(
   action: PlannerAction,
 ): EventsBySemester {
   switch (action.type) {
-    case "HYDRATE_FROM_STORAGE": {
-      const { placements } = action.payload;
+    case "HYDRATE_FROM_STORE": {
+      const { eventsBySemester } = action.payload;
 
-      if (!placements) {
+      if (!eventsBySemester) {
         return state;
       }
 
       const nextState: EventsBySemester = { ...state };
 
       for (const semesterId of plannerSemesterIds) {
-        const semesterEvents = state[semesterId] ?? [];
-        const semesterPlacements = placements[semesterId];
-
-        if (!semesterPlacements || semesterPlacements.length === 0) {
-          continue;
-        }
-
-        const placementByEventId = new Map(
-          semesterPlacements.map((placement) => [placement.id, placement]),
-        );
-
-        nextState[semesterId] = semesterEvents.map((event) => {
-          const placement = placementByEventId.get(event.id);
-
-          if (!placement) {
-            return event;
-          }
-
-          return {
-            ...event,
-            startDate: placement.startDate,
-            endDate: placement.endDate,
-          };
-        });
+        const semesterEvents = eventsBySemester[semesterId] ?? [];
+        nextState[semesterId] = semesterEvents.map((event) => ({
+          ...event,
+          participants: [...event.participants],
+        }));
       }
 
       return nextState;
@@ -632,17 +623,36 @@ export function PlannerStateProvider({
   useEffect(() => {
     let cancelled = false;
 
-    void eventStore.current
-      .loadPlacements()
-      .then((placements) => {
+    void Promise.all([
+      eventStore.current.loadEventsBySemester(),
+      eventStore.current.loadFriends(),
+    ])
+      .then(([eventsBySemester, friendsFromStore]) => {
         if (cancelled) {
           return;
         }
 
+        const hydratedFriends = dedupeParticipantNames(
+          friendsFromStore && friendsFromStore.length > 0
+            ? friendsFromStore
+            : [...SEMESTER_FRIENDS],
+        ).sort((left, right) => left.localeCompare(right));
+
+        setFriends(hydratedFriends);
+
         dispatch({
-          type: "HYDRATE_FROM_STORAGE",
-          payload: { placements },
+          type: "HYDRATE_FROM_STORE",
+          payload: {
+            eventsBySemester: eventsBySemester
+              ? filterEventsByFriends(eventsBySemester, hydratedFriends)
+              : eventsBySemester,
+          },
         });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          console.error("Failed to hydrate planner data from Supabase.", error);
+        }
       })
       .finally(() => {
         if (!cancelled) {
@@ -660,8 +670,22 @@ export function PlannerStateProvider({
       return;
     }
 
-    const placements = buildPlacementsBySemester(eventsBySemester);
-    void eventStore.current.savePlacements(placements);
+    void eventStore.current.saveFriends(friends).catch((error: unknown) => {
+      console.error("Failed to persist planner friends to Supabase.", error);
+    });
+  }, [friends]);
+
+  useEffect(() => {
+    if (!didHydrateFromStorage.current) {
+      return;
+    }
+
+    const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
+    void eventStore.current
+      .saveEventsBySemester(snapshot)
+      .catch((error: unknown) => {
+        console.error("Failed to persist planner events to Supabase.", error);
+      });
   }, [eventsBySemester]);
 
   const normalizedSemesterId = (

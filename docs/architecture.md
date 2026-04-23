@@ -8,7 +8,7 @@ SAM (Semester Activity Manager) is a collaborative semester planning UI with thr
 - Category-focused crosstables matrix with participation toggles (`/crosstables`)
 - Chronological mobile-style timeline (`/mobile`)
 
-All views are driven by shared planner state and the same event model, with managed friends list ensuring consistent participant data across events.
+All views are driven by shared planner state and the same event model, with a dedicated friends master list ensuring consistent participant data across events.
 
 ## High-Level Structure
 
@@ -41,10 +41,10 @@ Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sortin
 
 SAM enforces a managed friends workflow:
 
-1. A canonical `friends` list is initialized from `SEMESTER_FRIENDS` plus all participant names from seed events.
+1. A canonical `friends` list is persisted in Supabase in the `planner_friends` table.
 2. Event participants are only selected from this friends list during create/edit.
-3. Renaming a friend updates that name across all events.
-4. Removing a friend removes that participant from all events.
+3. Renaming a friend updates that name across all events and the friends table.
+4. Removing a friend removes that participant from all events and deletes the friends row.
 
 This keeps participant data consistent and prevents orphaned or stale names.
 
@@ -52,11 +52,12 @@ This keeps participant data consistent and prevents orphaned or stale names.
 
 `PlannerStateProvider` is the single source of truth for planner interactions.
 
-1. Initial state is built from static semester fixtures and friends list.
-2. Persisted placements are hydrated and merged by event ID.
-3. Actions update date placement fields (`startDate`, `endDate`), event metadata (title, category, participants), and friend list operations (add, rename, remove).
-4. Friend mutations trigger participant cleanup across events when removing or renaming.
-5. Derived selectors feed all views:
+1. Initial state is built from static semester fixtures and friends list as a bootstrap fallback.
+2. Persisted semester events and the canonical friends list are hydrated from Supabase together.
+3. Hydrated events are sanitized against the loaded friends list so storage never keeps participants outside the master list.
+4. Actions update full event records (title, category, participants, `startDate`, `endDate`) and friend list operations (add, rename, remove).
+5. Friend mutations trigger participant cleanup across events when removing or renaming and are persisted back to the friends table.
+6. Derived selectors feed all views:
 
 - covering events per date
 - inbox events across all semesters
@@ -122,15 +123,21 @@ The form uses a popover calendar picker instead of the native browser date input
 
 ## Persistence
 
-Persistence is adapter-based.
+Persistence is Supabase-backed.
 
-- Local mode: localStorage (`sam.planner.placements.v1`)
-- Supabase mode: REST sync with local-first fallback behavior
+- Supabase sync persists full event objects and the canonical friends table
+- Supabase records are partitioned by `planner_scope` to isolate environments/deployments
+- Undated events persist with `semester_id = null` and are treated as semester-agnostic in storage.
 
 Store resolution:
 
-- `NEXT_PUBLIC_SAM_PLANNER_STORE=supabase` + valid Supabase env vars enables remote sync
-- Otherwise local mode is used
+- Valid Supabase env vars are required for runtime
+- `NEXT_PUBLIC_SAM_PLANNER_SCOPE` selects the logical data partition (default: `default`)
+
+Source-of-truth behavior:
+
+- Seed fixtures are used only as bootstrap defaults.
+- Once persisted Supabase data exists, it becomes authoritative.
 
 ## Testing and Quality Gates
 
@@ -148,10 +155,11 @@ Validation gates:
 
 ## Known Constraints
 
-- Semester/event fixtures and initial friends list are static in `features/planner/lib/planner.ts`
+- Semester/event fixtures and seed friends are static in `features/planner/lib/planner.ts`
 - Crosstables route is a category-based participation matrix and not a graph canvas
 - Mobile route is timeline-style but not a separate responsive app shell
 - Friend renames and removals affect all events globally; no event-level friend isolation
+- Current Supabase policies allow anon access to planner rows; production rollout should tighten RLS with auth-bound ownership
 
 ## Extension Guidance
 
