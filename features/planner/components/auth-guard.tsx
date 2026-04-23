@@ -89,7 +89,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Crew Email
+              Email
             </label>
             <input
               type="email"
