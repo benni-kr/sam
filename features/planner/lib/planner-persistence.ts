@@ -259,7 +259,7 @@ async function upsertSupabaseEventsBySemester(
     method: "DELETE",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
     },
   });
 
@@ -296,22 +296,11 @@ async function fetchSupabaseFriends(
     method: "GET",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
     },
   });
 
   if (!response.ok) {
-    if (
-      response.status === 401 ||
-      response.status === 403 ||
-      response.status === 404
-    ) {
-      logPersistenceHealth(
-        `Planner friends unavailable from Supabase (${response.status}); falling back to bootstrap list.`,
-      );
-      return null;
-    }
-
     throw new Error("Failed to load planner friends from Supabase.");
   }
 
@@ -325,26 +314,16 @@ async function upsertSupabaseFriends(
 ) {
   const rows = friendsToRows(friends, config.plannerScope);
   const deleteEndpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+
   const deleteResponse = await fetch(deleteEndpoint, {
     method: "DELETE",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
     },
   });
 
   if (!deleteResponse.ok) {
-    if (
-      deleteResponse.status === 401 ||
-      deleteResponse.status === 403 ||
-      deleteResponse.status === 404
-    ) {
-      logPersistenceHealth(
-        `Planner friends delete skipped in Supabase (${deleteResponse.status}).`,
-      );
-      return;
-    }
-
     throw new Error("Failed to clear planner friends in Supabase.");
   }
 
@@ -357,7 +336,7 @@ async function upsertSupabaseFriends(
     method: "POST",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=minimal",
     },
@@ -365,17 +344,6 @@ async function upsertSupabaseFriends(
   });
 
   if (!response.ok) {
-    if (
-      response.status === 401 ||
-      response.status === 403 ||
-      response.status === 404
-    ) {
-      logPersistenceHealth(
-        `Planner friends write skipped in Supabase (${response.status}).`,
-      );
-      return;
-    }
-
     throw new Error("Failed to save planner friends to Supabase.");
   }
 }
@@ -406,15 +374,9 @@ export function resolvePlannerEventStore(): PlannerEventStore {
   const plannerScope = getPlannerScope();
 
   if (!hasSupabaseConfig()) {
-    if (process.env.NODE_ENV === "production") {
-      requireSupabaseConfig();
-    }
-
-    logPersistenceHealth(
-      `Supabase config missing; running without persistence in ${process.env.NODE_ENV ?? "unknown"} mode.`,
+    throw new Error(
+      "CRITICAL: Supabase config missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
     );
-
-    return createSupabaseUnavailableStore();
   }
 
   logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
