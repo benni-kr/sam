@@ -166,7 +166,7 @@ export function PlannerEventForm({
 
           {isDeleteConfirmOpen ? (
             <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-sm font-medium text-red-800">
+              <p className="text-sm font-medium text-red-800 text-center">
                 {deleteAction.prompt}
               </p>
               <div className="flex gap-2">

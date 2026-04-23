@@ -181,6 +181,7 @@ function PlannerShellFrame({
   );
   const [editingFriendValue, setEditingFriendValue] = useState("");
   const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
+  const [friendToDelete, setFriendToDelete] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -502,7 +503,37 @@ function PlannerShellFrame({
                   key={friend}
                   className="rounded-xl border border-slate-200 bg-slate-50/80 p-2"
                 >
-                  {editingFriendName === friend ? (
+                  {friendToDelete === friend ? (
+                    <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2">
+                      <p className="text-xs font-medium text-red-800 text-center">
+                        Remove {friend} from all events?
+                        <br />
+                        <span className="font-normal opacity-80 mt-1 block">
+                          (Be careful, it's always easier to lose friends than
+                          to make new ones!)
+                        </span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFriendToDelete(null)}
+                          className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
+                        >
+                          Keep
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            removeFriend(friend);
+                            setFriendToDelete(null);
+                          }}
+                          className="flex-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                        >
+                          Yes, remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : editingFriendName === friend ? (
                     <div className="flex items-center gap-2">
                       <input
                         value={editingFriendValue}
@@ -548,7 +579,7 @@ function PlannerShellFrame({
                             if (editingFriendName === friend) {
                               cancelEditingFriend();
                             }
-                            removeFriend(friend);
+                            setFriendToDelete(friend); // <-- Trigger the confirm state instead of deleting immediately
                           }}
                           className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-600 hover:bg-rose-100"
                           aria-label={`Remove ${friend}`}
