@@ -485,6 +485,7 @@ function PlannerShellFrame({
                 value={newFriendName}
                 onChange={(event) => setNewFriendName(event.target.value)}
                 placeholder="Add friend"
+                maxLength={15}
                 className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
               />
               <button
@@ -508,6 +509,7 @@ function PlannerShellFrame({
                         onChange={(event) =>
                           setEditingFriendValue(event.target.value)
                         }
+                        maxLength={15}
                         className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
                         aria-label={`Edit ${friend}`}
                       />
