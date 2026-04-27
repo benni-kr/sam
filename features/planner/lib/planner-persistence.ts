@@ -228,7 +228,9 @@ async function fetchSupabaseEventsBySemester(
     const token = getClientAuthToken();
 
     if (!token) {
-      logPersistenceHealth("No client auth token available yet; deferring events load.");
+      logPersistenceHealth(
+        "No client auth token available yet; deferring events load.",
+      );
       return null;
     }
 
@@ -250,7 +252,9 @@ async function fetchSupabaseEventsBySemester(
           // noop
         }
 
-        logPersistenceHealth("Auth token invalid or expired while loading events.");
+        logPersistenceHealth(
+          "Auth token invalid or expired while loading events.",
+        );
         return null;
       }
 
@@ -325,7 +329,9 @@ async function fetchSupabaseFriends(
     const token = getClientAuthToken();
 
     if (!token) {
-      logPersistenceHealth("No client auth token available yet; deferring friends load.");
+      logPersistenceHealth(
+        "No client auth token available yet; deferring friends load.",
+      );
       return null;
     }
 
@@ -346,7 +352,9 @@ async function fetchSupabaseFriends(
           // noop
         }
 
-        logPersistenceHealth("Auth token invalid or expired while loading friends.");
+        logPersistenceHealth(
+          "Auth token invalid or expired while loading friends.",
+        );
         return null;
       }
 
