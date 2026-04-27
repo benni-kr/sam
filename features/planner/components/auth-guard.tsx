@@ -9,15 +9,62 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  function isJwtExpired(token: string | null) {
+    if (!token) return true;
+
+    try {
+      const parts = token.split(".");
+      if (parts.length < 2) return true;
+      const payload = JSON.parse(
+        atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+      );
+      if (!payload || typeof payload.exp !== "number") return true;
+      const now = Math.floor(Date.now() / 1000);
+      return payload.exp <= now;
+    } catch {
+      return true;
+    }
+  }
+
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    // Wait for client mount before touching localStorage.
     const token = window.localStorage.getItem("sam_auth_token");
 
-    // We intentionally set state in this effect because we must wait for the
-    // client to mount before reading localStorage to avoid Next.js SSR errors.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (token) setIsAuthenticated(true);
+    if (!token) {
+      setIsAuthenticated(false);
+      setIsChecking(false);
+      return;
+    }
 
+    if (isJwtExpired(token)) {
+      // Token expired: clear and notify app to re-auth
+      try {
+        window.localStorage.removeItem("sam_auth_token");
+        window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+      } catch {
+        // noop
+      }
+
+      setIsAuthenticated(false);
+      setIsChecking(false);
+      return;
+    }
+
+    setIsAuthenticated(true);
     setIsChecking(false);
+
+    const handler = () => {
+      setIsAuthenticated(false);
+      setIsChecking(false);
+    };
+
+    window.addEventListener("sam:auth:invalid", handler);
+
+    return () => {
+      window.removeEventListener("sam:auth:invalid", handler);
+    };
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   async function handleLogin(e: React.FormEvent) {
