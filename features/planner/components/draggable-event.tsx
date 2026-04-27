@@ -8,7 +8,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { usePlannerState } from "@/features/planner/state/planner-state";
-import { type PlannerEvent, type PlannerEventCategory } from "@/features/planner/lib/planner";
+import {
+  type PlannerEvent,
+  type PlannerEventCategory,
+} from "@/features/planner/lib/planner";
 
 type DraggableEventProps = {
   event: PlannerEvent;
@@ -70,9 +73,11 @@ export function DraggableEvent({
     };
   }, [isPreviewOpen]);
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-  };
+  const style = compact
+    ? {
+        transform: CSS.Translate.toString(transform),
+      }
+    : undefined;
 
   function openPreview() {
     if (isDragging) {
@@ -123,7 +128,7 @@ export function DraggableEvent({
         {...attributes}
         onClick={openPreview}
         className={`touch-none cursor-grab active:cursor-grabbing ${
-          isDragging ? "opacity-40" : "opacity-100"
+          isDragging ? "opacity-0" : "opacity-100"
         }`}
       >
         {children ?? <EventBadge event={event} />}

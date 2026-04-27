@@ -5,6 +5,10 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
+  pointerWithin,
+  type Modifier,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
   useSensor,
@@ -30,6 +34,80 @@ import {
 
 type PlannerShellProps = {
   children: React.ReactNode;
+};
+
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+
+  if (pointerCollisions.length > 0) {
+    return pointerCollisions;
+  }
+
+  return closestCenter(args);
+};
+
+function getActivatorPoint(activatorEvent: Event | null) {
+  if (!activatorEvent) {
+    return null;
+  }
+
+  const clientPoint = activatorEvent as {
+    clientX?: unknown;
+    clientY?: unknown;
+  };
+
+  if (
+    typeof clientPoint.clientX === "number" &&
+    typeof clientPoint.clientY === "number"
+  ) {
+    return {
+      x: clientPoint.clientX,
+      y: clientPoint.clientY,
+    };
+  }
+
+  const touchEvent = activatorEvent as {
+    touches?: Array<{
+      clientX?: unknown;
+      clientY?: unknown;
+    }>;
+  };
+  const touchPoint = touchEvent.touches?.[0] ?? null;
+
+  if (
+    !touchPoint ||
+    typeof touchPoint.clientX !== "number" ||
+    typeof touchPoint.clientY !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    x: touchPoint.clientX,
+    y: touchPoint.clientY,
+  };
+}
+
+const snapOverlayToCursor: Modifier = ({
+  transform,
+  activeNodeRect,
+  activatorEvent,
+}) => {
+  if (!activeNodeRect) {
+    return transform;
+  }
+
+  const cursorPoint = getActivatorPoint(activatorEvent);
+
+  if (!cursorPoint) {
+    return transform;
+  }
+
+  return {
+    ...transform,
+    x: transform.x + cursorPoint.x - activeNodeRect.left,
+    y: transform.y + cursorPoint.y - activeNodeRect.top,
+  };
 };
 
 /**
@@ -196,6 +274,19 @@ function PlannerShellFrame({
     ? (events.find((event: PlannerEvent) => event.id === activeEventId) ?? null)
     : null;
 
+  useEffect(() => {
+    if (!activeEventId) {
+      return;
+    }
+
+    const previousCursor = document.body.style.cursor;
+    document.body.style.cursor = "grabbing";
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+    };
+  }, [activeEventId]);
+
   function handleDragStart(event: DragStartEvent) {
     const activeId = String(event.active.id);
 
@@ -211,6 +302,7 @@ function PlannerShellFrame({
     setActiveEventId(null);
 
     const overId = event.over?.id;
+    const overDateKey = event.over?.data.current?.dateKey;
 
     if (!overId) {
       return;
@@ -231,8 +323,12 @@ function PlannerShellFrame({
     }
 
     if (targetId.startsWith("date:")) {
-      moveEventToDate(eventId, targetId.replace("date:", ""));
+      moveEventToDate(eventId, overDateKey ?? targetId.replace("date:", ""));
     }
+  }
+
+  function handleDragCancel() {
+    setActiveEventId(null);
   }
 
   function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
@@ -283,9 +379,10 @@ function PlannerShellFrame({
     <DndContext
       id="sam-planner-dnd"
       sensors={sensors}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveEventId(null)}
+      onDragCancel={handleDragCancel}
     >
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8f7f3,_#efede6_55%,_#e7e2d7)] text-slate-950">
         <div className="mx-auto grid min-h-screen w-full max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
@@ -422,9 +519,9 @@ function PlannerShellFrame({
         </div>
       </main>
 
-      <DragOverlay>
+      <DragOverlay modifiers={[snapOverlayToCursor]}>
         {activeEvent ? (
-          <div className="pointer-events-none w-[min(28rem,calc(100vw-2rem))] max-w-[28rem] rotate-1 shadow-2xl">
+          <div className="pointer-events-none w-[min(20rem,calc(100vw-2rem))] max-w-[24rem] rotate-1 shadow-2xl">
             <EventBadge event={activeEvent} />
           </div>
         ) : null}
