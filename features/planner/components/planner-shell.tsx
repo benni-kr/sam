@@ -289,8 +289,8 @@ function PlannerShellFrame({
     >
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8f7f3,_#efede6_55%,_#e7e2d7)] text-slate-950">
         <div className="mx-auto grid min-h-screen w-full max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
-          <aside className="rounded-[1.5rem] border border-white/70 bg-white/80 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
-            <div className="flex flex-col gap-4">
+          <aside className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/80 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+            <div className="min-w-0 flex flex-col gap-4 lg:h-full lg:overflow-y-auto">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                   Semester Activity Manager
@@ -424,7 +424,7 @@ function PlannerShellFrame({
 
       <DragOverlay>
         {activeEvent ? (
-          <div className="w-full max-w-md rotate-1 shadow-2xl">
+          <div className="pointer-events-none w-[min(28rem,calc(100vw-2rem))] max-w-[28rem] rotate-1 shadow-2xl">
             <EventBadge event={activeEvent} />
           </div>
         ) : null}

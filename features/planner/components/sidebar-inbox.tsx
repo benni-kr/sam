@@ -20,7 +20,7 @@ export function SidebarInbox() {
   return (
     <section
       ref={setNodeRef}
-      className={`rounded-[1.25rem] border border-dashed p-3 transition-colors ${
+      className={`overflow-hidden rounded-[1.25rem] border border-dashed p-3 transition-colors ${
         isOver
           ? "border-slate-900 bg-slate-100"
           : "border-slate-300 bg-white/90"
@@ -32,7 +32,7 @@ export function SidebarInbox() {
         </p>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 overflow-hidden">
         {inboxEvents.map((event) => (
           <DraggableEvent key={event.id} event={event} compact />
         ))}
