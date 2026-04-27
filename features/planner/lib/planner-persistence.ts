@@ -196,6 +196,11 @@ function getSupabaseConfig() {
   };
 }
 
+function getClientAuthToken() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("sam_auth_token");
+}
+
 function requireSupabaseConfig() {
   const config = getSupabaseConfig();
 
@@ -216,11 +221,52 @@ async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
   const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  // If we're running in the browser prefer the client auth token. If the
+  // token hasn't been stored yet (race during hydration) return `null` so
+  // callers can delay hydration instead of failing the entire load.
+  if (typeof window !== "undefined") {
+    const token = getClientAuthToken();
+
+    if (!token) {
+      logPersistenceHealth("No client auth token available yet; deferring events load.");
+      return null;
+    }
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        // Token invalid/expired — clear and notify the app to re-auth.
+        try {
+          window.localStorage.removeItem("sam_auth_token");
+          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+        } catch {
+          // noop
+        }
+
+        logPersistenceHealth("Auth token invalid or expired while loading events.");
+        return null;
+      }
+
+      throw new Error("Failed to load planner events from Supabase.");
+    }
+
+    const rows = (await response.json()) as SupabaseEventRow[];
+    return rowsToEventsBySemester(rows);
+  }
+
+  // Server-side: use the anon key so server rendering still works.
   const response = await fetch(endpoint, {
     method: "GET",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+      Authorization: `Bearer ${config.anonKey}`,
     },
   });
 
@@ -275,11 +321,48 @@ async function fetchSupabaseFriends(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
   const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?select=planner_scope,friend_name&planner_scope=eq.${encodeURIComponent(config.plannerScope)}&order=friend_name.asc`;
+  if (typeof window !== "undefined") {
+    const token = getClientAuthToken();
+
+    if (!token) {
+      logPersistenceHealth("No client auth token available yet; deferring friends load.");
+      return null;
+    }
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        try {
+          window.localStorage.removeItem("sam_auth_token");
+          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+        } catch {
+          // noop
+        }
+
+        logPersistenceHealth("Auth token invalid or expired while loading friends.");
+        return null;
+      }
+
+      throw new Error("Failed to load planner friends from Supabase.");
+    }
+
+    const rows = (await response.json()) as SupabaseFriendRow[];
+    return rowsToFriends(rows);
+  }
+
+  // Server-side: fallback to anon key
   const response = await fetch(endpoint, {
     method: "GET",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+      Authorization: `Bearer ${config.anonKey}`,
     },
   });
 
