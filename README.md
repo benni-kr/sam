@@ -6,7 +6,7 @@ SAM (Semester Activity Manager) is a collaborative planner for semester schedule
 
 - Calendar view for semester planning with day-cell quick add
 - Crosstables view for "who is in" tracking by category
-- Mobile timeline view for quick scanning
+- Schedule Feed view for compact scanning
 - Shared inbox for unscheduled events
 - Event create, edit, delete flows
 - Managed friends list for participant selection and rename/remove sync
@@ -42,7 +42,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_SAM_PLANNER_SCOPE=prod
 ```
 
-3. Restart the app and verify planner writes/reads.
+1. Restart the app and verify planner writes/reads.
 
 Notes:
 

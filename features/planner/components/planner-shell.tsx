@@ -496,11 +496,11 @@ function PlannerShellFrame({
                   Manage friends
                 </button>
 
-                {pathname === "/crosstables" ? (
+                {pathname === "/crosstables" || pathname === "/list" ? (
                   <>
                     <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Table Filters
+                        View Filters
                       </p>
                       <div className="mt-3 space-y-2">
                         <SidebarToggle
@@ -511,21 +511,31 @@ function PlannerShellFrame({
                           }
                         />
 
-                        <SidebarToggle
-                          label="Hide undated events"
-                          checked={hideUndated}
-                          onToggle={(checked) =>
-                            setCrosstablesFilterParam("hideUndated", checked)
-                          }
-                        />
+                        {pathname === "/crosstables" ? (
+                          <>
+                            <SidebarToggle
+                              label="Hide undated events"
+                              checked={hideUndated}
+                              onToggle={(checked) =>
+                                setCrosstablesFilterParam(
+                                  "hideUndated",
+                                  checked,
+                                )
+                              }
+                            />
 
-                        <SidebarToggle
-                          label="Hide inactive participants"
-                          checked={hideInactiveParticipants}
-                          onToggle={(checked) =>
-                            setCrosstablesFilterParam("hideInactive", checked)
-                          }
-                        />
+                            <SidebarToggle
+                              label="Hide inactive participants"
+                              checked={hideInactiveParticipants}
+                              onToggle={(checked) =>
+                                setCrosstablesFilterParam(
+                                  "hideInactive",
+                                  checked,
+                                )
+                              }
+                            />
+                          </>
+                        ) : null}
                       </div>
                     </section>
                   </>

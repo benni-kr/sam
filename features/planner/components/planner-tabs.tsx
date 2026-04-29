@@ -34,7 +34,7 @@ export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
   const iconByViewKey = {
     calendar: Calendar,
     crosstables: Table,
-    mobile: List,
+    list: List,
   };
 
   return (

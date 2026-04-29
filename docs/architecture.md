@@ -6,7 +6,7 @@ SAM (Semester Activity Manager) is a collaborative semester planning UI with thr
 
 - Calendar view (`/`)
 - Category-focused crosstables matrix with participation toggles (`/crosstables`)
-- Chronological mobile-style timeline (`/mobile`)
+- Schedule Feed (`/list`)
 
 All views are driven by shared planner state and the same event model, with a dedicated friends master list ensuring consistent participant data across events.
 
@@ -15,7 +15,7 @@ All views are driven by shared planner state and the same event model, with a de
 - `app/(planner)/layout.tsx`: Shared planner chrome and route grouping
 - `app/(planner)/page.tsx`: Calendar route entry
 - `app/(planner)/crosstables/page.tsx`: Crosstables route entry
-- `app/(planner)/mobile/page.tsx`: Mobile route entry
+- `app/(planner)/list/page.tsx`: Schedule feed route entry
 - `features/planner/components/planner-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay
 - `features/planner/components/crosstables-view.tsx`: Category participation matrix with per-cell toggles
 - `features/planner/state/planner-state.tsx`: State container and state transitions
@@ -113,7 +113,7 @@ DnD is provided by `@dnd-kit/core`.
 
 Create and edit flows share one reusable form component so the field layout and confirmation handling stay consistent.
 
-- Create is opened from the sidebar `+ Add Event` button in a centered modal.
+- Create is opened from the sidebar `+ Add Event` button or any Calendar day-cell quick add button in a centered modal.
 - Edit is opened from the crosstables event title link in a centered modal.
 - Participants are selected from the managed friends list via toggleable chips.
 - Delete uses an inline confirmation block rather than a browser alert.
@@ -157,7 +157,7 @@ Validation gates:
 
 - Semester/event fixtures and seed friends are static in `features/planner/lib/planner.ts`
 - Crosstables route is a category-based participation matrix and not a graph canvas
-- Mobile route is timeline-style but not a separate responsive app shell
+- List route is a compact schedule feed, not a separate responsive app shell
 - Friend renames and removals affect all events globally; no event-level friend isolation
 - Current Supabase policies allow anon access to planner rows; production rollout should tighten RLS with auth-bound ownership
 
