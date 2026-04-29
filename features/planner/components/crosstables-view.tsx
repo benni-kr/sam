@@ -177,7 +177,7 @@ export function CrosstablesView() {
                 <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white/90 text-sm">
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Event
                       </th>
                       {participantNames.map((participantName) => (
@@ -196,7 +196,7 @@ export function CrosstablesView() {
                   <tbody>
                     {categoryEvents.length === 0 ? (
                       <tr>
-                        <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-4 text-left text-sm text-slate-500">
+                        <td className="sticky left-0 z-20 border-r border-slate-200 bg-slate-50 px-3 py-4 text-left text-sm text-slate-500">
                           No events in this category yet.
                         </td>
                         {participantNames.map((participantName) => (
@@ -212,7 +212,7 @@ export function CrosstablesView() {
                           key={`${category}-${event.id}`}
                           className="odd:bg-white even:bg-slate-50/50"
                         >
-                          <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-2">
+                          <td className="sticky left-0 z-20 border-r border-slate-200 bg-white px-3 py-2">
                             <button
                               type="button"
                               onClick={() => setEditingEventId(event.id)}
