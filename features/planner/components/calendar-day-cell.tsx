@@ -1,6 +1,9 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import { Plus } from "lucide-react";
+
+import { useCreateEvent } from "@/features/planner/components/create-event-context";
 
 type CalendarDayCellProps = {
   day: number;
@@ -16,6 +19,7 @@ export function CalendarDayCell({
   dateKey,
   isWeekend = false,
 }: CalendarDayCellProps) {
+  const { openCreateEvent } = useCreateEvent();
   const { isOver, setNodeRef } = useDroppable({
     id: `date:${dateKey}`,
     data: {
@@ -37,6 +41,15 @@ export function CalendarDayCell({
       }`}
     >
       <div className="text-[11px] font-medium text-slate-500">{day}</div>
+
+      <button
+        type="button"
+        onClick={() => openCreateEvent(dateKey)}
+        aria-label={`Create event on ${dateKey}`}
+        className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        <Plus size={14} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }
