@@ -4,7 +4,7 @@ SAM (Semester Activity Manager) is a collaborative planner for semester schedule
 
 ## Features
 
-- Calendar view for semester planning
+- Calendar view for semester planning with day-cell quick add
 - Crosstables view for "who is in" tracking by category
 - Mobile timeline view for quick scanning
 - Shared inbox for unscheduled events
@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Supabase Setup
 
@@ -74,8 +74,8 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Found a bug? You can report it, and if you feel heroic, fix it too:
 
-- Issues: https://github.com/benni-kr/sam/issues
-- Pull requests: https://github.com/benni-kr/sam/pulls
+- Issues: [https://github.com/benni-kr/sam/issues](https://github.com/benni-kr/sam/issues)
+- Pull requests: [https://github.com/benni-kr/sam/pulls](https://github.com/benni-kr/sam/pulls)
 
 ## License
 
