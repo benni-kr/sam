@@ -37,7 +37,7 @@ export type PlannerSemester = {
   events: PlannerEvent[];
 };
 
-export type PlannerViewKey = "calendar" | "crosstables" | "mobile";
+export type PlannerViewKey = "calendar" | "crosstables" | "list";
 
 export type PlannerView = {
   key: PlannerViewKey;
@@ -45,7 +45,6 @@ export type PlannerView = {
   href: string;
   description: string;
 };
-
 export type PlannerCategorySummary = {
   category: PlannerEventCategory;
   count: number;
@@ -255,10 +254,10 @@ export const plannerViews: PlannerView[] = [
     description: "Who's in cross table",
   },
   {
-    key: "mobile",
+    key: "list",
     label: "List",
-    href: "/mobile",
-    description: "Chronological compact view",
+    href: "/list",
+    description: "Compact schedule feed",
   },
 ];
 
