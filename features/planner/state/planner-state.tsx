@@ -13,7 +13,9 @@ import {
 import {
   resolvePlannerEventStore,
   type PlannerEventsBySemester,
+  type PlannerWeekEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
+import { plannerWeekStateReducer } from "./week-event-reducer";
 
 import {
   SEMESTER_FRIENDS,
@@ -22,12 +24,16 @@ import {
   plannerEventCategories,
   plannerSemesterIds,
   plannerSemesters,
+  plannerWeekEventCategories,
   type PlannerCategorySummary,
   type PlannerEventCategory,
   type PlannerEvent,
   type PlannerMonth,
   type PlannerSemester,
   type PlannerSemesterId,
+  type PlannerWeekEvent,
+  type PlannerWeekEventCategory,
+  type PlannerWeekday,
 } from "@/features/planner/lib/planner";
 
 type EventsBySemester = Record<PlannerSemesterId, PlannerEvent[]>;
@@ -37,9 +43,11 @@ type PlannerStateContextValue = {
   activeSemester: PlannerSemester;
   months: PlannerMonth[];
   events: PlannerEvent[];
+  weekEvents: PlannerWeekEvent[];
   inboxEvents: PlannerEvent[];
   getEventsForDate: (dateKey: string) => PlannerEvent[];
   getEventsCoveringDate: (dateKey: string) => PlannerEvent[];
+  getWeekEventsForDay: (day: PlannerWeekday) => PlannerWeekEvent[];
   categorySummaries: PlannerCategorySummary[];
   chronologicalEvents: PlannerEvent[];
   moveEventToDate: (eventId: string, dateKey: string) => void;
@@ -62,6 +70,26 @@ type PlannerStateContextValue = {
     },
   ) => void;
   deleteEvent: (eventId: string) => void;
+  createWeekEvent: (input: {
+    title: string;
+    category: PlannerWeekEventCategory;
+    day: PlannerWeekday;
+    startTime: string;
+    endTime: string;
+    participants: string[];
+  }) => void;
+  updateWeekEvent: (
+    eventId: string,
+    input: {
+      title: string;
+      category: PlannerWeekEventCategory;
+      day: PlannerWeekday;
+      startTime: string;
+      endTime: string;
+      participants: string[];
+    },
+  ) => void;
+  deleteWeekEvent: (eventId: string) => void;
   toggleParticipant: (eventId: string, participantName: string) => void;
   friends: string[];
   addFriend: (name: string) => void;
@@ -140,6 +168,8 @@ type PlannerAction =
       };
     };
 
+type WeekEventsBySemester = PlannerWeekEventsBySemester;
+
 const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
 );
@@ -200,9 +230,22 @@ function eventDurationInDays(event: PlannerEvent) {
 
 function initializeEventsBySemester(): EventsBySemester {
   return plannerSemesters.reduce((acc, semester) => {
-    acc[semester.id] = [];
+    acc[semester.id] = semester.events.map((event) => ({
+      ...event,
+      participants: [...event.participants],
+    }));
     return acc;
   }, {} as EventsBySemester);
+}
+
+function initializeWeekEventsBySemester(): WeekEventsBySemester {
+  return plannerSemesters.reduce((acc, semester) => {
+    acc[semester.id] = semester.weekEvents.map((event) => ({
+      ...event,
+      participants: [...event.participants],
+    }));
+    return acc;
+  }, {} as WeekEventsBySemester);
 }
 
 function initializeFriends() {
@@ -275,6 +318,41 @@ function filterEventsByFriends(
 
     return acc;
   }, {} as PlannerEventsBySemester);
+}
+
+function buildWeekEventsBySemesterSnapshot(
+  weekEventsBySemester: PlannerWeekEventsBySemester,
+): PlannerWeekEventsBySemester {
+  return plannerSemesterIds.reduce((acc, semesterId) => {
+    const semesterEvents = weekEventsBySemester[semesterId] ?? [];
+
+    acc[semesterId] = semesterEvents.map((event) => ({
+      ...event,
+      participants: [...event.participants],
+    }));
+
+    return acc;
+  }, {} as PlannerWeekEventsBySemester);
+}
+
+function filterWeekEventsByFriends(
+  weekEventsBySemester: PlannerWeekEventsBySemester,
+  friends: string[],
+) {
+  return plannerSemesterIds.reduce((acc, semesterId) => {
+    const semesterEvents = weekEventsBySemester[semesterId] ?? [];
+
+    acc[semesterId] = semesterEvents.map((event) => ({
+      ...event,
+      participants: filterParticipantsByFriends(event.participants, friends),
+    }));
+
+    return acc;
+  }, {} as PlannerWeekEventsBySemester);
+}
+
+function toPlannerPersistenceError(error: unknown, fallbackMessage: string) {
+  return error instanceof Error ? error : new Error(fallbackMessage);
 }
 
 function findSemesterForEvent(
@@ -616,18 +694,29 @@ export function PlannerStateProvider({
     undefined,
     initializeEventsBySemester,
   );
+  const [weekEventsBySemester, dispatchWeek] = useReducer(
+    plannerWeekStateReducer,
+    undefined,
+    initializeWeekEventsBySemester,
+  );
   const didHydrateFromStorage = useRef(false);
   const eventStore = useRef(resolvePlannerEventStore());
   const [friends, setFriends] = useState<string[]>(initializeFriends);
+  const [persistenceError, setPersistenceError] = useState<Error | null>(null);
+
+  if (persistenceError) {
+    throw persistenceError;
+  }
 
   useEffect(() => {
     let cancelled = false;
 
     void Promise.all([
       eventStore.current.loadEventsBySemester(),
+      eventStore.current.loadWeekEventsBySemester(),
       eventStore.current.loadFriends(),
     ])
-      .then(([eventsBySemester, friendsFromStore]) => {
+      .then(([eventsBySemester, weekEventsBySemester, friendsFromStore]) => {
         if (cancelled) {
           return;
         }
@@ -648,10 +737,24 @@ export function PlannerStateProvider({
               : eventsBySemester,
           },
         });
+
+        dispatchWeek({
+          type: "HYDRATE_WEEK_FROM_STORE",
+          payload: {
+            weekEventsBySemester: weekEventsBySemester
+              ? filterWeekEventsByFriends(weekEventsBySemester, hydratedFriends)
+              : weekEventsBySemester,
+          },
+        });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          console.error("Failed to hydrate planner data from Supabase.", error);
+          setPersistenceError(
+            toPlannerPersistenceError(
+              error,
+              "Failed to hydrate planner data from Supabase.",
+            ),
+          );
         }
       })
       .finally(() => {
@@ -671,7 +774,12 @@ export function PlannerStateProvider({
     }
 
     void eventStore.current.saveFriends(friends).catch((error: unknown) => {
-      console.error("Failed to persist planner friends to Supabase.", error);
+      setPersistenceError(
+        toPlannerPersistenceError(
+          error,
+          "Failed to persist planner friends to Supabase.",
+        ),
+      );
     });
   }, [friends]);
 
@@ -684,9 +792,32 @@ export function PlannerStateProvider({
     void eventStore.current
       .saveEventsBySemester(snapshot)
       .catch((error: unknown) => {
-        console.error("Failed to persist planner events to Supabase.", error);
+        setPersistenceError(
+          toPlannerPersistenceError(
+            error,
+            "Failed to persist planner events to Supabase.",
+          ),
+        );
       });
   }, [eventsBySemester]);
+
+  useEffect(() => {
+    if (!didHydrateFromStorage.current) {
+      return;
+    }
+
+    const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
+    void eventStore.current
+      .saveWeekEventsBySemester(snapshot)
+      .catch((error: unknown) => {
+        setPersistenceError(
+          toPlannerPersistenceError(
+            error,
+            "Failed to persist planner week events to Supabase.",
+          ),
+        );
+      });
+  }, [weekEventsBySemester]);
 
   const normalizedSemesterId = (
     plannerSemesters.some((semester) => semester.id === activeSemesterId)
@@ -697,6 +828,8 @@ export function PlannerStateProvider({
   const activeSemester = getPlannerSemester(normalizedSemesterId);
   const events =
     eventsBySemester[normalizedSemesterId] ?? activeSemester.events;
+  const weekEvents =
+    weekEventsBySemester[normalizedSemesterId] ?? activeSemester.weekEvents;
   const inboxEvents = getInboxEventsFromState(eventsBySemester);
 
   const value = useMemo<PlannerStateContextValue>(() => {
@@ -708,11 +841,14 @@ export function PlannerStateProvider({
       activeSemester,
       months: activeSemester.months,
       events,
+      weekEvents,
       inboxEvents,
       getEventsForDate: (dateKey) =>
         events.filter((event) => event.startDate === dateKey),
       getEventsCoveringDate: (dateKey) =>
         events.filter((event) => eventCoversDate(event, dateKey)),
+      getWeekEventsForDay: (day) =>
+        weekEvents.filter((event) => event.day === day),
       categorySummaries,
       chronologicalEvents,
       moveEventToDate: (eventId, dateKey) => {
@@ -787,6 +923,61 @@ export function PlannerStateProvider({
       deleteEvent: (eventId) => {
         dispatch({
           type: "DELETE_EVENT",
+          payload: { eventId },
+        });
+      },
+      createWeekEvent: (input) => {
+        const title = input.title.trim();
+
+        if (!title || !plannerWeekEventCategories.includes(input.category)) {
+          return;
+        }
+
+        dispatchWeek({
+          type: "CREATE_WEEK_EVENT",
+          payload: {
+            semesterId: normalizedSemesterId,
+            event: {
+              id: `wevt-${crypto.randomUUID()}`,
+              title,
+              category: input.category,
+              day: input.day,
+              startTime: input.startTime,
+              endTime: input.endTime,
+              participants: filterParticipantsByFriends(
+                input.participants,
+                friends,
+              ),
+            },
+          },
+        });
+      },
+      updateWeekEvent: (eventId, input) => {
+        const title = input.title.trim();
+
+        if (!title || !plannerWeekEventCategories.includes(input.category)) {
+          return;
+        }
+
+        dispatchWeek({
+          type: "UPDATE_WEEK_EVENT",
+          payload: {
+            eventId,
+            title,
+            category: input.category,
+            day: input.day,
+            startTime: input.startTime,
+            endTime: input.endTime,
+            participants: filterParticipantsByFriends(
+              input.participants,
+              friends,
+            ),
+          },
+        });
+      },
+      deleteWeekEvent: (eventId) => {
+        dispatchWeek({
+          type: "DELETE_WEEK_EVENT",
           payload: { eventId },
         });
       },
@@ -909,7 +1100,14 @@ export function PlannerStateProvider({
         });
       },
     };
-  }, [activeSemester, events, friends, inboxEvents, normalizedSemesterId]);
+  }, [
+    activeSemester,
+    events,
+    friends,
+    inboxEvents,
+    normalizedSemesterId,
+    weekEvents,
+  ]);
 
   return (
     <PlannerStateContext.Provider value={value}>
