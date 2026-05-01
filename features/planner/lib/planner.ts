@@ -11,12 +11,54 @@ export const plannerEventCategories: PlannerEventCategory[] = [
   "Other",
 ];
 
+export type PlannerWeekEventCategory =
+  | "University"
+  | "Language courses"
+  | "Sports"
+  | "Other";
+
+export const plannerWeekEventCategories: PlannerWeekEventCategory[] = [
+  "University",
+  "Language courses",
+  "Sports",
+  "Other",
+];
+
+export type PlannerWeekday =
+  | "Mon"
+  | "Tue"
+  | "Wed"
+  | "Thu"
+  | "Fri"
+  | "Sat"
+  | "Sun";
+
+export const plannerWeekdays: PlannerWeekday[] = [
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+  "Sun",
+];
+
 export type PlannerEvent = {
   id: string;
   title: string;
   category: PlannerEventCategory;
   startDate: string | null;
   endDate: string | null;
+  participants: string[];
+};
+
+export type PlannerWeekEvent = {
+  id: string;
+  title: string;
+  category: PlannerWeekEventCategory;
+  day: PlannerWeekday;
+  startTime: string;
+  endTime: string;
   participants: string[];
 };
 
@@ -35,9 +77,10 @@ export type PlannerSemester = {
   description: string;
   months: PlannerMonth[];
   events: PlannerEvent[];
+  weekEvents: PlannerWeekEvent[];
 };
 
-export type PlannerViewKey = "calendar" | "crosstables" | "list";
+export type PlannerViewKey = "calendar" | "crosstables" | "list" | "week";
 
 export type PlannerView = {
   key: PlannerViewKey;
@@ -134,6 +177,45 @@ const springSemesterEvents: PlannerEvent[] = [
   },
 ];
 
+const springSemesterWeekEvents: PlannerWeekEvent[] = [
+  {
+    id: "week-1",
+    title: "Algorithms lecture",
+    category: "University",
+    day: "Mon",
+    startTime: "08:15",
+    endTime: "09:45",
+    participants: ["Maya", "Leo"],
+  },
+  {
+    id: "week-2",
+    title: "German conversation class",
+    category: "Language courses",
+    day: "Mon",
+    startTime: "17:00",
+    endTime: "18:30",
+    participants: ["Ava", "Nina"],
+  },
+  {
+    id: "week-3",
+    title: "Basketball training",
+    category: "Sports",
+    day: "Tue",
+    startTime: "18:15",
+    endTime: "19:45",
+    participants: ["Sam"],
+  },
+  {
+    id: "week-4",
+    title: "Portfolio review",
+    category: "Other",
+    day: "Thu",
+    startTime: "16:30",
+    endTime: "17:30",
+    participants: ["Jules", "Tara"],
+  },
+];
+
 const fallSemesterEvents: PlannerEvent[] = [
   {
     id: "evt-10",
@@ -201,6 +283,45 @@ const fallSemesterEvents: PlannerEvent[] = [
   },
 ];
 
+const fallSemesterWeekEvents: PlannerWeekEvent[] = [
+  {
+    id: "week-5",
+    title: "Systems seminar",
+    category: "University",
+    day: "Wed",
+    startTime: "10:00",
+    endTime: "11:30",
+    participants: ["Mika", "Tara"],
+  },
+  {
+    id: "week-6",
+    title: "Spanish lab",
+    category: "Language courses",
+    day: "Fri",
+    startTime: "12:30",
+    endTime: "13:30",
+    participants: ["Ava", "Leo"],
+  },
+  {
+    id: "week-7",
+    title: "Climbing session",
+    category: "Sports",
+    day: "Sat",
+    startTime: "11:00",
+    endTime: "13:00",
+    participants: ["Jules", "Sam"],
+  },
+  {
+    id: "week-8",
+    title: "Weekly reset",
+    category: "Other",
+    day: "Sun",
+    startTime: "19:00",
+    endTime: "20:00",
+    participants: ["Maya"],
+  },
+];
+
 export const plannerSemesters: PlannerSemester[] = [
   {
     id: "spring-2026",
@@ -217,6 +338,7 @@ export const plannerSemesters: PlannerSemester[] = [
       { label: "September", year: 2026, monthIndex: 8 },
     ],
     events: springSemesterEvents,
+    weekEvents: springSemesterWeekEvents,
   },
   {
     id: "fall-2026",
@@ -233,6 +355,7 @@ export const plannerSemesters: PlannerSemester[] = [
       { label: "March", year: 2027, monthIndex: 2 },
     ],
     events: fallSemesterEvents,
+    weekEvents: fallSemesterWeekEvents,
   },
 ];
 
@@ -258,6 +381,12 @@ export const plannerViews: PlannerView[] = [
     label: "List",
     href: "/list",
     description: "Compact schedule feed",
+  },
+  {
+    key: "week",
+    label: "Week",
+    href: "/week",
+    description: "Monday-to-Sunday weekly timetable",
   },
 ];
 

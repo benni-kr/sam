@@ -25,12 +25,16 @@ import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { PlannerTabs } from "@/features/planner/components/planner-tabs";
 import { SidebarInbox } from "@/features/planner/components/sidebar-inbox";
+import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
+import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
   plannerSemesters,
   type PlannerEventCategory,
   type PlannerEvent,
+  type PlannerWeekEventCategory,
+  type PlannerWeekday,
 } from "@/features/planner/lib/planner";
 
 type PlannerShellProps = {
@@ -241,6 +245,7 @@ function PlannerShellFrame({
     moveEventToInbox,
     moveEventToDate,
     createEvent,
+    createWeekEvent,
     friends,
     addFriend,
     renameFriend,
@@ -249,11 +254,19 @@ function PlannerShellFrame({
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateWeekModalOpen, setIsCreateWeekModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<PlannerEventCategory>("Exam");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
+  const [weekTitle, setWeekTitle] = useState("");
+  const [weekCategory, setWeekCategory] =
+    useState<PlannerWeekEventCategory>("University");
+  const [weekDay, setWeekDay] = useState<PlannerWeekday>("Mon");
+  const [weekStartTime, setWeekStartTime] = useState("");
+  const [weekEndTime, setWeekEndTime] = useState("");
+  const [weekParticipants, setWeekParticipants] = useState<string[]>([]);
   const [newFriendName, setNewFriendName] = useState("");
   const [editingFriendName, setEditingFriendName] = useState<string | null>(
     null,
@@ -350,6 +363,46 @@ function PlannerShellFrame({
     setParticipants([]);
   }
 
+  function openCreateWeekEvent(day: PlannerWeekday = "Mon") {
+    setWeekTitle("");
+    setWeekCategory("University");
+    setWeekDay(day);
+    setWeekStartTime("");
+    setWeekEndTime("");
+    setWeekParticipants([]);
+    setIsCreateWeekModalOpen(true);
+  }
+
+  function closeCreateWeekEvent() {
+    setIsCreateWeekModalOpen(false);
+    setWeekTitle("");
+    setWeekCategory("University");
+    setWeekDay("Mon");
+    setWeekStartTime("");
+    setWeekEndTime("");
+    setWeekParticipants([]);
+  }
+
+  function handleCreateWeekEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedRange = getDefaultWeekAppointmentTimeRange(
+      weekStartTime,
+      weekEndTime,
+    );
+
+    createWeekEvent({
+      title: weekTitle,
+      category: weekCategory,
+      day: weekDay,
+      startTime: normalizedRange.startTime,
+      endTime: normalizedRange.endTime,
+      participants: weekParticipants,
+    });
+
+    closeCreateWeekEvent();
+  }
+
   function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -395,7 +448,7 @@ function PlannerShellFrame({
   }
 
   return (
-    <CreateEventProvider value={{ openCreateEvent }}>
+    <CreateEventProvider value={{ openCreateEvent, openCreateWeekEvent }}>
       <DndContext
         id="sam-planner-dnd"
         sensors={sensors}
@@ -456,37 +509,75 @@ function PlannerShellFrame({
 
                 <PlannerTabs activeSemesterId={semesterId} />
 
-                <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    Categories
-                  </p>
-                  <div className="mt-3 space-y-2 text-xs text-slate-700">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-                      Exam
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                      Group Event
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                      Private Event
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-                      Other
-                    </div>
-                  </div>
-                </section>
+                {pathname === "/week" ? (
+                  <>
+                    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Weekly categories
+                      </p>
+                      <div className="mt-3 space-y-2 text-xs text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
+                          University
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-blue-900" />
+                          Language courses
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
+                          Sports
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-900" />
+                          Other
+                        </div>
+                      </div>
+                    </section>
 
-                <button
-                  type="button"
-                  onClick={() => openCreateEvent()}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  + Add Event
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => openCreateWeekEvent()}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      + Add weekly appointment
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Categories
+                      </p>
+                      <div className="mt-3 space-y-2 text-xs text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+                          Exam
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                          Group Event
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                          Private Event
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+                          Other
+                        </div>
+                      </div>
+                    </section>
+
+                    <button
+                      type="button"
+                      onClick={() => openCreateEvent()}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      + Add Event
+                    </button>
+                  </>
+                )}
 
                 <button
                   type="button"
@@ -541,7 +632,9 @@ function PlannerShellFrame({
                   </>
                 ) : null}
 
-                {pathname === "/crosstables" ? null : <SidebarInbox />}
+                {pathname === "/crosstables" || pathname === "/week" ? null : (
+                  <SidebarInbox />
+                )}
               </div>
             </aside>
 
@@ -584,6 +677,38 @@ function PlannerShellFrame({
                 onParticipantsChange={setParticipants}
                 onSubmit={handleCreateEvent}
                 onCancel={closeCreateEvent}
+              />
+            </section>
+          </div>
+        ) : null}
+
+        {isCreateWeekModalOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
+            onClick={closeCreateWeekEvent}
+          >
+            <section
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <PlannerWeekEventForm
+                heading="Add weekly appointment"
+                submitLabel="Add weekly appointment"
+                title={weekTitle}
+                category={weekCategory}
+                day={weekDay}
+                startTime={weekStartTime}
+                endTime={weekEndTime}
+                participants={weekParticipants}
+                availableParticipants={friends}
+                onTitleChange={setWeekTitle}
+                onCategoryChange={setWeekCategory}
+                onDayChange={setWeekDay}
+                onStartTimeChange={setWeekStartTime}
+                onEndTimeChange={setWeekEndTime}
+                onParticipantsChange={setWeekParticipants}
+                onSubmit={handleCreateWeekEvent}
+                onCancel={closeCreateWeekEvent}
               />
             </section>
           </div>
