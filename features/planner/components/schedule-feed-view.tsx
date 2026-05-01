@@ -11,7 +11,6 @@ import type {
   PlannerEventCategory,
 } from "@/features/planner/lib/planner";
 
-
 const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
   month: "short",
@@ -22,7 +21,6 @@ const badgeDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
 });
-
 
 function formatDate(dateKey: string) {
   return shortDateFormatter.format(new Date(`${dateKey}T12:00:00`));
@@ -45,7 +43,10 @@ function getTodayDateKey() {
   return `${year}-${month}-${day}`;
 }
 
-function getEventStatus(event: PlannerEvent, todayDateKey: string): "Active" | "Upcoming" | "Completed" {
+function getEventStatus(
+  event: PlannerEvent,
+  todayDateKey: string,
+): "Active" | "Upcoming" | "Completed" {
   const endDate = event.endDate ?? event.startDate ?? todayDateKey;
 
   if (
@@ -62,7 +63,6 @@ function getEventStatus(event: PlannerEvent, todayDateKey: string): "Active" | "
 
   return "Completed";
 }
-
 
 function categoryTone(category: string) {
   switch (category) {
@@ -146,11 +146,12 @@ export function ScheduleFeedView() {
           ) : (
             <section className="space-y-3 p-2 sm:p-3">
               {sortedEvents.map((event, idx) => {
-                const scheduledLabel = event.startDate
-                  ? event.endDate && event.endDate !== event.startDate
-                    ? `${formatDate(event.startDate)} to ${formatDate(event.endDate)}`
-                    : formatDate(event.startDate)
-                  : "Unscheduled";
+                const scheduledLabel =
+                  event.startDate &&
+                  event.endDate &&
+                  event.endDate !== event.startDate
+                    ? `to ${formatDate(event.endDate)}`
+                    : null;
 
                 const badgeDate = event.startDate
                   ? formatDateBadge(event.startDate)
@@ -167,7 +168,7 @@ export function ScheduleFeedView() {
                   <div key={event.id}>
                     {thisMonth && thisMonth !== prevMonth ? (
                       <div className="mb-2 flex items-center gap-3 px-2">
-                        <span className="text-sm font-semibold text-slate-700">
+                        <span className="text-lg font-semibold text-slate-800 sm:text-xl">
                           {new Date(
                             `${event.startDate}T12:00:00`,
                           ).toLocaleString(undefined, {
@@ -217,9 +218,11 @@ export function ScheduleFeedView() {
                               >
                                 {event.title}
                               </button>
-                              <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                                {scheduledLabel}
-                              </p>
+                              {scheduledLabel ? (
+                                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                                  {scheduledLabel}
+                                </p>
+                              ) : null}
                             </div>
 
                             <span
@@ -288,7 +291,9 @@ function EventEditModal({
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(event.title);
-  const [category, setCategory] = useState<PlannerEventCategory>(event.category);
+  const [category, setCategory] = useState<PlannerEventCategory>(
+    event.category,
+  );
   const [startDate, setStartDate] = useState(event.startDate ?? "");
   const [endDate, setEndDate] = useState(event.endDate ?? "");
   const [participants, setParticipants] = useState(event.participants);
@@ -334,7 +339,7 @@ function EventEditModal({
         className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
         onClick={(nextEvent) => nextEvent.stopPropagation()}
       >
-          <PlannerEventForm
+        <PlannerEventForm
           heading="Edit event"
           submitLabel="Save changes"
           title={title}

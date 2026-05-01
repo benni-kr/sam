@@ -35,7 +35,7 @@ export function MonthCard({ month }: MonthCardProps) {
     <article className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
       <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-base font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-lg">
             {month.label}
           </p>
         </div>
