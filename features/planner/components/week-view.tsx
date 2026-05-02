@@ -393,11 +393,7 @@ export function WeekView() {
           ).map((hour) => (
             <div
               key={hour}
-              className="absolute flex w-full items-center justify-center text-[9px] font-medium text-slate-500"
-              style={{
-                top: `${((hour * 60 - WEEK_START_MINUTES) / (WEEK_END_MINUTES - WEEK_START_MINUTES)) * 100}%`,
-                transform: "translateY(-50%)",
-              }}
+              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-slate-500"
             >
               <span
                 className={hour === 24 ? "font-semibold text-slate-700" : ""}
