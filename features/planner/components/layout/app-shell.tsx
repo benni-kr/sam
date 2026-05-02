@@ -23,7 +23,7 @@ import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
-import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
+import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
@@ -486,67 +486,47 @@ function AppShellFrame({
         </DragOverlay>
 
         {isCreateModalOpen ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-            onClick={closeCreateEvent}
-          >
-            <section
-              className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PlannerEventForm
-                heading="Add event"
-                submitLabel="Add event"
-                title={title}
-                category={category}
-                startDate={startDate}
-                endDate={endDate}
-                participants={participants}
-                availableParticipants={friends}
-                onTitleChange={setTitle}
-                onCategoryChange={(nextCategory: PlannerEventCategory) =>
-                  setCategory(nextCategory)
-                }
-                onStartDateChange={setStartDate}
-                onEndDateChange={setEndDate}
-                onParticipantsChange={setParticipants}
-                onSubmit={handleCreateEvent}
-                onCancel={closeCreateEvent}
-              />
-            </section>
-          </div>
+          <PlannerEventForm
+            heading="Add event"
+            submitLabel="Add event"
+            title={title}
+            category={category}
+            startDate={startDate}
+            endDate={endDate}
+            participants={participants}
+            availableParticipants={friends}
+            onTitleChange={setTitle}
+            onCategoryChange={(nextCategory: PlannerEventCategory) =>
+              setCategory(nextCategory)
+            }
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            onParticipantsChange={setParticipants}
+            onSubmit={handleCreateEvent}
+            onCancel={closeCreateEvent}
+          />
         ) : null}
 
         {isCreateWeekModalOpen ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-            onClick={closeCreateWeekEvent}
-          >
-            <section
-              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PlannerWeekEventForm
-                heading="Add weekly appointment"
-                submitLabel="Add weekly appointment"
-                title={weekTitle}
-                category={weekCategory}
-                day={weekDay}
-                startTime={weekStartTime}
-                endTime={weekEndTime}
-                participants={weekParticipants}
-                availableParticipants={friends}
-                onTitleChange={setWeekTitle}
-                onCategoryChange={setWeekCategory}
-                onDayChange={setWeekDay}
-                onStartTimeChange={setWeekStartTime}
-                onEndTimeChange={setWeekEndTime}
-                onParticipantsChange={setWeekParticipants}
-                onSubmit={handleCreateWeekEvent}
-                onCancel={closeCreateWeekEvent}
-              />
-            </section>
-          </div>
+          <PlannerWeekEventForm
+            heading="Add weekly appointment"
+            submitLabel="Add weekly appointment"
+            title={weekTitle}
+            category={weekCategory}
+            day={weekDay}
+            startTime={weekStartTime}
+            endTime={weekEndTime}
+            participants={weekParticipants}
+            availableParticipants={friends}
+            onTitleChange={setWeekTitle}
+            onCategoryChange={setWeekCategory}
+            onDayChange={setWeekDay}
+            onStartTimeChange={setWeekStartTime}
+            onEndTimeChange={setWeekEndTime}
+            onParticipantsChange={setWeekParticipants}
+            onSubmit={handleCreateWeekEvent}
+            onCancel={closeCreateWeekEvent}
+          />
         ) : null}
 
         {isManageFriendsOpen ? (

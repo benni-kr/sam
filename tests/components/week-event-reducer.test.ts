@@ -10,7 +10,9 @@ import {
   type PlannerWeekEvent,
 } from "../../features/planner/lib/planner";
 
-function makeEvent(overrides: Partial<PlannerWeekEvent> = {}): PlannerWeekEvent {
+function makeEvent(
+  overrides: Partial<PlannerWeekEvent> = {},
+): PlannerWeekEvent {
   return {
     id: "week-test-1",
     title: "Algorithms lecture",
@@ -55,7 +57,9 @@ describe("plannerWeekStateReducer", () => {
 
     it("replaces state with hydrated data, deep-cloning participants", () => {
       const initial = cloneState();
-      const hydrated = cloneState([makeEvent({ id: "week-h-1", title: "Hydrated" })]);
+      const hydrated = cloneState([
+        makeEvent({ id: "week-h-1", title: "Hydrated" }),
+      ]);
 
       const action: PlannerWeekAction = {
         type: "HYDRATE_WEEK_FROM_STORE",
@@ -68,16 +72,25 @@ describe("plannerWeekStateReducer", () => {
       expect(nextState[plannerSemesterIds[0]]![0].title).toBe("Hydrated");
 
       // participants must be a deep clone, not the same reference
-      const originalParticipants = hydrated[plannerSemesterIds[0]]![0].participants;
-      const clonedParticipants = nextState[plannerSemesterIds[0]]![0].participants;
+      const originalParticipants =
+        hydrated[plannerSemesterIds[0]]![0].participants;
+      const clonedParticipants =
+        nextState[plannerSemesterIds[0]]![0].participants;
       expect(clonedParticipants).toEqual(originalParticipants);
       expect(clonedParticipants).not.toBe(originalParticipants);
     });
 
     it("populates all semesters from the hydrated store", () => {
       const initial = cloneState();
-      const springEvent = makeEvent({ id: "spring-1", title: "Spring lecture" });
-      const fallEvent = makeEvent({ id: "fall-1", title: "Fall lecture", day: "Wed" });
+      const springEvent = makeEvent({
+        id: "spring-1",
+        title: "Spring lecture",
+      });
+      const fallEvent = makeEvent({
+        id: "fall-1",
+        title: "Fall lecture",
+        day: "Wed",
+      });
       const hydrated = cloneState([springEvent], [fallEvent]);
 
       const action: PlannerWeekAction = {
@@ -147,7 +160,9 @@ describe("plannerWeekStateReducer", () => {
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-      const updated = nextState[plannerSemesterIds[0]]!.find((e) => e.id === "week-1");
+      const updated = nextState[plannerSemesterIds[0]]!.find(
+        (e) => e.id === "week-1",
+      );
 
       expect(updated).toMatchObject({
         title: "New title",
@@ -196,7 +211,9 @@ describe("plannerWeekStateReducer", () => {
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-      const updated = nextState[plannerSemesterIds[1]]!.find((e) => e.id === "fall-evt");
+      const updated = nextState[plannerSemesterIds[1]]!.find(
+        (e) => e.id === "fall-evt",
+      );
 
       expect(updated?.title).toBe("Updated fall lecture");
     });

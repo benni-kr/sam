@@ -80,7 +80,6 @@ export function DatePicker({
             locale={enGB}
             selected={selectedDate}
             onDayClick={(_, __, event) => {
-              // Prevent form submission when day buttons are clicked inside forms.
               event.preventDefault();
             }}
             onSelect={(date) => {
