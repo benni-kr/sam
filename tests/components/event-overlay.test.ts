@@ -68,7 +68,7 @@ describe("buildMonthWeekEventLayouts", () => {
     expect(longInWeekFive).toMatchObject({
       startColumn: 1,
       columnSpan: 2,
-      showLabel: false,
+      showLabel: true,
       roundLeft: false,
       roundRight: true,
     });

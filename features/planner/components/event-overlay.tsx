@@ -43,7 +43,6 @@ export function buildMonthWeekEventLayouts({
   events,
 }: BuildMonthWeekEventLayoutsArgs): MonthWeekEventLayout[] {
   const rowLayouts: MonthWeekEventLayout[] = [];
-  const labeledEventIds = new Set<string>();
   const rows = Math.ceil(cells.length / WEEK_SIZE);
 
   for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
@@ -110,7 +109,7 @@ export function buildMonthWeekEventLayouts({
           event,
           startColumn,
           columnSpan: endColumn - startColumn + 1,
-          showLabel: !labeledEventIds.has(event.id),
+          showLabel: true as boolean,
           roundLeft: visibleStartDate === eventStartDate,
           roundRight: visibleEndDate === eventEndDate,
         } satisfies Omit<MonthWeekEventSegment, "lane">;
@@ -152,8 +151,6 @@ export function buildMonthWeekEventLayouts({
       } else {
         laneEndColumns[lane] = segment.startColumn + segment.columnSpan - 1;
       }
-
-      labeledEventIds.add(segment.event.id);
 
       segments.push({
         ...segment,
