@@ -10,7 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
+import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
 import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
 import {
   plannerWeekdays,
@@ -416,7 +416,7 @@ export function WeekView() {
         ))}
       </div>
 
-      {editingEvent
+      {editingEvent && typeof document !== "undefined"
         ? createPortal(
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
@@ -480,7 +480,7 @@ export function WeekView() {
                 />
               </section>
             </div>,
-            typeof document !== "undefined" ? document.body : document.documentElement,
+            document.body,
           )
         : null}
     </section>

@@ -15,7 +15,7 @@ import {
   type PlannerEventsBySemester,
   type PlannerWeekEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
-import { plannerWeekStateReducer } from "./week-event-reducer";
+import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
 
 import {
   SEMESTER_FRIENDS,

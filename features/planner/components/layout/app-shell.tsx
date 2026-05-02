@@ -22,7 +22,7 @@ import { CreateEventProvider } from "@/features/planner/components/create-event-
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
-import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
+import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
 import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
 import {
   defaultPlannerSemesterId,

@@ -12,7 +12,8 @@ export function SidebarContent() {
   const router = useRouter();
   const semesterId = searchParams.get("semester") ?? defaultPlannerSemesterId;
 
-  const { openCreateEvent, openCreateWeekEvent, openManageFriends } = useCreateEvent();
+  const { openCreateEvent, openCreateWeekEvent, openManageFriends } =
+    useCreateEvent();
 
   const hideFinished = searchParams.get("hideFinished") !== "0";
   const hideUndated = searchParams.get("hideUndated") === "1";
@@ -144,9 +145,13 @@ export function SidebarContent() {
                 type="button"
                 role="switch"
                 aria-checked={hideFinished}
-                onClick={() => setCrosstablesFilterParam("hideFinished", !hideFinished)}
+                onClick={() =>
+                  setCrosstablesFilterParam("hideFinished", !hideFinished)
+                }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
-                  hideFinished ? "border-slate-900 bg-slate-900" : "border-slate-300 bg-slate-200"
+                  hideFinished
+                    ? "border-slate-900 bg-slate-900"
+                    : "border-slate-300 bg-slate-200"
                 }`}
               >
                 <span
@@ -165,9 +170,13 @@ export function SidebarContent() {
                     type="button"
                     role="switch"
                     aria-checked={hideUndated}
-                    onClick={() => setCrosstablesFilterParam("hideUndated", !hideUndated)}
+                    onClick={() =>
+                      setCrosstablesFilterParam("hideUndated", !hideUndated)
+                    }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
-                      hideUndated ? "border-slate-900 bg-slate-900" : "border-slate-300 bg-slate-200"
+                      hideUndated
+                        ? "border-slate-900 bg-slate-900"
+                        : "border-slate-300 bg-slate-200"
                     }`}
                   >
                     <span
@@ -184,14 +193,23 @@ export function SidebarContent() {
                     type="button"
                     role="switch"
                     aria-checked={hideInactiveParticipants}
-                    onClick={() => setCrosstablesFilterParam("hideInactive", !hideInactiveParticipants)}
+                    onClick={() =>
+                      setCrosstablesFilterParam(
+                        "hideInactive",
+                        !hideInactiveParticipants,
+                      )
+                    }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
-                      hideInactiveParticipants ? "border-slate-900 bg-slate-900" : "border-slate-300 bg-slate-200"
+                      hideInactiveParticipants
+                        ? "border-slate-900 bg-slate-900"
+                        : "border-slate-300 bg-slate-200"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                        hideInactiveParticipants ? "translate-x-5" : "translate-x-1"
+                        hideInactiveParticipants
+                          ? "translate-x-5"
+                          : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -202,7 +220,9 @@ export function SidebarContent() {
         </section>
       )}
 
-      {pathname === "/crosstables" || pathname === "/week" ? null : <SidebarInbox />}
+      {pathname === "/crosstables" || pathname === "/week" ? null : (
+        <SidebarInbox />
+      )}
     </>
   );
 }

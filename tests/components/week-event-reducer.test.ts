@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   plannerWeekStateReducer,
   type PlannerWeekAction,
-} from "../../features/planner/state/week-event-reducer";
+} from "../../features/weekly-schedule/state/week-event-reducer";
 import { type PlannerWeekEventsBySemester } from "../../features/planner/lib/planner-persistence";
 import {
   plannerSemesterIds,
