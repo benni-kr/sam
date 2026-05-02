@@ -68,6 +68,8 @@ function categoryTone(category: string) {
   switch (category) {
     case "Exam":
       return "border-violet-200 bg-violet-50 text-violet-900";
+    case "Language Exam":
+      return "border-rose-200 bg-rose-50 text-rose-900";
     case "Group Event":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
     case "Private Event":

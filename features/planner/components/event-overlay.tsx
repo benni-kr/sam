@@ -243,6 +243,8 @@ function getEventTone(category: PlannerEvent["category"]) {
   switch (category) {
     case "Exam":
       return "border-violet-300 bg-violet-100 text-violet-900";
+    case "Language Exam":
+      return "border-rose-200 bg-rose-50 text-rose-900";
     case "Group Event":
       return "border-emerald-300 bg-emerald-100 text-emerald-900";
     case "Private Event":

@@ -1,11 +1,14 @@
+// In your planner.ts file
 export type PlannerEventCategory =
   | "Exam"
+  | "Language Exam"
   | "Group Event"
   | "Private Event"
   | "Other";
 
 export const plannerEventCategories: PlannerEventCategory[] = [
   "Exam",
+  "Language Exam",
   "Group Event",
   "Private Event",
   "Other",
