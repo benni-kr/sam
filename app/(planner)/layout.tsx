@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { PlannerShell } from "@/features/planner/components/planner-shell";
+import { AppShell } from "@/features/planner/components/layout/app-shell";
+import { SidebarContent } from "@/features/planner/components/sidebar-content";
 import { AuthGuard } from "@/features/planner/components/auth-guard";
 
 export default function PlannerLayout({
@@ -12,7 +13,7 @@ export default function PlannerLayout({
   return (
     <Suspense fallback={null}>
       <AuthGuard>
-        <PlannerShell>{children}</PlannerShell>
+        <AppShell sidebarContent={<SidebarContent />}>{children}</AppShell>
       </AuthGuard>
     </Suspense>
   );

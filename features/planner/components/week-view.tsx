@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type FormEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
 import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
@@ -415,70 +416,73 @@ export function WeekView() {
         ))}
       </div>
 
-      {editingEvent ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-          onClick={() => setEditingEvent(null)}
-        >
-          <section
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <PlannerWeekEventForm
-              heading="Edit weekly appointment"
-              submitLabel="Save changes"
-              title={editingEvent.title}
-              category={editingEvent.category}
-              day={editingEvent.day}
-              startTime={editingEvent.startTime}
-              endTime={editingEvent.endTime}
-              participants={editingEvent.participants}
-              availableParticipants={friends}
-              onTitleChange={(value) =>
-                setEditingEvent((current) =>
-                  current ? { ...current, title: value } : current,
-                )
-              }
-              onCategoryChange={(value) =>
-                setEditingEvent((current) =>
-                  current ? { ...current, category: value } : current,
-                )
-              }
-              onDayChange={(value) =>
-                setEditingEvent((current) =>
-                  current ? { ...current, day: value } : current,
-                )
-              }
-              onStartTimeChange={(value) =>
-                setEditingEvent((current) =>
-                  current ? { ...current, startTime: value } : current,
-                )
-              }
-              onEndTimeChange={(value) =>
-                setEditingEvent((current) =>
-                  current ? { ...current, endTime: value } : current,
-                )
-              }
-              onParticipantsChange={(value) =>
-                setEditingEvent((current) =>
-                  current ? { ...current, participants: value } : current,
-                )
-              }
-              onSubmit={handleSubmitEdit}
-              onCancel={() => setEditingEvent(null)}
-              deleteAction={{
-                label: "Delete appointment",
-                prompt: "Delete this weekly appointment?",
-                confirmLabel: "Delete",
-                onDelete: () => {
-                  deleteWeekEvent(editingEvent.id);
-                  setEditingEvent(null);
-                },
-              }}
-            />
-          </section>
-        </div>
-      ) : null}
+      {editingEvent
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
+              onClick={() => setEditingEvent(null)}
+            >
+              <section
+                className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <PlannerWeekEventForm
+                  heading="Edit weekly appointment"
+                  submitLabel="Save changes"
+                  title={editingEvent.title}
+                  category={editingEvent.category}
+                  day={editingEvent.day}
+                  startTime={editingEvent.startTime}
+                  endTime={editingEvent.endTime}
+                  participants={editingEvent.participants}
+                  availableParticipants={friends}
+                  onTitleChange={(value) =>
+                    setEditingEvent((current) =>
+                      current ? { ...current, title: value } : current,
+                    )
+                  }
+                  onCategoryChange={(value) =>
+                    setEditingEvent((current) =>
+                      current ? { ...current, category: value } : current,
+                    )
+                  }
+                  onDayChange={(value) =>
+                    setEditingEvent((current) =>
+                      current ? { ...current, day: value } : current,
+                    )
+                  }
+                  onStartTimeChange={(value) =>
+                    setEditingEvent((current) =>
+                      current ? { ...current, startTime: value } : current,
+                    )
+                  }
+                  onEndTimeChange={(value) =>
+                    setEditingEvent((current) =>
+                      current ? { ...current, endTime: value } : current,
+                    )
+                  }
+                  onParticipantsChange={(value) =>
+                    setEditingEvent((current) =>
+                      current ? { ...current, participants: value } : current,
+                    )
+                  }
+                  onSubmit={handleSubmitEdit}
+                  onCancel={() => setEditingEvent(null)}
+                  deleteAction={{
+                    label: "Delete appointment",
+                    prompt: "Delete this weekly appointment?",
+                    confirmLabel: "Delete",
+                    onDelete: () => {
+                      deleteWeekEvent(editingEvent.id);
+                      setEditingEvent(null);
+                    },
+                  }}
+                />
+              </section>
+            </div>,
+            typeof document !== "undefined" ? document.body : document.documentElement,
+          )
+        : null}
     </section>
   );
 }
