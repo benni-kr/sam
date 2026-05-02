@@ -1,9 +1,11 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { PlannerWeekday } from "@/features/planner/lib/planner";
 
 type CreateEventContextValue = {
   openCreateEvent: (dateKey?: string) => void;
+  openCreateWeekEvent: (day?: PlannerWeekday) => void;
 };
 
 const CreateEventContext = createContext<CreateEventContextValue | null>(null);

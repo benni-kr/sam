@@ -1,0 +1,484 @@
+"use client";
+
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
+
+import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
+import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
+import {
+  plannerWeekdays,
+  type PlannerWeekEvent,
+  type PlannerWeekEventCategory,
+  type PlannerWeekday,
+} from "@/features/planner/lib/planner";
+import { usePlannerState } from "@/features/planner/state/planner-state";
+
+type DayLayout = {
+  groups: EventGroup[];
+};
+
+type EventGroup = {
+  startMinutes: number;
+  endMinutes: number;
+  laneCount: number;
+  items: PositionedWeekEvent[];
+};
+
+type PositionedWeekEvent = {
+  event: PlannerWeekEvent;
+  lane: number;
+  startMinutes: number;
+  endMinutes: number;
+};
+
+const WEEK_START_MINUTES = 6 * 60;
+const WEEK_END_MINUTES = 24 * 60;
+const MIN_EVENT_HEIGHT = 42;
+
+const CATEGORY_STYLES: Record<PlannerWeekEventCategory, { card: string }> = {
+  University: {
+    card: "border-slate-300 bg-slate-100 text-slate-950",
+  },
+  "Language courses": {
+    card: "border-blue-800 bg-blue-100 text-blue-950",
+  },
+  Sports: {
+    card: "border-orange-300 bg-orange-100 text-orange-950",
+  },
+  Other: {
+    card: "border-emerald-500 bg-emerald-100 text-emerald-950",
+  },
+};
+
+function parseTimeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return WEEK_START_MINUTES;
+  }
+  return hours * 60 + minutes;
+}
+
+function clampMinutes(minutes: number) {
+  return Math.min(WEEK_END_MINUTES, Math.max(WEEK_START_MINUTES, minutes));
+}
+
+function formatHourLabel(hour: number) {
+  if (hour === 24) {
+    return "24:00";
+  }
+
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function buildDayLayouts(events: PlannerWeekEvent[]) {
+  const sorted = [...events].sort((left, right) => {
+    const startComparison =
+      parseTimeToMinutes(left.startTime) - parseTimeToMinutes(right.startTime);
+
+    if (startComparison !== 0) {
+      return startComparison;
+    }
+
+    const endComparison =
+      parseTimeToMinutes(left.endTime) - parseTimeToMinutes(right.endTime);
+
+    if (endComparison !== 0) {
+      return endComparison;
+    }
+
+    return left.title.localeCompare(right.title);
+  });
+
+  const groups: EventGroup[] = [];
+  let currentGroup: PositionedWeekEvent[] = [];
+  let currentGroupEnd = WEEK_START_MINUTES;
+
+  function flushGroup() {
+    if (currentGroup.length === 0) {
+      return;
+    }
+
+    const startMinutes = Math.min(
+      ...currentGroup.map((item) => item.startMinutes),
+    );
+    const endMinutes = Math.max(...currentGroup.map((item) => item.endMinutes));
+
+    groups.push({
+      startMinutes,
+      endMinutes,
+      laneCount: Math.max(...currentGroup.map((item) => item.lane)) + 1,
+      items: currentGroup,
+    });
+
+    currentGroup = [];
+    currentGroupEnd = WEEK_START_MINUTES;
+  }
+
+  for (const event of sorted) {
+    const startMinutes = clampMinutes(parseTimeToMinutes(event.startTime));
+    const endMinutes = clampMinutes(
+      Math.max(startMinutes + 15, parseTimeToMinutes(event.endTime)),
+    );
+
+    if (currentGroup.length > 0 && startMinutes >= currentGroupEnd) {
+      flushGroup();
+    }
+
+    if (currentGroup.length === 0) {
+      currentGroupEnd = endMinutes;
+    } else {
+      currentGroupEnd = Math.max(currentGroupEnd, endMinutes);
+    }
+
+    let lane = 0;
+    const laneEndTimes = currentGroup.reduce<number[]>((accumulator, item) => {
+      accumulator[item.lane] = Math.max(
+        accumulator[item.lane] ?? 0,
+        item.endMinutes,
+      );
+      return accumulator;
+    }, []);
+
+    while (laneEndTimes[lane] > startMinutes) {
+      lane += 1;
+    }
+
+    currentGroup.push({
+      event,
+      lane,
+      startMinutes,
+      endMinutes,
+    });
+  }
+
+  flushGroup();
+  return groups;
+}
+
+function useMeasuredHeight<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [height, setHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+
+    const element = ref.current;
+    const updateHeight = () => {
+      setHeight(element.getBoundingClientRect().height);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, height };
+}
+
+function WeekDayColumn({
+  day,
+  groups,
+  minuteScale,
+  onEdit,
+}: {
+  day: PlannerWeekday;
+  groups: EventGroup[];
+  minuteScale: number;
+  onEdit: (event: PlannerWeekEvent) => void;
+}) {
+  return (
+    <div className="relative border-r border-slate-200 last:border-r-0">
+      <div className="relative h-full min-h-0" style={{ minHeight: 1 }}>
+        <div
+          className="absolute inset-0"
+          style={
+            {
+              backgroundImage:
+                "repeating-linear-gradient(to bottom, rgba(148,163,184,0.18) 0, rgba(148,163,184,0.18) 1px, transparent 1px, transparent calc(var(--slot-height)))",
+              ["--slot-height" as never]: `${60 * minuteScale}px`,
+            } as CSSProperties
+          }
+        />
+
+        {groups.map((group, groupIndex) => {
+          const groupTop =
+            (group.startMinutes - WEEK_START_MINUTES) * minuteScale;
+          const groupHeight = Math.max(
+            MIN_EVENT_HEIGHT,
+            (group.endMinutes - group.startMinutes) * minuteScale,
+          );
+          const laneWidth = 100 / group.laneCount;
+
+          return (
+            <div
+              key={`${day}-${groupIndex}`}
+              className="absolute inset-x-0"
+              style={{ top: `${groupTop}px`, height: `${groupHeight}px` }}
+            >
+              {group.items.map((item) => {
+                const top =
+                  (item.startMinutes - group.startMinutes) * minuteScale;
+                const height = Math.max(
+                  MIN_EVENT_HEIGHT,
+                  (item.endMinutes - item.startMinutes) * minuteScale,
+                );
+                const styles = CATEGORY_STYLES[item.event.category];
+                const showTime = height >= 52 && group.laneCount <= 2;
+                const showParticipants = height >= 52 && group.laneCount <= 2;
+
+                return (
+                  <button
+                    key={item.event.id}
+                    type="button"
+                    onClick={() => onEdit(item.event)}
+                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${styles.card}`}
+                    style={{
+                      top: `${top}px`,
+                      left: `${item.lane * laneWidth}%`,
+                      width: `${laneWidth}%`,
+                      height: `${height}px`,
+                    }}
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="line-clamp-2 text-[10px] font-semibold leading-3.5">
+                        {item.event.title}
+                      </div>
+                      {showTime ? (
+                        <div className="truncate text-[8.5px] font-medium leading-3.5 opacity-75">
+                          {item.event.startTime} - {item.event.endTime}
+                        </div>
+                      ) : null}
+                      {showParticipants ? (
+                        <div className="min-w-0 text-[8.5px] font-medium leading-3.5 opacity-65">
+                          <span className="whitespace-normal break-words">
+                            {item.event.participants.join(" · ") ||
+                              "No participants"}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function WeekView() {
+  const { weekEvents, updateWeekEvent, deleteWeekEvent, friends } =
+    usePlannerState();
+  const { ref: bodyRef, height: bodyHeight } =
+    useMeasuredHeight<HTMLDivElement>();
+  const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(
+    null,
+  );
+
+  const minuteScale =
+    bodyHeight > 0 ? bodyHeight / (WEEK_END_MINUTES - WEEK_START_MINUTES) : 1.0;
+
+  const eventsByDay = useMemo(() => {
+    return plannerWeekdays.reduce<Record<PlannerWeekday, PlannerWeekEvent[]>>(
+      (accumulator, day) => {
+        accumulator[day] = weekEvents.filter((event) => event.day === day);
+        return accumulator;
+      },
+      {
+        Mon: [],
+        Tue: [],
+        Wed: [],
+        Thu: [],
+        Fri: [],
+        Sat: [],
+        Sun: [],
+      },
+    );
+  }, [weekEvents]);
+
+  const layouts = useMemo(() => {
+    return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(
+      (accumulator, day) => {
+        accumulator[day] = {
+          groups: buildDayLayouts(eventsByDay[day] ?? []),
+        };
+        return accumulator;
+      },
+      {
+        Mon: { groups: [] },
+        Tue: { groups: [] },
+        Wed: { groups: [] },
+        Thu: { groups: [] },
+        Fri: { groups: [] },
+        Sat: { groups: [] },
+        Sun: { groups: [] },
+      },
+    );
+  }, [eventsByDay]);
+
+  function handleSubmitEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingEvent) {
+      return;
+    }
+
+    const normalizedRange = getDefaultWeekAppointmentTimeRange(
+      editingEvent.startTime,
+      editingEvent.endTime,
+    );
+
+    updateWeekEvent(editingEvent.id, {
+      title: editingEvent.title,
+      category: editingEvent.category,
+      day: editingEvent.day,
+      startTime: normalizedRange.startTime,
+      endTime: normalizedRange.endTime,
+      participants: editingEvent.participants,
+    });
+    setEditingEvent(null);
+  }
+
+  return (
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className="grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] border-b border-slate-200 bg-slate-50/90 text-slate-600">
+        <div className="flex items-center justify-center border-r border-slate-200 px-1.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          Time
+        </div>
+        {plannerWeekdays.map((day) => {
+          return (
+            <div
+              key={day}
+              className="flex items-center justify-center border-r border-slate-200 px-1.5 py-2.5 last:border-r-0"
+            >
+              <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                {day}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div
+        ref={bodyRef}
+        className="grid min-h-0 flex-1 grid-cols-[4rem_repeat(7,minmax(0,1fr))] overflow-hidden"
+      >
+        <div className="relative border-r border-slate-200 bg-slate-50/80">
+          <div
+            className="absolute inset-0"
+            style={
+              {
+                backgroundImage:
+                  "repeating-linear-gradient(to bottom, rgba(148,163,184,0.18) 0, rgba(148,163,184,0.18) 1px, transparent 1px, transparent calc(var(--slot-height)))",
+                ["--slot-height" as never]: `${60 * minuteScale}px`,
+              } as CSSProperties
+            }
+          />
+          {Array.from(
+            { length: 19 },
+            (_, index) => WEEK_START_MINUTES / 60 + index,
+          ).map((hour) => (
+            <div
+              key={hour}
+              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-slate-500"
+            >
+              <span
+                className={hour === 24 ? "font-semibold text-slate-700" : ""}
+              >
+                {formatHourLabel(hour)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {plannerWeekdays.map((day) => (
+          <WeekDayColumn
+            key={day}
+            day={day}
+            groups={layouts[day].groups}
+            minuteScale={minuteScale}
+            onEdit={(event) => setEditingEvent(event)}
+          />
+        ))}
+      </div>
+
+      {editingEvent ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
+          onClick={() => setEditingEvent(null)}
+        >
+          <section
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <PlannerWeekEventForm
+              heading="Edit weekly appointment"
+              submitLabel="Save changes"
+              title={editingEvent.title}
+              category={editingEvent.category}
+              day={editingEvent.day}
+              startTime={editingEvent.startTime}
+              endTime={editingEvent.endTime}
+              participants={editingEvent.participants}
+              availableParticipants={friends}
+              onTitleChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, title: value } : current,
+                )
+              }
+              onCategoryChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, category: value } : current,
+                )
+              }
+              onDayChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, day: value } : current,
+                )
+              }
+              onStartTimeChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, startTime: value } : current,
+                )
+              }
+              onEndTimeChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, endTime: value } : current,
+                )
+              }
+              onParticipantsChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, participants: value } : current,
+                )
+              }
+              onSubmit={handleSubmitEdit}
+              onCancel={() => setEditingEvent(null)}
+              deleteAction={{
+                label: "Delete appointment",
+                prompt: "Delete this weekly appointment?",
+                confirmLabel: "Delete",
+                onDelete: () => {
+                  deleteWeekEvent(editingEvent.id);
+                  setEditingEvent(null);
+                },
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+    </section>
+  );
+}
