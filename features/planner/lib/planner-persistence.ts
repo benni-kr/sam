@@ -250,13 +250,17 @@ function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
       ? row.semester_id
       : defaultPlannerSemesterId;
 
+    if (!row.start_time || !row.end_time) {
+      continue;
+    }
+
     weekEventsBySemester[targetSemesterId]?.push({
       id: row.event_id,
       title: row.title,
       category: row.category,
       day: row.day,
-      startTime: row.start_time ?? "",
-      endTime: row.end_time ?? "",
+      startTime: row.start_time,
+      endTime: row.end_time,
       participants: normalizeParticipants(row.participants),
     });
   }
@@ -434,7 +438,51 @@ async function fetchSupabaseWeekEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
   const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,day,start_time,end_time,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  // If we're running in the browser prefer the client auth token. If the
+  // token hasn't been stored yet (race during hydration) return `null` so
+  // callers can delay hydration instead of failing the entire load.
+  if (typeof window !== "undefined") {
+    const token = getClientAuthToken();
 
+    if (!token) {
+      logPersistenceHealth(
+        "No client auth token available yet; deferring week events load.",
+      );
+      return null;
+    }
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        // Token invalid/expired — clear and notify the app to re-auth.
+        try {
+          window.localStorage.removeItem("sam_auth_token");
+          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+        } catch {
+          // noop
+        }
+
+        logPersistenceHealth(
+          "Auth token invalid or expired while loading week events.",
+        );
+        return null;
+      }
+
+      throw new Error("Failed to load planner week events from Supabase.");
+    }
+
+    const rows = (await response.json()) as SupabaseWeekEventRow[];
+    return rowsToWeekEventsBySemester(rows);
+  }
+
+  // Server-side: use the anon key so server rendering still works.
   const response = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -465,7 +513,7 @@ async function upsertSupabaseWeekEventsBySemester(
       method: "POST",
       headers: {
         apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
+        Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
@@ -487,7 +535,7 @@ async function upsertSupabaseWeekEventsBySemester(
     method: "DELETE",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
     },
   });
 

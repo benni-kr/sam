@@ -58,6 +58,9 @@ const CATEGORY_STYLES: Record<PlannerWeekEventCategory, { card: string }> = {
 
 function parseTimeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return WEEK_START_MINUTES;
+  }
   return hours * 60 + minutes;
 }
 
@@ -212,7 +215,7 @@ function WeekDayColumn({
           const groupTop =
             (group.startMinutes - WEEK_START_MINUTES) * minuteScale;
           const groupHeight = Math.max(
-            MIN_EVENT_HEIGHT * minuteScale,
+            MIN_EVENT_HEIGHT,
             (group.endMinutes - group.startMinutes) * minuteScale,
           );
           const laneWidth = 100 / group.laneCount;
@@ -390,7 +393,11 @@ export function WeekView() {
           ).map((hour) => (
             <div
               key={hour}
-              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-slate-500"
+              className="absolute flex w-full items-center justify-center text-[9px] font-medium text-slate-500"
+              style={{
+                top: `${((hour * 60 - WEEK_START_MINUTES) / (WEEK_END_MINUTES - WEEK_START_MINUTES)) * 100}%`,
+                transform: "translateY(-50%)",
+              }}
             >
               <span
                 className={hour === 24 ? "font-semibold text-slate-700" : ""}
