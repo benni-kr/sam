@@ -187,37 +187,52 @@ export function MonthWeekEventOverlay({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-0">
+    <div className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-1">
       <div
         className="grid h-full grid-cols-7 content-start"
         style={{
           gridTemplateRows: `repeat(${Math.max(MIN_EVENT_LANES, laneCount)}, ${EVENT_LANE_HEIGHT}px)`,
         }}
       >
-        {segments.map((segment) => (
-          <div
-            key={segment.event.id}
-            className="pointer-events-auto min-w-0 px-1"
-            style={{
-              gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`,
-              gridRow: segment.lane + 1,
-            }}
-          >
-            <DraggableEvent event={segment.event}>
-              <div
-                className={`flex h-6 min-w-0 items-center border px-3 text-[10px] font-medium leading-4 ${getEventTone(
-                  segment.event.category,
-                )} ${getSegmentShape(segment.roundLeft, segment.roundRight)}`}
-              >
-                {segment.showLabel ? (
-                  <span className="truncate">{segment.event.title}</span>
-                ) : (
-                  <span className="sr-only">{segment.event.title}</span>
-                )}
-              </div>
-            </DraggableEvent>
-          </div>
-        ))}
+        {segments.map((segment) => {
+          const isPrivate = segment.event.category === "Private Event";
+          const hasParticipants = !!segment.event.participants?.length;
+
+          return (
+            <div
+              key={segment.event.id}
+              className="pointer-events-auto min-w-0 px-1"
+              style={{
+                gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`,
+                gridRow: segment.lane + 1,
+              }}
+            >
+              <DraggableEvent event={segment.event}>
+                <div
+                  className={`flex h-6 min-w-0 items-center border px-3 text-[10px] font-medium leading-4 ${getEventTone(
+                    segment.event.category,
+                  )} ${getSegmentShape(segment.roundLeft, segment.roundRight)}`}
+                >
+                  {segment.showLabel ? (
+                    <span className="truncate">
+                      <span className="font-semibold">
+                        {segment.event.title}
+                      </span>
+
+                      {isPrivate && hasParticipants && (
+                        <span className="ml-1.5 text-[9px] font-normal opacity-80">
+                          {segment.event.participants.join(" · ")}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="sr-only">{segment.event.title}</span>
+                  )}
+                </div>
+              </DraggableEvent>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
