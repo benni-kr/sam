@@ -31,8 +31,8 @@ type BuildMonthWeekEventLayoutsArgs = {
 const WEEK_SIZE = 7;
 const DAY_HEADER_HEIGHT = 28;
 const MIN_EVENT_LANES = 3;
-const EVENT_LANE_HEIGHT = 32;
-const ROW_VERTICAL_PADDING = 4;
+const EVENT_LANE_HEIGHT = 28;
+const ROW_VERTICAL_PADDING = 2;
 
 /**
  * Computes per-week event segments and lane assignments for calendar rendering.
@@ -187,7 +187,7 @@ export function MonthWeekEventOverlay({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-1">
+    <div className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-0">
       <div
         className="grid h-full grid-cols-7 content-start"
         style={{
