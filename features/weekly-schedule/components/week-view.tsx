@@ -125,7 +125,15 @@ function buildDayLayouts(events: PlannerWeekEvent[]) {
   }
 
   for (const event of sorted) {
-    const startMinutes = clampMinutes(parseTimeToMinutes(event.startTime));
+    const rawStartMinutes = parseTimeToMinutes(event.startTime);
+
+    // Clamp start time to a maximum of 23:45 (WEEK_END_MINUTES - 15)
+    const startMinutes = Math.min(
+      WEEK_END_MINUTES - 15,
+      Math.max(WEEK_START_MINUTES, rawStartMinutes),
+    );
+
+    // End time can still go up to 24:00
     const endMinutes = clampMinutes(
       Math.max(startMinutes + 15, parseTimeToMinutes(event.endTime)),
     );

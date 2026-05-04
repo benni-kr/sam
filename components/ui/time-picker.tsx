@@ -40,7 +40,9 @@ function buildTimeOptions(
     for (let minute = 0; minute < 60; minute += minuteStep) {
       const time = minutesToTime(hour * 60 + minute);
 
-      if (hour === latestHour && minute > 0) {
+      // FIX: Only stop minutes from generating if the hour is strictly 24 (midnight)
+      // This allows latestHour={23} to generate 23:00, 23:15, 23:30, 23:45.
+      if (hour === 24 && minute > 0) {
         continue;
       }
 
