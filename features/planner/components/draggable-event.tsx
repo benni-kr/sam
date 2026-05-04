@@ -216,7 +216,6 @@ function EventDetailsModal({
           startDate: event.startDate,
           endDate: event.endDate,
         }}
-        showTime={false}
         onEdit={() => setIsEditing(true)}
         onClose={onClose}
       />
