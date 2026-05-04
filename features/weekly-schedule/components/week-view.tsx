@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -11,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import { EventPreviewModal } from "@/components/ui/event-preview";
 import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   plannerWeekdays,
@@ -48,13 +50,13 @@ const CATEGORY_STYLES: Record<PlannerWeekEventCategory, { card: string }> = {
     card: "border-slate-300 bg-slate-100 text-slate-950",
   },
   "Language courses": {
-    card: "border-blue-800 bg-blue-100 text-blue-950",
+    card: "border-emerald-500 bg-emerald-100 text-emerald-950",
   },
   Sports: {
     card: "border-orange-300 bg-orange-100 text-orange-950",
   },
   Other: {
-    card: "border-emerald-500 bg-emerald-100 text-emerald-950",
+    card: "border-sky-300 bg-sky-100 text-sky-900",
   },
 };
 
@@ -286,12 +288,33 @@ export function WeekView() {
   const { friends } = useFriendsState();
   const { ref: bodyRef, height: bodyHeight } =
     useMeasuredHeight<HTMLDivElement>();
+  const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(
+    null,
+  );
   const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(
     null,
   );
 
   const minuteScale =
     bodyHeight > 0 ? bodyHeight / (WEEK_END_MINUTES - WEEK_START_MINUTES) : 1.0;
+
+  useEffect(() => {
+    if (!previewEvent) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPreviewEvent(null);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [previewEvent]);
 
   const eventsByDay = useMemo(() => {
     return plannerWeekdays.reduce<Record<PlannerWeekday, PlannerWeekEvent[]>>(
@@ -412,10 +435,26 @@ export function WeekView() {
             day={day}
             groups={layouts[day].groups}
             minuteScale={minuteScale}
-            onEdit={(event) => setEditingEvent(event)}
+            onEdit={(event) => setPreviewEvent(event)}
           />
         ))}
       </div>
+
+      {previewEvent && typeof document !== "undefined"
+        ? createPortal(
+            <EventPreviewModal
+              heading="Weekly appointment details"
+              event={previewEvent}
+              showTime={true}
+              onEdit={() => {
+                setEditingEvent(previewEvent);
+                setPreviewEvent(null);
+              }}
+              onClose={() => setPreviewEvent(null)}
+            />,
+            document.body,
+          )
+        : null}
 
       {editingEvent && typeof document !== "undefined"
         ? createPortal(

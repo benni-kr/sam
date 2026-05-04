@@ -6,6 +6,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
+import { EventPreviewModal } from "@/components/ui/event-preview";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
@@ -204,82 +205,59 @@ function EventDetailsModal({
     onClose();
   }
 
+  if (!isEditing) {
+    return (
+      <EventPreviewModal
+        heading="Event details"
+        event={{
+          title: event.title,
+          category: event.category,
+          participants: event.participants,
+          startDate: event.startDate,
+          endDate: event.endDate,
+        }}
+        showTime={false}
+        onEdit={() => setIsEditing(true)}
+        onClose={onClose}
+      />
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={`Event details: ${event.title}`}
+      aria-label={`Edit event: ${event.title}`}
     >
       <div
         className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        {isEditing ? (
-          <PlannerEventForm
-            heading="Edit event"
-            submitLabel="Save changes"
-            title={title}
-            category={category}
-            startDate={startDate}
-            endDate={endDate}
-            participants={participants}
-            availableParticipants={availableParticipants}
-            onTitleChange={setTitle}
-            onCategoryChange={setCategory}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            onParticipantsChange={setParticipants}
-            onSubmit={handleSubmit}
-            onCancel={() => setIsEditing(false)}
-            deleteAction={{
-              label: "Delete event",
-              prompt: "Are you sure you want to delete this event?",
-              confirmLabel: "Yes, delete",
-              onDelete: handleDeleteConfirm,
-            }}
-          />
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Event details
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                aria-label="Edit event"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-                Edit
-              </button>
-            </div>
-
-            <EventBadge event={event} />
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
+        <PlannerEventForm
+          heading="Edit event"
+          submitLabel="Save changes"
+          title={title}
+          category={category}
+          startDate={startDate}
+          endDate={endDate}
+          participants={participants}
+          availableParticipants={availableParticipants}
+          onTitleChange={setTitle}
+          onCategoryChange={setCategory}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onParticipantsChange={setParticipants}
+          onSubmit={handleSubmit}
+          onCancel={() => setIsEditing(false)}
+          deleteAction={{
+            label: "Delete event",
+            prompt: "Are you sure you want to delete this event?",
+            confirmLabel: "Yes, delete",
+            onDelete: handleDeleteConfirm,
+          }}
+        />
       </div>
     </div>
   );
