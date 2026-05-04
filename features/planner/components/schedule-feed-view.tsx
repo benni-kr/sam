@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import type {
   PlannerEvent,
@@ -87,7 +88,8 @@ function categoryTone(category: string) {
  * Compact schedule feed for quick scanning.
  */
 export function ScheduleFeedView() {
-  const { events, updateEvent, deleteEvent, friends } = usePlannerState();
+  const { events, updateEvent, deleteEvent } = usePlannerState();
+  const { friends } = useFriendsState();
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const editingEvent = useMemo(

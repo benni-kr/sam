@@ -16,9 +16,9 @@ import {
   type PlannerWeekEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
 import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 
 import {
-  SEMESTER_FRIENDS,
   defaultPlannerSemesterId,
   getPlannerSemester,
   plannerEventCategories,
@@ -91,10 +91,6 @@ type PlannerStateContextValue = {
   ) => void;
   deleteWeekEvent: (eventId: string) => void;
   toggleParticipant: (eventId: string, participantName: string) => void;
-  friends: string[];
-  addFriend: (name: string) => void;
-  renameFriend: (currentName: string, nextName: string) => void;
-  removeFriend: (name: string) => void;
 };
 
 type PlannerStateProviderProps = {
@@ -246,12 +242,6 @@ function initializeWeekEventsBySemester(): WeekEventsBySemester {
     }));
     return acc;
   }, {} as WeekEventsBySemester);
-}
-
-function initializeFriends() {
-  return dedupeParticipantNames([...SEMESTER_FRIENDS]).sort((left, right) =>
-    left.localeCompare(right),
-  );
 }
 
 function normalizeFriendName(name: string) {
@@ -699,10 +689,10 @@ export function PlannerStateProvider({
     undefined,
     initializeWeekEventsBySemester,
   );
-  const didHydrateFromStorage = useRef(false);
+  const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
-  const [friends, setFriends] = useState<string[]>(initializeFriends);
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
+  const { friends, lastMutation } = useFriendsState();
 
   if (persistenceError) {
     throw persistenceError;
@@ -714,26 +704,17 @@ export function PlannerStateProvider({
     void Promise.all([
       eventStore.current.loadEventsBySemester(),
       eventStore.current.loadWeekEventsBySemester(),
-      eventStore.current.loadFriends(),
     ])
-      .then(([eventsBySemester, weekEventsBySemester, friendsFromStore]) => {
+      .then(([eventsBySemester, weekEventsBySemester]) => {
         if (cancelled) {
           return;
         }
-
-        const hydratedFriends = dedupeParticipantNames(
-          friendsFromStore && friendsFromStore.length > 0
-            ? friendsFromStore
-            : [...SEMESTER_FRIENDS],
-        ).sort((left, right) => left.localeCompare(right));
-
-        setFriends(hydratedFriends);
 
         dispatch({
           type: "HYDRATE_FROM_STORE",
           payload: {
             eventsBySemester: eventsBySemester
-              ? filterEventsByFriends(eventsBySemester, hydratedFriends)
+              ? filterEventsByFriends(eventsBySemester, friends)
               : eventsBySemester,
           },
         });
@@ -742,7 +723,7 @@ export function PlannerStateProvider({
           type: "HYDRATE_WEEK_FROM_STORE",
           payload: {
             weekEventsBySemester: weekEventsBySemester
-              ? filterWeekEventsByFriends(weekEventsBySemester, hydratedFriends)
+              ? filterWeekEventsByFriends(weekEventsBySemester, friends)
               : weekEventsBySemester,
           },
         });
@@ -759,32 +740,40 @@ export function PlannerStateProvider({
       })
       .finally(() => {
         if (!cancelled) {
-          didHydrateFromStorage.current = true;
+          setDidHydrateFromStorage(true);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!didHydrateFromStorage.current) {
-      return;
-    }
-
-    void eventStore.current.saveFriends(friends).catch((error: unknown) => {
-      setPersistenceError(
-        toPlannerPersistenceError(
-          error,
-          "Failed to persist planner friends to Supabase.",
-        ),
-      );
-    });
   }, [friends]);
 
   useEffect(() => {
-    if (!didHydrateFromStorage.current) {
+    if (!didHydrateFromStorage || !lastMutation) {
+      return;
+    }
+
+    if (lastMutation.type === "rename") {
+      dispatch({
+        type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
+        payload: {
+          currentName: lastMutation.currentName,
+          nextName: lastMutation.nextName,
+        },
+      });
+    }
+
+    if (lastMutation.type === "remove") {
+      dispatch({
+        type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS",
+        payload: { participantName: lastMutation.name },
+      });
+    }
+  }, [didHydrateFromStorage, lastMutation]);
+
+  useEffect(() => {
+    if (!didHydrateFromStorage) {
       return;
     }
 
@@ -799,10 +788,10 @@ export function PlannerStateProvider({
           ),
         );
       });
-  }, [eventsBySemester]);
+  }, [didHydrateFromStorage, eventsBySemester]);
 
   useEffect(() => {
-    if (!didHydrateFromStorage.current) {
+    if (!didHydrateFromStorage) {
       return;
     }
 
@@ -817,7 +806,7 @@ export function PlannerStateProvider({
           ),
         );
       });
-  }, [weekEventsBySemester]);
+  }, [didHydrateFromStorage, weekEventsBySemester]);
 
   const normalizedSemesterId = (
     plannerSemesters.some((semester) => semester.id === activeSemesterId)
@@ -997,106 +986,6 @@ export function PlannerStateProvider({
         dispatch({
           type: "TOGGLE_PARTICIPANT",
           payload: { eventId, participantName: normalizedName },
-        });
-      },
-      friends,
-      addFriend: (name) => {
-        const normalizedName = normalizeFriendName(name);
-
-        if (!normalizedName) {
-          return;
-        }
-
-        setFriends((current) => {
-          if (
-            current.some(
-              (friend) =>
-                friend.toLocaleLowerCase() ===
-                normalizedName.toLocaleLowerCase(),
-            )
-          ) {
-            return current;
-          }
-
-          return [...current, normalizedName].sort((left, right) =>
-            left.localeCompare(right),
-          );
-        });
-      },
-      renameFriend: (currentName, nextName) => {
-        const normalizedCurrentName = normalizeFriendName(currentName);
-        const normalizedNextName = normalizeFriendName(nextName);
-
-        if (!normalizedCurrentName || !normalizedNextName) {
-          return;
-        }
-
-        if (
-          normalizedCurrentName.toLocaleLowerCase() ===
-          normalizedNextName.toLocaleLowerCase()
-        ) {
-          return;
-        }
-
-        let wasRenamed = false;
-
-        setFriends((current) => {
-          const hasCurrentName = current.some(
-            (friend) =>
-              friend.toLocaleLowerCase() ===
-              normalizedCurrentName.toLocaleLowerCase(),
-          );
-          const hasTargetName = current.some(
-            (friend) =>
-              friend.toLocaleLowerCase() ===
-              normalizedNextName.toLocaleLowerCase(),
-          );
-
-          if (!hasCurrentName || hasTargetName) {
-            return current;
-          }
-
-          wasRenamed = true;
-
-          return current
-            .map((friend) =>
-              friend.toLocaleLowerCase() ===
-              normalizedCurrentName.toLocaleLowerCase()
-                ? normalizedNextName
-                : friend,
-            )
-            .sort((left, right) => left.localeCompare(right));
-        });
-
-        if (!wasRenamed) {
-          return;
-        }
-
-        dispatch({
-          type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
-          payload: {
-            currentName: normalizedCurrentName,
-            nextName: normalizedNextName,
-          },
-        });
-      },
-      removeFriend: (name) => {
-        const normalizedName = normalizeFriendName(name);
-
-        if (!normalizedName) {
-          return;
-        }
-
-        setFriends((current) =>
-          current.filter(
-            (friend) =>
-              friend.toLocaleLowerCase() !== normalizedName.toLocaleLowerCase(),
-          ),
-        );
-
-        dispatch({
-          type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS",
-          payload: { participantName: normalizedName },
         });
       },
     };

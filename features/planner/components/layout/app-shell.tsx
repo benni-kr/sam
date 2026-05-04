@@ -23,6 +23,10 @@ import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import {
+  FriendsProvider,
+  useFriendsState,
+} from "@/features/friends/state/friends-state";
 import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   defaultPlannerSemesterId,
@@ -161,19 +165,21 @@ export function AppShell({ children, sidebarContent }: AppShellProps) {
   }
 
   return (
-    <PlannerStateProvider activeSemesterId={semesterId}>
-      <AppShellFrame
-        semesterId={semesterId}
-        activeSemester={activeSemester}
-        semesterMenuOpen={semesterMenuOpen}
-        semesterMenuRef={semesterMenuRef}
-        setSemesterMenuOpen={setSemesterMenuOpen}
-        buildSemesterHref={buildSemesterHref}
-        sidebarContent={sidebarContent}
-      >
-        {children}
-      </AppShellFrame>
-    </PlannerStateProvider>
+    <FriendsProvider>
+      <PlannerStateProvider activeSemesterId={semesterId}>
+        <AppShellFrame
+          semesterId={semesterId}
+          activeSemester={activeSemester}
+          semesterMenuOpen={semesterMenuOpen}
+          semesterMenuRef={semesterMenuRef}
+          setSemesterMenuOpen={setSemesterMenuOpen}
+          buildSemesterHref={buildSemesterHref}
+          sidebarContent={sidebarContent}
+        >
+          {children}
+        </AppShellFrame>
+      </PlannerStateProvider>
+    </FriendsProvider>
   );
 }
 
@@ -202,11 +208,8 @@ function AppShellFrame({
     moveEventToDate,
     createEvent,
     createWeekEvent,
-    friends,
-    addFriend,
-    renameFriend,
-    removeFriend,
   } = usePlannerState();
+  const { friends, addFriend, renameFriend, removeFriend } = useFriendsState();
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

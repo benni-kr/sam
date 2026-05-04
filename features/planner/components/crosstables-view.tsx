@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 
 import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import {
   plannerEventCategories,
@@ -80,14 +81,9 @@ const categoryCheckboxStyles: Record<
  */
 export function CrosstablesView() {
   const searchParams = useSearchParams();
-  const {
-    events,
-    inboxEvents,
-    toggleParticipant,
-    updateEvent,
-    deleteEvent,
-    friends,
-  } = usePlannerState();
+  const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
+    usePlannerState();
+  const { friends } = useFriendsState();
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";

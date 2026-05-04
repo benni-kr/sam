@@ -7,6 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import {
   type PlannerEvent,
@@ -44,7 +45,8 @@ export function DraggableEvent({
   compact = false,
   children,
 }: DraggableEventProps) {
-  const { updateEvent, deleteEvent, friends } = usePlannerState();
+  const { updateEvent, deleteEvent } = usePlannerState();
+  const { friends } = useFriendsState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =

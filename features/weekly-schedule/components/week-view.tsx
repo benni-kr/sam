@@ -18,6 +18,7 @@ import {
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/planner/lib/planner";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
 type DayLayout = {
@@ -281,8 +282,8 @@ function WeekDayColumn({
 }
 
 export function WeekView() {
-  const { weekEvents, updateWeekEvent, deleteWeekEvent, friends } =
-    usePlannerState();
+  const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
+  const { friends } = useFriendsState();
   const { ref: bodyRef, height: bodyHeight } =
     useMeasuredHeight<HTMLDivElement>();
   const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(
