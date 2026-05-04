@@ -27,20 +27,19 @@ function formatDisplayDate(dateStr?: string | null) {
 export function EventPreviewModal({
   heading,
   event,
-  showTime = false,
   onEdit,
   onClose,
 }: {
   heading: string;
   event: PreviewEventShape;
-  showTime?: boolean;
   onEdit: () => void;
   onClose: () => void;
 }) {
   const displayDay = formatDisplayDate(event.day) || event.day || "";
 
-  const dateLine = showTime
-    ? `${displayDay} · ${event.startTime} - ${event.endTime}`
+  const hasTime = event.startTime !== undefined || event.endTime !== undefined;
+  const dateLine = hasTime
+    ? `${displayDay},  ${event.startTime} - ${event.endTime}`
     : event.startDate
       ? `${formatDisplayDate(event.startDate)}${event.endDate && event.endDate !== event.startDate ? ` - ${formatDisplayDate(event.endDate)}` : ""}`
       : "Date TBD";

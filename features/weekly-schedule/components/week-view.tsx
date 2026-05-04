@@ -246,7 +246,7 @@ function WeekDayColumn({
                 const styles = CATEGORY_STYLES[item.event.category];
 
                 // Logic variables kept so you can easily toggle them later
-                const showTime = height >= 52 && group.laneCount <= 2;
+                //const showTime = height >= 52 && group.laneCount <= 2;
                 const showParticipants = height >= 52 && group.laneCount <= 2;
 
                 return (
@@ -458,7 +458,6 @@ export function WeekView() {
             <EventPreviewModal
               heading="Weekly appointment details"
               event={previewEvent}
-              showTime={true}
               onEdit={() => {
                 setEditingEvent(previewEvent);
                 setPreviewEvent(null);
