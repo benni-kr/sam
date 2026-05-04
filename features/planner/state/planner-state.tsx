@@ -294,22 +294,6 @@ function buildEventsBySemesterSnapshot(
   }, {} as PlannerEventsBySemester);
 }
 
-function filterEventsByFriends(
-  eventsBySemester: PlannerEventsBySemester,
-  friends: string[],
-) {
-  return plannerSemesterIds.reduce((acc, semesterId) => {
-    const semesterEvents = eventsBySemester[semesterId] ?? [];
-
-    acc[semesterId] = semesterEvents.map((event) => ({
-      ...event,
-      participants: filterParticipantsByFriends(event.participants, friends),
-    }));
-
-    return acc;
-  }, {} as PlannerEventsBySemester);
-}
-
 function buildWeekEventsBySemesterSnapshot(
   weekEventsBySemester: PlannerWeekEventsBySemester,
 ): PlannerWeekEventsBySemester {
@@ -319,22 +303,6 @@ function buildWeekEventsBySemesterSnapshot(
     acc[semesterId] = semesterEvents.map((event) => ({
       ...event,
       participants: [...event.participants],
-    }));
-
-    return acc;
-  }, {} as PlannerWeekEventsBySemester);
-}
-
-function filterWeekEventsByFriends(
-  weekEventsBySemester: PlannerWeekEventsBySemester,
-  friends: string[],
-) {
-  return plannerSemesterIds.reduce((acc, semesterId) => {
-    const semesterEvents = weekEventsBySemester[semesterId] ?? [];
-
-    acc[semesterId] = semesterEvents.map((event) => ({
-      ...event,
-      participants: filterParticipantsByFriends(event.participants, friends),
     }));
 
     return acc;
@@ -692,7 +660,11 @@ export function PlannerStateProvider({
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
-  const { friends, isHydrated: friendsHydrated, lastMutation } = useFriendsState();
+  const {
+    friends,
+    isHydrated: friendsHydrated,
+    lastMutation,
+  } = useFriendsState();
 
   if (persistenceError) {
     throw persistenceError;
@@ -745,7 +717,6 @@ export function PlannerStateProvider({
     };
     // Run once when friends have finished loading; subsequent friend changes
     // are handled by the RENAME/REMOVE_PARTICIPANT effects below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendsHydrated]);
 
   useEffect(() => {
