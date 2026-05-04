@@ -100,16 +100,9 @@ export function CrosstablesView() {
   );
 
   const filteredCrosstableEvents = crosstableEvents.filter((event) => {
-    if (!event.startDate) {
-      return !hideUndated;
-    }
-
-    if (!hideFinished) {
-      return true;
-    }
-
+    if (!event.startDate) return !hideUndated;
+    if (!hideFinished) return true;
     const endDate = event.endDate ?? event.startDate;
-
     return endDate >= todayDateKey;
   });
 
@@ -119,29 +112,22 @@ export function CrosstablesView() {
   );
 
   useEffect(() => {
-    if (!editingEvent) {
-      return;
-    }
-
+    if (!editingEvent) return;
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setEditingEventId(null);
-      }
+      if (event.key === "Escape") setEditingEventId(null);
     }
-
     document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-    };
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [editingEvent]);
 
-  const participantNames = Array.from(
-    new Set([
-      ...(hideInactiveParticipants ? [] : friends),
-      ...filteredCrosstableEvents.flatMap((event) => event.participants),
-    ]),
-  );
+  const participantNames = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...(hideInactiveParticipants ? [] : friends),
+        ...filteredCrosstableEvents.flatMap((event) => event.participants),
+      ]),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [friends, filteredCrosstableEvents, hideInactiveParticipants]);
 
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
@@ -152,6 +138,33 @@ export function CrosstablesView() {
     },
     {} as Record<PlannerEventCategory, PlannerEvent[]>,
   );
+
+  // --- DENSITY LOGIC ---
+  const count = participantNames.length;
+  // Stage 1: Relaxed
+  let colWidthClass = "w-16 min-w-16";
+  let cellPaddingClass = "px-2";
+  let checkContainerClass = "h-9 w-9";
+  let checkIconSize = 22;
+  let labelSize = "text-[12px]";
+
+  if (count > 7) {
+    // Stage 2: Standard
+    colWidthClass = "w-12 min-w-12";
+    cellPaddingClass = "px-1";
+    checkContainerClass = "h-8 w-8";
+    checkIconSize = 18;
+    labelSize = "text-[11px]";
+  }
+
+  if (count > 14) {
+    // Stage 3: Compact
+    colWidthClass = "w-9 min-w-9";
+    cellPaddingClass = "px-0.5";
+    checkContainerClass = "h-7 w-7";
+    checkIconSize = 16;
+    labelSize = "text-[10px]";
+  }
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-4">
@@ -174,8 +187,8 @@ export function CrosstablesView() {
                   {categoryLabelsPlural[category]}
                 </h3>
                 <span className="ml-auto rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  {categoryEvents.length} event
-                  {categoryEvents.length === 1 ? "" : "s"}
+                  {categoryEvents.length}{" "}
+                  {categoryEvents.length === 1 ? "event" : "events"}
                 </span>
               </div>
 
@@ -189,9 +202,11 @@ export function CrosstablesView() {
                       {participantNames.map((participantName) => (
                         <th
                           key={`${category}-${participantName}-header`}
-                          className="w-10 min-w-10 border-b border-slate-200 bg-slate-50 px-1 py-2 text-center align-bottom"
+                          className={`${colWidthClass} border-b border-slate-200 bg-slate-50 ${cellPaddingClass} py-2 text-center align-bottom transition-all duration-200`}
                         >
-                          <span className="inline-block origin-center -rotate-180 whitespace-nowrap text-[11px] font-medium tracking-[0.14em] text-slate-600 [writing-mode:vertical-rl]">
+                          <span
+                            className={`inline-block origin-center -rotate-180 whitespace-nowrap font-medium tracking-[0.14em] text-slate-600 [writing-mode:vertical-rl] ${labelSize}`}
+                          >
                             {participantName}
                           </span>
                         </th>
@@ -205,10 +220,10 @@ export function CrosstablesView() {
                         <td className="sticky left-0 z-20 border-r border-slate-200 bg-slate-50 px-3 py-4 text-left text-sm text-slate-500">
                           No events in this category yet.
                         </td>
-                        {participantNames.map((participantName) => (
+                        {participantNames.map((n) => (
                           <td
-                            key={`${category}-${participantName}-empty`}
-                            className="w-10 min-w-10 border-l border-slate-100 px-1 py-2"
+                            key={n}
+                            className={`${colWidthClass} border-l border-slate-100`}
                           />
                         ))}
                       </tr>
@@ -237,40 +252,33 @@ export function CrosstablesView() {
                             </p>
                           </td>
 
-                          {participantNames.map((participantName) => {
-                            const checked =
-                              event.participants.includes(participantName);
-
-                            return (
-                              <td
-                                key={`${event.id}-${participantName}`}
-                                className="w-10 min-w-10 border-l border-slate-100 px-1 py-2 text-center"
-                              >
-                                <label className="inline-flex cursor-pointer items-center justify-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() =>
-                                      toggleParticipant(
-                                        event.id,
-                                        participantName,
-                                      )
-                                    }
-                                    className="peer sr-only"
-                                  />
-                                  <span
-                                    className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent opacity-0 transition-[opacity,background-color] hover:bg-slate-100 peer-checked:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400 peer-focus-visible:ring-offset-1 ${checkboxStyles.mark}`}
-                                    aria-hidden="true"
-                                  >
-                                    <Check size={18} strokeWidth={3} />
-                                  </span>
-                                  <span className="sr-only">
-                                    Toggle {participantName} for {event.title}
-                                  </span>
-                                </label>
-                              </td>
-                            );
-                          })}
+                          {participantNames.map((participantName) => (
+                            <td
+                              key={`${event.id}-${participantName}`}
+                              className={`${colWidthClass} border-l border-slate-100 ${cellPaddingClass} py-2 text-center transition-all duration-200`}
+                            >
+                              <label className="inline-flex cursor-pointer items-center justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={event.participants.includes(
+                                    participantName,
+                                  )}
+                                  onChange={() =>
+                                    toggleParticipant(event.id, participantName)
+                                  }
+                                  className="peer sr-only"
+                                />
+                                <span
+                                  className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${checkboxStyles.mark}`}
+                                >
+                                  <Check size={checkIconSize} strokeWidth={3} />
+                                </span>
+                                <span className="sr-only">
+                                  Toggle {participantName}
+                                </span>
+                              </label>
+                            </td>
+                          ))}
                         </tr>
                       ))
                     )}
@@ -282,7 +290,7 @@ export function CrosstablesView() {
         })}
       </div>
 
-      {editingEvent ? (
+      {editingEvent && (
         <EventEditModal
           event={editingEvent}
           availableParticipants={friends}
@@ -290,7 +298,7 @@ export function CrosstablesView() {
           onDelete={deleteEvent}
           onClose={() => setEditingEventId(null)}
         />
-      ) : null}
+      )}
     </section>
   );
 }

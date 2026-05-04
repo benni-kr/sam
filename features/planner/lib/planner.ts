@@ -102,227 +102,8 @@ export const plannerSemesterIds: PlannerSemesterId[] = [
   "fall-2026",
 ];
 
-export const SEMESTER_FRIENDS: string[] = ["Anna", "Paul", "Tom", "Lisa"];
-
-const springSemesterEvents: PlannerEvent[] = [
-  {
-    id: "evt-1",
-    title: "Semester kickoff picnic",
-    category: "Group Event",
-    startDate: "2026-04-11",
-    endDate: "2026-04-11",
-    participants: ["Maya", "Leo", "Nina"],
-  },
-  {
-    id: "evt-2",
-    title: "Course registration check-in",
-    category: "Private Event",
-    startDate: "2026-04-24",
-    endDate: "2026-04-24",
-    participants: ["Ava", "Mika"],
-  },
-  {
-    id: "evt-3",
-    title: "Library sprint",
-    category: "Exam",
-    startDate: "2026-05-08",
-    endDate: "2026-05-09",
-    participants: ["Jules", "Nina", "Sam"],
-  },
-  {
-    id: "evt-4",
-    title: "Cottage weekend",
-    category: "Group Event",
-    startDate: "2026-06-19",
-    endDate: "2026-06-21",
-    participants: ["Maya", "Leo", "Tara"],
-  },
-  {
-    id: "evt-5",
-    title: "Midterm review dinner",
-    category: "Exam",
-    startDate: "2026-07-03",
-    endDate: "2026-07-03",
-    participants: ["Ava", "Jules", "Nina"],
-  },
-  {
-    id: "evt-6",
-    title: "Lab prep block",
-    category: "Exam",
-    startDate: "2026-08-14",
-    endDate: "2026-08-14",
-    participants: ["Sam", "Tara"],
-  },
-  {
-    id: "evt-7",
-    title: "Beach day idea",
-    category: "Group Event",
-    startDate: null,
-    endDate: null,
-    participants: ["Maya", "Leo", "Nina"],
-  },
-  {
-    id: "evt-8",
-    title: "Budget brunch",
-    category: "Private Event",
-    startDate: null,
-    endDate: null,
-    participants: ["Ava", "Sam"],
-  },
-  {
-    id: "evt-9",
-    title: "Last week wrap-up",
-    category: "Private Event",
-    startDate: "2026-09-18",
-    endDate: "2026-09-18",
-    participants: ["Jules", "Tara"],
-  },
-];
-
-const springSemesterWeekEvents: PlannerWeekEvent[] = [
-  {
-    id: "week-1",
-    title: "Algorithms lecture",
-    category: "University",
-    day: "Mon",
-    startTime: "08:15",
-    endTime: "09:45",
-    participants: ["Maya", "Leo"],
-  },
-  {
-    id: "week-2",
-    title: "German conversation class",
-    category: "Language courses",
-    day: "Mon",
-    startTime: "17:00",
-    endTime: "18:30",
-    participants: ["Ava", "Nina"],
-  },
-  {
-    id: "week-3",
-    title: "Basketball training",
-    category: "Sports",
-    day: "Tue",
-    startTime: "18:15",
-    endTime: "19:45",
-    participants: ["Sam"],
-  },
-  {
-    id: "week-4",
-    title: "Portfolio review",
-    category: "Other",
-    day: "Thu",
-    startTime: "16:30",
-    endTime: "17:30",
-    participants: ["Jules", "Tara"],
-  },
-];
-
-const fallSemesterEvents: PlannerEvent[] = [
-  {
-    id: "evt-10",
-    title: "Orientation retreat",
-    category: "Group Event",
-    startDate: "2026-10-10",
-    endDate: "2026-10-12",
-    participants: ["Maya", "Sam", "Tara"],
-  },
-  {
-    id: "evt-11",
-    title: "Midterm hack night",
-    category: "Exam",
-    startDate: "2026-11-06",
-    endDate: "2026-11-06",
-    participants: ["Ava", "Jules", "Nina"],
-  },
-  {
-    id: "evt-12",
-    title: "Winter film festival",
-    category: "Group Event",
-    startDate: "2026-12-04",
-    endDate: "2026-12-04",
-    participants: ["Leo", "Mika", "Tara"],
-  },
-  {
-    id: "evt-13",
-    title: "January planning sprint",
-    category: "Private Event",
-    startDate: "2027-01-15",
-    endDate: "2027-01-16",
-    participants: ["Ava", "Maya", "Sam"],
-  },
-  {
-    id: "evt-14",
-    title: "Project week",
-    category: "Exam",
-    startDate: "2027-02-09",
-    endDate: "2027-02-12",
-    participants: ["Jules", "Leo", "Nina"],
-  },
-  {
-    id: "evt-15",
-    title: "Spring break cabin",
-    category: "Group Event",
-    startDate: "2027-03-12",
-    endDate: "2027-03-14",
-    participants: ["Maya", "Leo", "Tara"],
-  },
-  {
-    id: "evt-16",
-    title: "Shared budget ideas",
-    category: "Private Event",
-    startDate: null,
-    endDate: null,
-    participants: ["Ava", "Mika", "Sam"],
-  },
-  {
-    id: "evt-17",
-    title: "Venue shortlist",
-    category: "Group Event",
-    startDate: null,
-    endDate: null,
-    participants: ["Jules", "Maya"],
-  },
-];
-
-const fallSemesterWeekEvents: PlannerWeekEvent[] = [
-  {
-    id: "week-5",
-    title: "Systems seminar",
-    category: "University",
-    day: "Wed",
-    startTime: "10:00",
-    endTime: "11:30",
-    participants: ["Mika", "Tara"],
-  },
-  {
-    id: "week-6",
-    title: "Spanish lab",
-    category: "Language courses",
-    day: "Fri",
-    startTime: "12:30",
-    endTime: "13:30",
-    participants: ["Ava", "Leo"],
-  },
-  {
-    id: "week-7",
-    title: "Climbing session",
-    category: "Sports",
-    day: "Sat",
-    startTime: "11:00",
-    endTime: "13:00",
-    participants: ["Jules", "Sam"],
-  },
-  {
-    id: "week-8",
-    title: "Weekly reset",
-    category: "Other",
-    day: "Sun",
-    startTime: "19:00",
-    endTime: "20:00",
-    participants: ["Maya"],
-  },
-];
+// Starting with an empty friends list!
+export const SEMESTER_FRIENDS: string[] = [];
 
 export const plannerSemesters: PlannerSemester[] = [
   {
@@ -339,8 +120,8 @@ export const plannerSemesters: PlannerSemester[] = [
       { label: "August", year: 2026, monthIndex: 7 },
       { label: "September", year: 2026, monthIndex: 8 },
     ],
-    events: springSemesterEvents,
-    weekEvents: springSemesterWeekEvents,
+    events: [],
+    weekEvents: [],
   },
   {
     id: "fall-2026",
@@ -356,8 +137,8 @@ export const plannerSemesters: PlannerSemester[] = [
       { label: "February", year: 2027, monthIndex: 1 },
       { label: "March", year: 2027, monthIndex: 2 },
     ],
-    events: fallSemesterEvents,
-    weekEvents: fallSemesterWeekEvents,
+    events: [],
+    weekEvents: [],
   },
 ];
 

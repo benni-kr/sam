@@ -1,29 +1,70 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  getInboxEventsFromState,
-  plannerStateReducer,
-} from "./planner-state";
-import {
-  plannerSemesters,
-  type PlannerEvent,
-} from "../lib/planner";
+import { getInboxEventsFromState, plannerStateReducer } from "./planner-state";
+import { plannerSemesterIds, type PlannerEvent } from "../lib/planner";
 
-const semesterIds = plannerSemesters.map((semester) => semester.id) as [
-  (typeof plannerSemesters)[number]["id"],
-  (typeof plannerSemesters)[number]["id"],
+const semesterIds = plannerSemesterIds as [
+  (typeof plannerSemesterIds)[number],
+  (typeof plannerSemesterIds)[number],
 ];
 
 type PlannerState = Record<(typeof semesterIds)[number], PlannerEvent[]>;
 type PlannerStateAction = Parameters<typeof plannerStateReducer>[1];
 
+const testState: PlannerState = {
+  [semesterIds[0]]: [
+    {
+      id: "evt-1",
+      title: "Semester kickoff picnic",
+      category: "Group Event",
+      startDate: "2026-04-11",
+      endDate: "2026-04-11",
+      participants: ["Maya", "Leo", "Nina"],
+    },
+    {
+      id: "evt-7",
+      title: "Beach day idea",
+      category: "Group Event",
+      startDate: null,
+      endDate: null,
+      participants: ["Maya", "Leo", "Nina"],
+    },
+    {
+      id: "evt-8",
+      title: "Budget brunch",
+      category: "Private Event",
+      startDate: null,
+      endDate: null,
+      participants: ["Ava", "Sam"],
+    },
+  ],
+  [semesterIds[1]]: [
+    {
+      id: "evt-16",
+      title: "Shared budget ideas",
+      category: "Private Event",
+      startDate: null,
+      endDate: null,
+      participants: ["Ava", "Mika", "Sam"],
+    },
+    {
+      id: "evt-17",
+      title: "Venue shortlist",
+      category: "Group Event",
+      startDate: null,
+      endDate: null,
+      participants: ["Jules", "Maya"],
+    },
+  ],
+};
+
 function cloneState(): PlannerState {
   return {
-    [semesterIds[0]]: plannerSemesters[0].events.map((event) => ({
+    [semesterIds[0]]: testState[semesterIds[0]].map((event) => ({
       ...event,
       participants: [...event.participants],
     })),
-    [semesterIds[1]]: plannerSemesters[1].events.map((event) => ({
+    [semesterIds[1]]: testState[semesterIds[1]].map((event) => ({
       ...event,
       participants: [...event.participants],
     })),

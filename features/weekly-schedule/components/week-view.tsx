@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -11,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import { EventPreviewModal } from "@/components/ui/event-preview";
 import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   plannerWeekdays,
@@ -48,13 +50,13 @@ const CATEGORY_STYLES: Record<PlannerWeekEventCategory, { card: string }> = {
     card: "border-slate-300 bg-slate-100 text-slate-950",
   },
   "Language courses": {
-    card: "border-blue-800 bg-blue-100 text-blue-950",
+    card: "border-emerald-500 bg-emerald-100 text-emerald-950",
   },
   Sports: {
     card: "border-orange-300 bg-orange-100 text-orange-950",
   },
   Other: {
-    card: "border-emerald-500 bg-emerald-100 text-emerald-950",
+    card: "border-sky-300 bg-sky-100 text-sky-900",
   },
 };
 
@@ -123,7 +125,13 @@ function buildDayLayouts(events: PlannerWeekEvent[]) {
   }
 
   for (const event of sorted) {
-    const startMinutes = clampMinutes(parseTimeToMinutes(event.startTime));
+    const rawStartMinutes = parseTimeToMinutes(event.startTime);
+
+    // Clamp start time to a maximum of 23:45 (WEEK_END_MINUTES - 15)
+    const startMinutes = Math.min(
+      WEEK_END_MINUTES - 15,
+      Math.max(WEEK_START_MINUTES, rawStartMinutes),
+    );
     const endMinutes = clampMinutes(
       Math.max(startMinutes + 15, parseTimeToMinutes(event.endTime)),
     );
@@ -236,7 +244,9 @@ function WeekDayColumn({
                   (item.endMinutes - item.startMinutes) * minuteScale,
                 );
                 const styles = CATEGORY_STYLES[item.event.category];
-                const showTime = height >= 52 && group.laneCount <= 2;
+
+                // Logic variables kept so you can easily toggle them later
+                //const showTime = height >= 52 && group.laneCount <= 2;
                 const showParticipants = height >= 52 && group.laneCount <= 2;
 
                 return (
@@ -256,11 +266,16 @@ function WeekDayColumn({
                       <div className="line-clamp-2 text-[10px] font-semibold leading-3.5">
                         {item.event.title}
                       </div>
+
+                      {/* Commented out the time display block below */}
+                      {/* 
                       {showTime ? (
                         <div className="truncate text-[8.5px] font-medium leading-3.5 opacity-75">
                           {item.event.startTime} - {item.event.endTime}
                         </div>
-                      ) : null}
+                      ) : null} 
+                      */}
+
                       {showParticipants ? (
                         <div className="min-w-0 text-[8.5px] font-medium leading-3.5 opacity-65">
                           <span className="whitespace-normal break-words">
@@ -286,12 +301,33 @@ export function WeekView() {
   const { friends } = useFriendsState();
   const { ref: bodyRef, height: bodyHeight } =
     useMeasuredHeight<HTMLDivElement>();
+  const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(
+    null,
+  );
   const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(
     null,
   );
 
   const minuteScale =
     bodyHeight > 0 ? bodyHeight / (WEEK_END_MINUTES - WEEK_START_MINUTES) : 1.0;
+
+  useEffect(() => {
+    if (!previewEvent) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPreviewEvent(null);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [previewEvent]);
 
   const eventsByDay = useMemo(() => {
     return plannerWeekdays.reduce<Record<PlannerWeekday, PlannerWeekEvent[]>>(
@@ -412,10 +448,25 @@ export function WeekView() {
             day={day}
             groups={layouts[day].groups}
             minuteScale={minuteScale}
-            onEdit={(event) => setEditingEvent(event)}
+            onEdit={(event) => setPreviewEvent(event)}
           />
         ))}
       </div>
+
+      {previewEvent && typeof document !== "undefined"
+        ? createPortal(
+            <EventPreviewModal
+              heading="Weekly appointment details"
+              event={previewEvent}
+              onEdit={() => {
+                setEditingEvent(previewEvent);
+                setPreviewEvent(null);
+              }}
+              onClose={() => setPreviewEvent(null)}
+            />,
+            document.body,
+          )
+        : null}
 
       {editingEvent && typeof document !== "undefined"
         ? createPortal(
