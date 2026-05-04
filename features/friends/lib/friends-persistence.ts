@@ -83,6 +83,7 @@ function getSupabaseConfig() {
 
 function getClientAuthToken() {
   if (typeof window === "undefined") return null;
+
   return window.localStorage.getItem("sam_auth_token");
 }
 
@@ -162,7 +163,7 @@ export async function saveFriends(friends: string[]) {
     const token = getClientAuthToken();
 
     if (!token) {
-      return;
+      return null;
     }
 
     const authHeader = `Bearer ${token}`;
@@ -189,7 +190,7 @@ export async function saveFriends(friends: string[]) {
             // no-op
           }
 
-          return;
+          return null;
         }
 
         throw new Error("Failed to save planner friends to Supabase.");
@@ -219,16 +220,15 @@ export async function saveFriends(friends: string[]) {
           // no-op
         }
 
-        return;
+        return null;
       }
 
       throw new Error("Failed to prune planner friends in Supabase.");
     }
 
-    return;
+    return null;
   }
 
-  // Server-side path
   if (rows.length > 0) {
     const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
     const response = await fetch(endpoint, {

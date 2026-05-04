@@ -716,20 +716,12 @@ export function PlannerStateProvider({
 
         dispatch({
           type: "HYDRATE_FROM_STORE",
-          payload: {
-            eventsBySemester: eventsBySemester
-              ? filterEventsByFriends(eventsBySemester, friends)
-              : eventsBySemester,
-          },
+          payload: { eventsBySemester },
         });
 
         dispatchWeek({
           type: "HYDRATE_WEEK_FROM_STORE",
-          payload: {
-            weekEventsBySemester: weekEventsBySemester
-              ? filterWeekEventsByFriends(weekEventsBySemester, friends)
-              : weekEventsBySemester,
-          },
+          payload: { weekEventsBySemester },
         });
       })
       .catch((error: unknown) => {

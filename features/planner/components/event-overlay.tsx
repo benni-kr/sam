@@ -112,7 +112,7 @@ export function buildMonthWeekEventLayouts({
           showLabel: true,
           roundLeft: visibleStartDate === eventStartDate,
           roundRight: visibleEndDate === eventEndDate,
-        } satisfies Omit<MonthWeekEventSegment, "lane">;
+        };
       })
       .filter(
         (segment): segment is Omit<MonthWeekEventSegment, "lane"> =>

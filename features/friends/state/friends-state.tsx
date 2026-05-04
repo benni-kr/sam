@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useState,
   type ReactNode,
 } from "react";
@@ -35,6 +36,17 @@ type FriendsProviderProps = {
   children: ReactNode;
 };
 
+type FriendState = {
+  friends: string[];
+  lastMutation: FriendMutation;
+};
+
+type FriendAction =
+  | { type: "hydrate"; friends: string[] }
+  | { type: "addFriend"; name: string }
+  | { type: "renameFriend"; currentName: string; nextName: string }
+  | { type: "removeFriend"; name: string };
+
 const FriendsStateContext = createContext<FriendsStateContextValue | null>(
   null,
 );
@@ -63,9 +75,117 @@ function dedupeParticipantNames(participants: string[]) {
   return Array.from(uniqueByLowerCase.values());
 }
 
+function friendsReducer(state: FriendState, action: FriendAction): FriendState {
+  switch (action.type) {
+    case "hydrate": {
+      return {
+        friends: action.friends,
+        lastMutation: null,
+      };
+    }
+
+    case "addFriend": {
+      const normalizedName = normalizeFriendName(action.name);
+
+      if (!normalizedName) {
+        return state;
+      }
+
+      if (
+        state.friends.some(
+          (friend) =>
+            friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
+        )
+      ) {
+        return state;
+      }
+
+      return {
+        friends: [...state.friends, normalizedName].sort((left, right) =>
+          left.localeCompare(right),
+        ),
+        lastMutation: { type: "add", name: normalizedName },
+      };
+    }
+
+    case "renameFriend": {
+      const normalizedCurrentName = normalizeFriendName(action.currentName);
+      const normalizedNextName = normalizeFriendName(action.nextName);
+
+      if (!normalizedCurrentName || !normalizedNextName) {
+        return state;
+      }
+
+      if (
+        normalizedCurrentName.toLocaleLowerCase() ===
+        normalizedNextName.toLocaleLowerCase()
+      ) {
+        return state;
+      }
+
+      const hasCurrentName = state.friends.some(
+        (friend) =>
+          friend.toLocaleLowerCase() ===
+          normalizedCurrentName.toLocaleLowerCase(),
+      );
+      const hasTargetName = state.friends.some(
+        (friend) =>
+          friend.toLocaleLowerCase() === normalizedNextName.toLocaleLowerCase(),
+      );
+
+      if (!hasCurrentName || hasTargetName) {
+        return state;
+      }
+
+      return {
+        friends: state.friends
+          .map((friend) =>
+            friend.toLocaleLowerCase() ===
+            normalizedCurrentName.toLocaleLowerCase()
+              ? normalizedNextName
+              : friend,
+          )
+          .sort((left, right) => left.localeCompare(right)),
+        lastMutation: {
+          type: "rename",
+          currentName: normalizedCurrentName,
+          nextName: normalizedNextName,
+        },
+      };
+    }
+
+    case "removeFriend": {
+      const normalizedName = normalizeFriendName(action.name);
+
+      if (!normalizedName) {
+        return state;
+      }
+
+      const nextFriends = state.friends.filter(
+        (friend) =>
+          friend.toLocaleLowerCase() !== normalizedName.toLocaleLowerCase(),
+      );
+
+      if (nextFriends.length === state.friends.length) {
+        return state;
+      }
+
+      return {
+        friends: nextFriends,
+        lastMutation: { type: "remove", name: normalizedName },
+      };
+    }
+
+    default:
+      return state;
+  }
+}
+
 export function FriendsProvider({ children }: FriendsProviderProps) {
-  const [friends, setFriends] = useState<string[]>(getDefaultFriends);
-  const [lastMutation, setLastMutation] = useState<FriendMutation>(null);
+  const [state, dispatch] = useReducer(friendsReducer, {
+    friends: getDefaultFriends(),
+    lastMutation: null,
+  });
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
 
@@ -88,7 +208,7 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
             : [...SEMESTER_FRIENDS],
         ).sort((left, right) => left.localeCompare(right));
 
-        setFriends(hydratedFriends);
+        dispatch({ type: "hydrate", friends: hydratedFriends });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -115,110 +235,31 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
       return;
     }
 
-    void saveFriends(friends).catch((error: unknown) => {
+    void saveFriends(state.friends).catch((error: unknown) => {
       setPersistenceError(
         error instanceof Error
           ? error
           : new Error("Failed to persist planner friends to Supabase."),
       );
     });
-  }, [didHydrateFromStorage, friends]);
+  }, [didHydrateFromStorage, state.friends]);
 
   const value = useMemo<FriendsStateContextValue>(() => {
     return {
-      friends,
+      friends: state.friends,
       isHydrated: didHydrateFromStorage,
-      lastMutation,
+      lastMutation: state.lastMutation,
       addFriend: (name) => {
-        const normalizedName = normalizeFriendName(name);
-
-        if (!normalizedName) {
-          return;
-        }
-
-        const isDuplicate = friends.some(
-          (friend) =>
-            friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
-        );
-
-        if (isDuplicate) {
-          return;
-        }
-
-        const nextFriends = [...friends, normalizedName].sort((left, right) =>
-          left.localeCompare(right),
-        );
-
-        setFriends(nextFriends);
-        setLastMutation({ type: "add", name: normalizedName });
+        dispatch({ type: "addFriend", name });
       },
       renameFriend: (currentName, nextName) => {
-        const normalizedCurrentName = normalizeFriendName(currentName);
-        const normalizedNextName = normalizeFriendName(nextName);
-
-        if (!normalizedCurrentName || !normalizedNextName) {
-          return;
-        }
-
-        if (
-          normalizedCurrentName.toLocaleLowerCase() ===
-          normalizedNextName.toLocaleLowerCase()
-        ) {
-          return;
-        }
-
-        const hasCurrentName = friends.some(
-          (friend) =>
-            friend.toLocaleLowerCase() ===
-            normalizedCurrentName.toLocaleLowerCase(),
-        );
-        const hasTargetName = friends.some(
-          (friend) =>
-            friend.toLocaleLowerCase() ===
-            normalizedNextName.toLocaleLowerCase(),
-        );
-
-        if (!hasCurrentName || hasTargetName) {
-          return;
-        }
-
-        const nextFriends = friends
-          .map((friend) =>
-            friend.toLocaleLowerCase() ===
-            normalizedCurrentName.toLocaleLowerCase()
-              ? normalizedNextName
-              : friend,
-          )
-          .sort((left, right) => left.localeCompare(right));
-
-        setFriends(nextFriends);
-        setLastMutation({
-          type: "rename",
-          currentName: normalizedCurrentName,
-          nextName: normalizedNextName,
-        });
+        dispatch({ type: "renameFriend", currentName, nextName });
       },
       removeFriend: (name) => {
-        const normalizedName = normalizeFriendName(name);
-
-        if (!normalizedName) {
-          return;
-        }
-
-        const nextFriends = friends.filter(
-          (friend) =>
-            friend.toLocaleLowerCase() !== normalizedName.toLocaleLowerCase(),
-        );
-
-        if (nextFriends.length === friends.length) {
-          return;
-        }
-
-        setFriends(nextFriends);
-        setLastMutation({ type: "remove", name: normalizedName });
+        dispatch({ type: "removeFriend", name });
       },
     };
-  }, [friends, didHydrateFromStorage, lastMutation]);
+  }, [state.friends, state.lastMutation, didHydrateFromStorage]);
 
   return (
     <FriendsStateContext.Provider value={value}>

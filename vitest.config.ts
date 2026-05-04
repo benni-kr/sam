@@ -9,6 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // include colocated tests under features/ and anywhere in the project
     include: ["**/*.test.{ts,tsx}"],
   },
 });
