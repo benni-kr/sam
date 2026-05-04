@@ -1,4 +1,3 @@
-// In your planner.ts file
 export type PlannerEventCategory =
   | "Exam"
   | "Language Exam"

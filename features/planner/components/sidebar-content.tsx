@@ -19,8 +19,6 @@ export function SidebarContent() {
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
 
-  // no-op
-
   function setCrosstablesFilterParam(
     key: "hideFinished" | "hideUndated" | "hideInactive",
     enabled: boolean,

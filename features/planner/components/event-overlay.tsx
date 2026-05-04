@@ -109,7 +109,7 @@ export function buildMonthWeekEventLayouts({
           event,
           startColumn,
           columnSpan: endColumn - startColumn + 1,
-          showLabel: true as boolean,
+          showLabel: visibleStartDate === eventStartDate,
           roundLeft: visibleStartDate === eventStartDate,
           roundRight: visibleEndDate === eventEndDate,
         } satisfies Omit<MonthWeekEventSegment, "lane">;

@@ -6,6 +6,7 @@ export type DeleteAction = {
   label: string;
   prompt: string;
   confirmLabel: string;
+  cancelLabel?: string;
   onDelete: () => void;
 };
 
@@ -144,7 +145,7 @@ export function BaseEventForm({
                       onClick={() => setIsDeleteConfirmOpen(false)}
                       className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                     >
-                      Keep event
+                      {deleteAction.cancelLabel ?? "Keep"}
                     </button>
                     <button
                       type="button"
