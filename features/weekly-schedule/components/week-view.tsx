@@ -132,8 +132,6 @@ function buildDayLayouts(events: PlannerWeekEvent[]) {
       WEEK_END_MINUTES - 15,
       Math.max(WEEK_START_MINUTES, rawStartMinutes),
     );
-
-    // End time can still go up to 24:00
     const endMinutes = clampMinutes(
       Math.max(startMinutes + 15, parseTimeToMinutes(event.endTime)),
     );
@@ -246,6 +244,8 @@ function WeekDayColumn({
                   (item.endMinutes - item.startMinutes) * minuteScale,
                 );
                 const styles = CATEGORY_STYLES[item.event.category];
+
+                // Logic variables kept so you can easily toggle them later
                 const showTime = height >= 52 && group.laneCount <= 2;
                 const showParticipants = height >= 52 && group.laneCount <= 2;
 
@@ -266,11 +266,16 @@ function WeekDayColumn({
                       <div className="line-clamp-2 text-[10px] font-semibold leading-3.5">
                         {item.event.title}
                       </div>
+
+                      {/* Commented out the time display block below */}
+                      {/* 
                       {showTime ? (
                         <div className="truncate text-[8.5px] font-medium leading-3.5 opacity-75">
                           {item.event.startTime} - {item.event.endTime}
                         </div>
-                      ) : null}
+                      ) : null} 
+                      */}
+
                       {showParticipants ? (
                         <div className="min-w-0 text-[8.5px] font-medium leading-3.5 opacity-65">
                           <span className="whitespace-normal break-words">
