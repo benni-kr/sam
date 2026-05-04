@@ -8,15 +8,17 @@ import {
   type CSSProperties,
   type FormEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
-import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
-import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
+import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   plannerWeekdays,
   type PlannerWeekEvent,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/planner/lib/planner";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
 type DayLayout = {
@@ -280,8 +282,8 @@ function WeekDayColumn({
 }
 
 export function WeekView() {
-  const { weekEvents, updateWeekEvent, deleteWeekEvent, friends } =
-    usePlannerState();
+  const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
+  const { friends } = useFriendsState();
   const { ref: bodyRef, height: bodyHeight } =
     useMeasuredHeight<HTMLDivElement>();
   const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(
@@ -415,15 +417,8 @@ export function WeekView() {
         ))}
       </div>
 
-      {editingEvent ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-          onClick={() => setEditingEvent(null)}
-        >
-          <section
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
+      {editingEvent && typeof document !== "undefined"
+        ? createPortal(
             <PlannerWeekEventForm
               heading="Edit weekly appointment"
               submitLabel="Save changes"
@@ -475,10 +470,10 @@ export function WeekView() {
                   setEditingEvent(null);
                 },
               }}
-            />
-          </section>
-        </div>
-      ) : null}
+            />,
+            document.body,
+          )
+        : null}
     </section>
   );
 }

@@ -7,6 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import {
   type PlannerEvent,
@@ -23,6 +24,8 @@ function compactTone(category: PlannerEventCategory) {
   switch (category) {
     case "Exam":
       return "border-violet-200 bg-violet-50 text-violet-900";
+    case "Language Exam":
+      return "border-rose-200 bg-rose-50 text-rose-900";
     case "Group Event":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
     case "Private Event":
@@ -42,7 +45,8 @@ export function DraggableEvent({
   compact = false,
   children,
 }: DraggableEventProps) {
-  const { updateEvent, deleteEvent, friends } = usePlannerState();
+  const { updateEvent, deleteEvent } = usePlannerState();
+  const { friends } = useFriendsState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =

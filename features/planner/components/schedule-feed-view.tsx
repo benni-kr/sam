@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import type {
   PlannerEvent,
@@ -68,6 +69,8 @@ function categoryTone(category: string) {
   switch (category) {
     case "Exam":
       return "border-violet-200 bg-violet-50 text-violet-900";
+    case "Language Exam":
+      return "border-rose-200 bg-rose-50 text-rose-900";
     case "Group Event":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
     case "Private Event":
@@ -85,7 +88,8 @@ function categoryTone(category: string) {
  * Compact schedule feed for quick scanning.
  */
 export function ScheduleFeedView() {
-  const { events, updateEvent, deleteEvent, friends } = usePlannerState();
+  const { events, updateEvent, deleteEvent } = usePlannerState();
+  const { friends } = useFriendsState();
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const editingEvent = useMemo(

@@ -6,6 +6,7 @@ import type { PlannerWeekday } from "@/features/planner/lib/planner";
 type CreateEventContextValue = {
   openCreateEvent: (dateKey?: string) => void;
   openCreateWeekEvent: (day?: PlannerWeekday) => void;
+  openManageFriends: () => void;
 };
 
 const CreateEventContext = createContext<CreateEventContextValue | null>(null);

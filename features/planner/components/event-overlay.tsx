@@ -43,7 +43,6 @@ export function buildMonthWeekEventLayouts({
   events,
 }: BuildMonthWeekEventLayoutsArgs): MonthWeekEventLayout[] {
   const rowLayouts: MonthWeekEventLayout[] = [];
-  const labeledEventIds = new Set<string>();
   const rows = Math.ceil(cells.length / WEEK_SIZE);
 
   for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
@@ -110,10 +109,10 @@ export function buildMonthWeekEventLayouts({
           event,
           startColumn,
           columnSpan: endColumn - startColumn + 1,
-          showLabel: !labeledEventIds.has(event.id),
+          showLabel: true,
           roundLeft: visibleStartDate === eventStartDate,
           roundRight: visibleEndDate === eventEndDate,
-        } satisfies Omit<MonthWeekEventSegment, "lane">;
+        };
       })
       .filter(
         (segment): segment is Omit<MonthWeekEventSegment, "lane"> =>
@@ -152,8 +151,6 @@ export function buildMonthWeekEventLayouts({
       } else {
         laneEndColumns[lane] = segment.startColumn + segment.columnSpan - 1;
       }
-
-      labeledEventIds.add(segment.event.id);
 
       segments.push({
         ...segment,
@@ -246,6 +243,8 @@ function getEventTone(category: PlannerEvent["category"]) {
   switch (category) {
     case "Exam":
       return "border-violet-300 bg-violet-100 text-violet-900";
+    case "Language Exam":
+      return "border-rose-200 bg-rose-50 text-rose-900";
     case "Group Event":
       return "border-emerald-300 bg-emerald-100 text-emerald-900";
     case "Private Event":

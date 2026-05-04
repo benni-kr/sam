@@ -16,7 +16,7 @@ All views are driven by shared planner state and the same event model, with a de
 - `app/(planner)/page.tsx`: Calendar route entry
 - `app/(planner)/crosstables/page.tsx`: Crosstables route entry
 - `app/(planner)/list/page.tsx`: Schedule feed route entry
-- `features/planner/components/planner-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay
+- `features/planner/components/layout/app-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay (now generalized AppShell)
 - `features/planner/components/crosstables-view.tsx`: Category participation matrix with per-cell toggles
 - `features/planner/state/planner-state.tsx`: State container and state transitions
 - `features/planner/components/event-form.tsx`: Shared create/edit form fields and delete confirmation

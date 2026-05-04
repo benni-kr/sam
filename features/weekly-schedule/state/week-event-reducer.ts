@@ -2,8 +2,8 @@ import {
   plannerSemesterIds,
   type PlannerSemesterId,
   type PlannerWeekEvent,
-} from "../lib/planner";
-import { type PlannerWeekEventsBySemester } from "../lib/planner-persistence";
+} from "@/features/planner/lib/planner";
+import { type PlannerWeekEventsBySemester } from "@/features/planner/lib/planner-persistence";
 
 export type PlannerWeekAction =
   | {

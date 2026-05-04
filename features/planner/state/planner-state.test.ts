@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   getInboxEventsFromState,
   plannerStateReducer,
-} from "../../features/planner/state/planner-state";
+} from "./planner-state";
 import {
   plannerSemesters,
   type PlannerEvent,
-} from "../../features/planner/lib/planner";
+} from "../lib/planner";
 
 const semesterIds = plannerSemesters.map((semester) => semester.id) as [
   (typeof plannerSemesters)[number]["id"],

@@ -15,18 +15,19 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { CreateEventProvider } from "@/features/planner/components/create-event-context";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
-import { PlannerTabs } from "@/features/planner/components/planner-tabs";
-import { SidebarInbox } from "@/features/planner/components/sidebar-inbox";
-import { PlannerWeekEventForm } from "@/features/planner/components/week-event-form";
-import { getDefaultWeekAppointmentTimeRange } from "@/features/planner/components/time-picker";
+import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import {
+  FriendsProvider,
+  useFriendsState,
+} from "@/features/friends/state/friends-state";
+import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
@@ -37,8 +38,9 @@ import {
   type PlannerWeekday,
 } from "@/features/planner/lib/planner";
 
-type PlannerShellProps = {
+type AppShellProps = {
   children: React.ReactNode;
+  sidebarContent?: React.ReactNode;
 };
 
 const collisionDetection: CollisionDetection = (args) => {
@@ -115,20 +117,13 @@ const snapOverlayToCursor: Modifier = ({
   };
 };
 
-/**
- * Top-level planner shell with semester routing, drag-and-drop context, and sidebar.
- */
-export function PlannerShell({ children }: PlannerShellProps) {
+export function AppShell({ children, sidebarContent }: AppShellProps) {
   const [semesterMenuOpen, setSemesterMenuOpen] = useState(false);
   const semesterMenuRef = useRef<HTMLDivElement | null>(null);
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const semesterId = searchParams.get("semester") ?? defaultPlannerSemesterId;
   const activeSemester = getPlannerSemester(semesterId);
-  const hideFinished = searchParams.get("hideFinished") !== "0";
-  const hideUndated = searchParams.get("hideUndated") === "1";
-  const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -169,75 +164,42 @@ export function PlannerShell({ children }: PlannerShellProps) {
     return query ? `${pathname}?${query}` : pathname;
   }
 
-  function setCrosstablesFilterParam(
-    key: "hideFinished" | "hideUndated" | "hideInactive",
-    enabled: boolean,
-  ) {
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (key === "hideFinished" || key === "hideInactive") {
-      params.set(key, enabled ? "1" : "0");
-    } else if (enabled) {
-      params.set(key, "1");
-    } else {
-      params.delete(key);
-    }
-
-    const query = params.toString();
-    const nextHref = query ? `${pathname}?${query}` : pathname;
-
-    router.push(nextHref, { scroll: false });
-  }
-
   return (
-    <PlannerStateProvider activeSemesterId={semesterId}>
-      <PlannerShellFrame
-        pathname={pathname}
-        semesterId={semesterId}
-        activeSemester={activeSemester}
-        semesterMenuOpen={semesterMenuOpen}
-        semesterMenuRef={semesterMenuRef}
-        setSemesterMenuOpen={setSemesterMenuOpen}
-        buildSemesterHref={buildSemesterHref}
-        hideFinished={hideFinished}
-        hideUndated={hideUndated}
-        hideInactiveParticipants={hideInactiveParticipants}
-        setCrosstablesFilterParam={setCrosstablesFilterParam}
-      >
-        {children}
-      </PlannerShellFrame>
-    </PlannerStateProvider>
+    <FriendsProvider>
+      <PlannerStateProvider activeSemesterId={semesterId}>
+        <AppShellFrame
+          semesterId={semesterId}
+          activeSemester={activeSemester}
+          semesterMenuOpen={semesterMenuOpen}
+          semesterMenuRef={semesterMenuRef}
+          setSemesterMenuOpen={setSemesterMenuOpen}
+          buildSemesterHref={buildSemesterHref}
+          sidebarContent={sidebarContent}
+        >
+          {children}
+        </AppShellFrame>
+      </PlannerStateProvider>
+    </FriendsProvider>
   );
 }
 
-function PlannerShellFrame({
-  pathname,
+function AppShellFrame({
   semesterId,
   activeSemester,
   semesterMenuOpen,
   semesterMenuRef,
   setSemesterMenuOpen,
   buildSemesterHref,
-  hideFinished,
-  hideUndated,
-  hideInactiveParticipants,
-  setCrosstablesFilterParam,
+  sidebarContent,
   children,
 }: {
-  pathname: string;
   semesterId: string;
   activeSemester: ReturnType<typeof getPlannerSemester>;
   semesterMenuOpen: boolean;
   semesterMenuRef: React.RefObject<HTMLDivElement | null>;
   setSemesterMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   buildSemesterHref: (nextSemesterId: string) => string;
-  hideFinished: boolean;
-  hideUndated: boolean;
-  hideInactiveParticipants: boolean;
-  setCrosstablesFilterParam: (
-    key: "hideFinished" | "hideUndated" | "hideInactive",
-    enabled: boolean,
-  ) => void;
+  sidebarContent?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const {
@@ -246,11 +208,8 @@ function PlannerShellFrame({
     moveEventToDate,
     createEvent,
     createWeekEvent,
-    friends,
-    addFriend,
-    renameFriend,
-    removeFriend,
   } = usePlannerState();
+  const { friends, addFriend, renameFriend, removeFriend } = useFriendsState();
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -448,7 +407,13 @@ function PlannerShellFrame({
   }
 
   return (
-    <CreateEventProvider value={{ openCreateEvent, openCreateWeekEvent }}>
+    <CreateEventProvider
+      value={{
+        openCreateEvent,
+        openCreateWeekEvent,
+        openManageFriends: () => setIsManageFriendsOpen(true),
+      }}
+    >
       <DndContext
         id="sam-planner-dnd"
         sensors={sensors}
@@ -486,7 +451,7 @@ function PlannerShellFrame({
                         const href = buildSemesterHref(semester.id);
 
                         return (
-                          <Link
+                          <a
                             key={semester.id}
                             href={href}
                             aria-current={isActive ? "true" : undefined}
@@ -500,141 +465,14 @@ function PlannerShellFrame({
                             <span className="text-sm font-medium">
                               {semester.label}
                             </span>
-                          </Link>
+                          </a>
                         );
                       })}
                     </div>
                   ) : null}
                 </div>
 
-                <PlannerTabs activeSemesterId={semesterId} />
-
-                {pathname === "/week" ? (
-                  <>
-                    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Weekly categories
-                      </p>
-                      <div className="mt-3 space-y-2 text-xs text-slate-700">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
-                          University
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-blue-900" />
-                          Language courses
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
-                          Sports
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-900" />
-                          Other
-                        </div>
-                      </div>
-                    </section>
-
-                    <button
-                      type="button"
-                      onClick={() => openCreateWeekEvent()}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    >
-                      + Add weekly appointment
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Categories
-                      </p>
-                      <div className="mt-3 space-y-2 text-xs text-slate-700">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-                          Exam
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                          Group Event
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                          Private Event
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-                          Other
-                        </div>
-                      </div>
-                    </section>
-
-                    <button
-                      type="button"
-                      onClick={() => openCreateEvent()}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    >
-                      + Add Event
-                    </button>
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setIsManageFriendsOpen(true)}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  Manage friends
-                </button>
-
-                {pathname === "/crosstables" || pathname === "/list" ? (
-                  <>
-                    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        View Filters
-                      </p>
-                      <div className="mt-3 space-y-2">
-                        <SidebarToggle
-                          label="Hide finished events"
-                          checked={hideFinished}
-                          onToggle={(checked) =>
-                            setCrosstablesFilterParam("hideFinished", checked)
-                          }
-                        />
-
-                        {pathname === "/crosstables" ? (
-                          <>
-                            <SidebarToggle
-                              label="Hide undated events"
-                              checked={hideUndated}
-                              onToggle={(checked) =>
-                                setCrosstablesFilterParam(
-                                  "hideUndated",
-                                  checked,
-                                )
-                              }
-                            />
-
-                            <SidebarToggle
-                              label="Hide inactive participants"
-                              checked={hideInactiveParticipants}
-                              onToggle={(checked) =>
-                                setCrosstablesFilterParam(
-                                  "hideInactive",
-                                  checked,
-                                )
-                              }
-                            />
-                          </>
-                        ) : null}
-                      </div>
-                    </section>
-                  </>
-                ) : null}
-
-                {pathname === "/crosstables" || pathname === "/week" ? null : (
-                  <SidebarInbox />
-                )}
+                {sidebarContent ? sidebarContent : null}
               </div>
             </aside>
 
@@ -651,67 +489,47 @@ function PlannerShellFrame({
         </DragOverlay>
 
         {isCreateModalOpen ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-            onClick={closeCreateEvent}
-          >
-            <section
-              className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PlannerEventForm
-                heading="Add event"
-                submitLabel="Add event"
-                title={title}
-                category={category}
-                startDate={startDate}
-                endDate={endDate}
-                participants={participants}
-                availableParticipants={friends}
-                onTitleChange={setTitle}
-                onCategoryChange={(nextCategory: PlannerEventCategory) =>
-                  setCategory(nextCategory)
-                }
-                onStartDateChange={setStartDate}
-                onEndDateChange={setEndDate}
-                onParticipantsChange={setParticipants}
-                onSubmit={handleCreateEvent}
-                onCancel={closeCreateEvent}
-              />
-            </section>
-          </div>
+          <PlannerEventForm
+            heading="Add event"
+            submitLabel="Add event"
+            title={title}
+            category={category}
+            startDate={startDate}
+            endDate={endDate}
+            participants={participants}
+            availableParticipants={friends}
+            onTitleChange={setTitle}
+            onCategoryChange={(nextCategory: PlannerEventCategory) =>
+              setCategory(nextCategory)
+            }
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            onParticipantsChange={setParticipants}
+            onSubmit={handleCreateEvent}
+            onCancel={closeCreateEvent}
+          />
         ) : null}
 
         {isCreateWeekModalOpen ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-            onClick={closeCreateWeekEvent}
-          >
-            <section
-              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PlannerWeekEventForm
-                heading="Add weekly appointment"
-                submitLabel="Add weekly appointment"
-                title={weekTitle}
-                category={weekCategory}
-                day={weekDay}
-                startTime={weekStartTime}
-                endTime={weekEndTime}
-                participants={weekParticipants}
-                availableParticipants={friends}
-                onTitleChange={setWeekTitle}
-                onCategoryChange={setWeekCategory}
-                onDayChange={setWeekDay}
-                onStartTimeChange={setWeekStartTime}
-                onEndTimeChange={setWeekEndTime}
-                onParticipantsChange={setWeekParticipants}
-                onSubmit={handleCreateWeekEvent}
-                onCancel={closeCreateWeekEvent}
-              />
-            </section>
-          </div>
+          <PlannerWeekEventForm
+            heading="Add weekly appointment"
+            submitLabel="Add weekly appointment"
+            title={weekTitle}
+            category={weekCategory}
+            day={weekDay}
+            startTime={weekStartTime}
+            endTime={weekEndTime}
+            participants={weekParticipants}
+            availableParticipants={friends}
+            onTitleChange={setWeekTitle}
+            onCategoryChange={setWeekCategory}
+            onDayChange={setWeekDay}
+            onStartTimeChange={setWeekStartTime}
+            onEndTimeChange={setWeekEndTime}
+            onParticipantsChange={setWeekParticipants}
+            onSubmit={handleCreateWeekEvent}
+            onCancel={closeCreateWeekEvent}
+          />
         ) : null}
 
         {isManageFriendsOpen ? (
@@ -865,39 +683,5 @@ function PlannerShellFrame({
         ) : null}
       </DndContext>
     </CreateEventProvider>
-  );
-}
-
-function SidebarToggle({
-  label,
-  checked,
-  onToggle,
-}: {
-  label: string;
-  checked: boolean;
-  onToggle: (checked: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 text-xs text-slate-700">
-      <span>{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        onClick={() => onToggle(!checked)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
-          checked
-            ? "border-slate-900 bg-slate-900"
-            : "border-slate-300 bg-slate-200"
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-5" : "translate-x-1"
-          }`}
-        />
-      </button>
-    </div>
   );
 }

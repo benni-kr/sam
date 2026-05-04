@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 
 import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import {
   plannerEventCategories,
@@ -21,6 +22,11 @@ const categoryStyles: Record<
     heading: "text-violet-900",
     accent: "bg-violet-500",
   },
+  "Language Exam": {
+    section: "border-rose-200 bg-rose-50/80",
+    heading: "text-rose-900",
+    accent: "bg-rose-500",
+  },
   "Group Event": {
     section: "border-emerald-200 bg-emerald-50/80",
     heading: "text-emerald-900",
@@ -31,6 +37,7 @@ const categoryStyles: Record<
     heading: "text-amber-900",
     accent: "bg-amber-400",
   },
+
   Other: {
     section: "border-sky-200 bg-sky-50/80",
     heading: "text-sky-900",
@@ -40,6 +47,7 @@ const categoryStyles: Record<
 
 const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
   Exam: "Exams",
+  "Language Exam": "Language Exams",
   "Group Event": "Group Events",
   "Private Event": "Private Events",
   Other: "Others",
@@ -60,6 +68,9 @@ const categoryCheckboxStyles: Record<
   "Private Event": {
     mark: "text-amber-700",
   },
+  "Language Exam": {
+    mark: "text-rose-700",
+  },
   Other: {
     mark: "text-sky-700",
   },
@@ -70,14 +81,9 @@ const categoryCheckboxStyles: Record<
  */
 export function CrosstablesView() {
   const searchParams = useSearchParams();
-  const {
-    events,
-    inboxEvents,
-    toggleParticipant,
-    updateEvent,
-    deleteEvent,
-    friends,
-  } = usePlannerState();
+  const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
+    usePlannerState();
+  const { friends } = useFriendsState();
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
