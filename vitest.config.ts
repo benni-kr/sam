@@ -9,7 +9,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    // include tests from legacy `tests/` dir and all colocated tests
-    include: ["tests/**/*.test.ts", "**/*.test.{ts,tsx}"],
+    include: ["**/*.test.{ts,tsx}"],
   },
 });

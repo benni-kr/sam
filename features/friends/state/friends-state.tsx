@@ -24,6 +24,7 @@ type FriendMutation =
 
 type FriendsStateContextValue = {
   friends: string[];
+  isHydrated: boolean;
   addFriend: (name: string) => void;
   renameFriend: (currentName: string, nextName: string) => void;
   removeFriend: (name: string) => void;
@@ -126,6 +127,7 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   const value = useMemo<FriendsStateContextValue>(() => {
     return {
       friends,
+      isHydrated: didHydrateFromStorage,
       lastMutation,
       addFriend: (name) => {
         const normalizedName = normalizeFriendName(name);
@@ -134,23 +136,21 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
           return;
         }
 
-        setFriends((current) => {
-          if (
-            current.some(
-              (friend) =>
-                friend.toLocaleLowerCase() ===
-                normalizedName.toLocaleLowerCase(),
-            )
-          ) {
-            return current;
-          }
+        const isDuplicate = friends.some(
+          (friend) =>
+            friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
+        );
 
-          setLastMutation({ type: "add", name: normalizedName });
+        if (isDuplicate) {
+          return;
+        }
 
-          return [...current, normalizedName].sort((left, right) =>
-            left.localeCompare(right),
-          );
-        });
+        const nextFriends = [...friends, normalizedName].sort((left, right) =>
+          left.localeCompare(right),
+        );
+
+        setFriends(nextFriends);
+        setLastMutation({ type: "add", name: normalizedName });
       },
       renameFriend: (currentName, nextName) => {
         const normalizedCurrentName = normalizeFriendName(currentName);
@@ -167,40 +167,31 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
           return;
         }
 
-        let wasRenamed = false;
+        const hasCurrentName = friends.some(
+          (friend) =>
+            friend.toLocaleLowerCase() ===
+            normalizedCurrentName.toLocaleLowerCase(),
+        );
+        const hasTargetName = friends.some(
+          (friend) =>
+            friend.toLocaleLowerCase() ===
+            normalizedNextName.toLocaleLowerCase(),
+        );
 
-        setFriends((current) => {
-          const hasCurrentName = current.some(
-            (friend) =>
-              friend.toLocaleLowerCase() ===
-              normalizedCurrentName.toLocaleLowerCase(),
-          );
-          const hasTargetName = current.some(
-            (friend) =>
-              friend.toLocaleLowerCase() ===
-              normalizedNextName.toLocaleLowerCase(),
-          );
-
-          if (!hasCurrentName || hasTargetName) {
-            return current;
-          }
-
-          wasRenamed = true;
-
-          return current
-            .map((friend) =>
-              friend.toLocaleLowerCase() ===
-              normalizedCurrentName.toLocaleLowerCase()
-                ? normalizedNextName
-                : friend,
-            )
-            .sort((left, right) => left.localeCompare(right));
-        });
-
-        if (!wasRenamed) {
+        if (!hasCurrentName || hasTargetName) {
           return;
         }
 
+        const nextFriends = friends
+          .map((friend) =>
+            friend.toLocaleLowerCase() ===
+            normalizedCurrentName.toLocaleLowerCase()
+              ? normalizedNextName
+              : friend,
+          )
+          .sort((left, right) => left.localeCompare(right));
+
+        setFriends(nextFriends);
         setLastMutation({
           type: "rename",
           currentName: normalizedCurrentName,
@@ -214,30 +205,20 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
           return;
         }
 
-        let wasRemoved = false;
+        const nextFriends = friends.filter(
+          (friend) =>
+            friend.toLocaleLowerCase() !== normalizedName.toLocaleLowerCase(),
+        );
 
-        setFriends((current) => {
-          const nextFriends = current.filter(
-            (friend) =>
-              friend.toLocaleLowerCase() !== normalizedName.toLocaleLowerCase(),
-          );
-
-          if (nextFriends.length === current.length) {
-            return current;
-          }
-
-          wasRemoved = true;
-          return nextFriends;
-        });
-
-        if (!wasRemoved) {
+        if (nextFriends.length === friends.length) {
           return;
         }
 
+        setFriends(nextFriends);
         setLastMutation({ type: "remove", name: normalizedName });
       },
     };
-  }, [friends, lastMutation]);
+  }, [friends, didHydrateFromStorage, lastMutation]);
 
   return (
     <FriendsStateContext.Provider value={value}>

@@ -118,7 +118,7 @@ export async function loadFriends() {
           window.localStorage.removeItem("sam_auth_token");
           window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
         } catch {
-          // noop
+          // no-op
         }
 
         return null;
@@ -158,13 +158,84 @@ export async function saveFriends(friends: string[]) {
 
   const rows = friendsToRows(friends, config.plannerScope);
 
+  if (typeof window !== "undefined") {
+    const token = getClientAuthToken();
+
+    if (!token) {
+      return;
+    }
+
+    const authHeader = `Bearer ${token}`;
+
+    if (rows.length > 0) {
+      const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          apikey: config.anonKey,
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(rows),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          try {
+            window.localStorage.removeItem("sam_auth_token");
+            window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+          } catch {
+            // no-op
+          }
+
+          return;
+        }
+
+        throw new Error("Failed to save planner friends to Supabase.");
+      }
+    }
+
+    const friendNames = rows.map((row) => row.friend_name);
+    const deleteFilter = buildNotInFilter(friendNames);
+    const deleteEndpoint = deleteFilter
+      ? `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&friend_name=${deleteFilter}`
+      : `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+
+    const deleteResponse = await fetch(deleteEndpoint, {
+      method: "DELETE",
+      headers: {
+        apikey: config.anonKey,
+        Authorization: authHeader,
+      },
+    });
+
+    if (!deleteResponse.ok) {
+      if (deleteResponse.status === 401 || deleteResponse.status === 403) {
+        try {
+          window.localStorage.removeItem("sam_auth_token");
+          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+        } catch {
+          // no-op
+        }
+
+        return;
+      }
+
+      throw new Error("Failed to prune planner friends in Supabase.");
+    }
+
+    return;
+  }
+
+  // Server-side path
   if (rows.length > 0) {
     const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         apikey: config.anonKey,
-        Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+        Authorization: `Bearer ${config.anonKey}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
@@ -186,7 +257,7 @@ export async function saveFriends(friends: string[]) {
     method: "DELETE",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+      Authorization: `Bearer ${config.anonKey}`,
     },
   });
 

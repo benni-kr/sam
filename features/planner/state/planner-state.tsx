@@ -692,13 +692,17 @@ export function PlannerStateProvider({
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
-  const { friends, lastMutation } = useFriendsState();
+  const { friends, isHydrated: friendsHydrated, lastMutation } = useFriendsState();
 
   if (persistenceError) {
     throw persistenceError;
   }
 
   useEffect(() => {
+    if (!friendsHydrated) {
+      return;
+    }
+
     let cancelled = false;
 
     void Promise.all([
@@ -747,7 +751,10 @@ export function PlannerStateProvider({
     return () => {
       cancelled = true;
     };
-  }, [friends]);
+    // Run once when friends have finished loading; subsequent friend changes
+    // are handled by the RENAME/REMOVE_PARTICIPANT effects below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [friendsHydrated]);
 
   useEffect(() => {
     if (!didHydrateFromStorage || !lastMutation) {
