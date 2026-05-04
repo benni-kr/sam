@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   plannerWeekStateReducer,
   type PlannerWeekAction,
-} from "../../features/weekly-schedule/state/week-event-reducer";
-import { type PlannerWeekEventsBySemester } from "../../features/planner/lib/planner-persistence";
+} from "./week-event-reducer";
+import { type PlannerWeekEventsBySemester } from "../../planner/lib/planner-persistence";
 import {
   plannerSemesterIds,
   type PlannerWeekEvent,
-} from "../../features/planner/lib/planner";
+} from "../../planner/lib/planner";
 
 function makeEvent(
   overrides: Partial<PlannerWeekEvent> = {},
@@ -71,7 +71,6 @@ describe("plannerWeekStateReducer", () => {
       expect(nextState[plannerSemesterIds[0]]).toHaveLength(1);
       expect(nextState[plannerSemesterIds[0]]![0].title).toBe("Hydrated");
 
-      // participants must be a deep clone, not the same reference
       const originalParticipants =
         hydrated[plannerSemesterIds[0]]![0].participants;
       const clonedParticipants =
