@@ -78,7 +78,7 @@ export function BaseEventForm({
             <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Participants
             </p>
-            <div className="mt-2 grid grid-cols-2 gap-1">
+            <div className="mt-2 grid grid-cols-3 gap-1">
               {availableParticipants.map((participantName) => {
                 const isSelected = participants.includes(participantName);
 
