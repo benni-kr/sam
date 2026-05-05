@@ -2,6 +2,7 @@
 
 import { getCalendarEventBadgeStyle } from "@/features/planner/lib/category-config";
 import { getWeekEventCardStyle } from "@/features/weekly-schedule/lib/week-category-config";
+import type { PlannerWeekEventCategory } from "@/features/weekly-schedule/lib/week-types";
 
 export type PreviewEventShape = {
   title: string;
@@ -30,8 +31,12 @@ function formatDisplayDate(dateStr?: string | null) {
 /**
  * Determine if a category is a weekly event category
  */
-function isWeekEventCategory(category: string): boolean {
-  return ["University", "Language courses", "Sports"].includes(category);
+function isWeekEventCategory(
+  category: string,
+): category is PlannerWeekEventCategory {
+  return ["University", "Language courses", "Sports", "Other"].includes(
+    category,
+  );
 }
 
 /**

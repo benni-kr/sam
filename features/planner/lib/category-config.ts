@@ -123,3 +123,12 @@ export function getCalendarEventCheckboxStyle(category: string): string {
     calendarEventCheckboxStyles["Other"].mark
   );
 }
+
+/**
+ * Get the accent color (primary highlight) for a calendar event category
+ * Used for legend indicators and highlights
+ */
+export function getCalendarEventAccentColor(category: string): string {
+  const styles = getCalendarEventSectionStyle(category);
+  return styles.accent;
+}
