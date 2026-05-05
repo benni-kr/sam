@@ -32,7 +32,7 @@ const WEEK_SIZE = 7;
 const DAY_HEADER_HEIGHT = 28;
 const MIN_EVENT_LANES = 3;
 const EVENT_LANE_HEIGHT = 28;
-const ROW_VERTICAL_PADDING = 2;
+const ROW_VERTICAL_PADDING = 4;
 
 /**
  * Computes per-week event segments and lane assignments for calendar rendering.
