@@ -15,7 +15,7 @@ import {
   plannerWeekdays,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
-} from "@/features/planner/lib/planner";
+} from "@/features/weekly-schedule/lib/week-types";
 
 type PlannerWeekEventFormProps = {
   heading: string;

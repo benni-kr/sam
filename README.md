@@ -2,9 +2,14 @@
 
 SAM (Semester Activity Manager) is a collaborative planner for semester schedules, shared participation tracking, and unscheduled inbox ideas.
 
+## Architecture
+
+Please read [architecture.md](docs/architecture.md).
+
 ## Features
 
 - Calendar view for semester planning with day-cell quick add
+- Weekly schedule view for managing repeating university and personal routines
 - Crosstables view for "who is in" tracking by category
 - Schedule Feed view for compact scanning
 - Shared inbox for unscheduled events
@@ -25,16 +30,15 @@ SAM (Semester Activity Manager) is a collaborative planner for semester schedule
 ```bash
 npm install
 npm run dev
+Open http://localhost:3000.
 ```
-
-Open [http://localhost:3000](http://localhost:3000).
 
 ## Supabase Setup
 
 SAM persists full planner events in Supabase (title, category, participants, dates, semester).
 
-1. Apply SQL migrations in `supabase/migrations` to your Supabase project.
-2. Configure environment variables:
+- Apply the SQL migrations in `supabase/migrations` to your Supabase project.
+- Configure the environment variables:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
@@ -42,7 +46,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_SAM_PLANNER_SCOPE=prod
 ```
 
-1. Restart the app and verify planner writes/reads.
+- Restart the app and verify planner writes and reads.
 
 Notes:
 

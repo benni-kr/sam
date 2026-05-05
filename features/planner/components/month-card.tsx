@@ -10,8 +10,8 @@ import {
   buildMonthDays,
   formatDateKey,
   weekdayLabels,
-  type PlannerMonth,
-} from "@/features/planner/lib/planner";
+} from "@/features/planner/lib/planner-utils";
+import { type PlannerMonth } from "@/features/planner/lib/planner";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
 type MonthCardProps = {
@@ -45,7 +45,7 @@ export function MonthCard({ month }: MonthCardProps) {
       </div>
 
       <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
-        {weekdayLabels.map((weekday, index) => (
+        {weekdayLabels.map((weekday: string, index: number) => (
           <div
             key={`${weekday}-${index}`}
             className="border-r border-slate-200 py-1 last:border-r-0"

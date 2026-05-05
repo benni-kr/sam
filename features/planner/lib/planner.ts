@@ -1,3 +1,13 @@
+/**
+ * Calendar Domain Types, Constants, and Aggregates
+ *
+ * This module contains types and logic specific to the calendar view and
+ * the PlannerSemester aggregate root. It represents the bounded context for
+ * semester-based event planning.
+ */
+
+import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
+
 export type PlannerEventCategory =
   | "Exam"
   | "Language Exam"
@@ -13,54 +23,12 @@ export const plannerEventCategories: PlannerEventCategory[] = [
   "Other",
 ];
 
-export type PlannerWeekEventCategory =
-  | "University"
-  | "Language courses"
-  | "Sports"
-  | "Other";
-
-export const plannerWeekEventCategories: PlannerWeekEventCategory[] = [
-  "University",
-  "Language courses",
-  "Sports",
-  "Other",
-];
-
-export type PlannerWeekday =
-  | "Mon"
-  | "Tue"
-  | "Wed"
-  | "Thu"
-  | "Fri"
-  | "Sat"
-  | "Sun";
-
-export const plannerWeekdays: PlannerWeekday[] = [
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat",
-  "Sun",
-];
-
 export type PlannerEvent = {
   id: string;
   title: string;
   category: PlannerEventCategory;
   startDate: string | null;
   endDate: string | null;
-  participants: string[];
-};
-
-export type PlannerWeekEvent = {
-  id: string;
-  title: string;
-  category: PlannerWeekEventCategory;
-  day: PlannerWeekday;
-  startTime: string;
-  endTime: string;
   participants: string[];
 };
 
@@ -172,48 +140,6 @@ export const plannerViews: PlannerView[] = [
     description: "Monday-to-Sunday weekly timetable",
   },
 ];
-
-export const weekdayLabels = ["M", "T", "W", "T", "F", "S", "S"];
-
-export const monthFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  year: "numeric",
-});
-
-/**
- * Formats a Date into a YYYY-MM-DD key used across planner state and persistence.
- */
-export function formatDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-/**
- * Builds a month grid as week rows with Monday as the first day.
- * Empty leading/trailing cells are represented by null.
- */
-export function buildMonthDays(year: number, monthIndex: number) {
-  const firstDay = new Date(year, monthIndex, 1);
-  const totalDays = new Date(year, monthIndex + 1, 0).getDate();
-  const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
-  const cells: Array<number | null> = Array.from(
-    { length: leadingEmptyDays },
-    () => null,
-  );
-
-  for (let day = 1; day <= totalDays; day += 1) {
-    cells.push(day);
-  }
-
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-
-  return cells;
-}
 
 export function getPlannerSemester(
   semesterId: string | null | undefined = defaultPlannerSemesterId,

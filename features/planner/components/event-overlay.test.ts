@@ -4,11 +4,8 @@ import {
   buildMonthWeekEventLayouts,
   getMonthWeekRowHeight,
 } from "./event-overlay";
-import {
-  buildMonthDays,
-  type PlannerEvent,
-  type PlannerMonth,
-} from "../lib/planner";
+import { buildMonthDays } from "../lib/planner-utils";
+import { type PlannerEvent, type PlannerMonth } from "../lib/planner";
 
 describe("buildMonthWeekEventLayouts", () => {
   it("splits multi-day events across week rows with stable lane assignment", () => {

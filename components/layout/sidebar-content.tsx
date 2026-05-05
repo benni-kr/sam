@@ -2,8 +2,14 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PlannerTabs } from "@/features/planner/components/planner-tabs";
-import { SidebarInbox } from "@/features/planner/components/sidebar-inbox";
-import { defaultPlannerSemesterId } from "@/features/planner/lib/planner";
+import { SidebarInbox } from "@/components/layout/sidebar-inbox";
+import {
+  defaultPlannerSemesterId,
+  plannerEventCategories,
+} from "@/features/planner/lib/planner";
+import { plannerWeekEventCategories } from "@/features/weekly-schedule/lib/week-types";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
+import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import { useCreateEvent } from "@/features/planner/components/create-event-context";
 
 export function SidebarContent() {
@@ -52,22 +58,14 @@ export function SidebarContent() {
               Weekly categories
             </p>
             <div className="mt-3 space-y-2 text-xs text-slate-700">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
-                University
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue-900" />
-                Language courses
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
-                Sports
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-900" />
-                Other
-              </div>
+              {plannerWeekEventCategories.map((category) => (
+                <div key={category} className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${getWeekTheme(category).accent}`}
+                  />
+                  {category}
+                </div>
+              ))}
             </div>
           </section>
 
@@ -94,26 +92,14 @@ export function SidebarContent() {
               Categories
             </p>
             <div className="mt-3 space-y-2 text-xs text-slate-700">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-                Exam
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-                Language Exam
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                Group Event
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                Private Event
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-                Other
-              </div>
+              {plannerEventCategories.map((category) => (
+                <div key={category} className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${getCalendarTheme(category).accent}`}
+                  />
+                  {category}
+                </div>
+              ))}
             </div>
           </section>
 

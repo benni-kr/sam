@@ -14,29 +14,13 @@ import {
   type PlannerEvent,
   type PlannerEventCategory,
 } from "@/features/planner/lib/planner";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 type DraggableEventProps = {
   event: PlannerEvent;
   compact?: boolean;
   children?: React.ReactNode;
 };
-
-function compactTone(category: PlannerEventCategory) {
-  switch (category) {
-    case "Exam":
-      return "border-violet-200 bg-violet-50 text-violet-900";
-    case "Language Exam":
-      return "border-rose-200 bg-rose-50 text-rose-900";
-    case "Group Event":
-      return "border-emerald-200 bg-emerald-50 text-emerald-900";
-    case "Private Event":
-      return "border-amber-200 bg-amber-50 text-amber-900";
-    case "Other":
-      return "border-sky-200 bg-sky-50 text-sky-900";
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
-  }
-}
 
 /**
  * Shared drag wrapper for calendar and inbox event presentations.
@@ -46,6 +30,7 @@ export function DraggableEvent({
   compact = false,
   children,
 }: DraggableEventProps) {
+  const theme = getCalendarTheme(event.category);
   const { updateEvent, deleteEvent } = usePlannerState();
   const { friends } = useFriendsState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -101,9 +86,7 @@ export function DraggableEvent({
           {...listeners}
           {...attributes}
           onClick={openPreview}
-          className={`touch-none cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${compactTone(
-            event.category,
-          )} ${isDragging ? "opacity-40" : "opacity-100"}`}
+          className={`touch-none cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
         >
           {event.title}
         </div>

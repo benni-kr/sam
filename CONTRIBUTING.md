@@ -17,6 +17,7 @@ Found a bug? Nice catch. If you can also catch it in a PR, even better.
 3. Run quality checks locally:
 
 ```bash
+npx tsc --noEmit
 npm test
 npm run lint
 npm run build

@@ -5,10 +5,8 @@ import {
   type PlannerWeekAction,
 } from "./week-event-reducer";
 import { type PlannerWeekEventsBySemester } from "../../planner/lib/planner-persistence";
-import {
-  plannerSemesterIds,
-  type PlannerWeekEvent,
-} from "../../planner/lib/planner";
+import { plannerSemesterIds } from "../../planner/lib/planner";
+import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
 
 function makeEvent(
   overrides: Partial<PlannerWeekEvent> = {},

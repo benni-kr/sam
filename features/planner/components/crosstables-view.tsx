@@ -12,38 +12,7 @@ import {
   type PlannerEvent,
   type PlannerEventCategory,
 } from "@/features/planner/lib/planner";
-
-const categoryStyles: Record<
-  string,
-  { section: string; heading: string; accent: string }
-> = {
-  Exam: {
-    section: "border-violet-200 bg-violet-50/80",
-    heading: "text-violet-900",
-    accent: "bg-violet-500",
-  },
-  "Language Exam": {
-    section: "border-rose-200 bg-rose-50/80",
-    heading: "text-rose-900",
-    accent: "bg-rose-500",
-  },
-  "Group Event": {
-    section: "border-emerald-200 bg-emerald-50/80",
-    heading: "text-emerald-900",
-    accent: "bg-emerald-500",
-  },
-  "Private Event": {
-    section: "border-amber-200 bg-amber-50/80",
-    heading: "text-amber-900",
-    accent: "bg-amber-400",
-  },
-
-  Other: {
-    section: "border-sky-200 bg-sky-50/80",
-    heading: "text-sky-900",
-    accent: "bg-sky-500",
-  },
-};
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
   Exam: "Exams",
@@ -51,29 +20,6 @@ const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
   "Group Event": "Group Events",
   "Private Event": "Private Events",
   Other: "Others",
-};
-
-const categoryCheckboxStyles: Record<
-  PlannerEventCategory,
-  {
-    mark: string;
-  }
-> = {
-  Exam: {
-    mark: "text-violet-700",
-  },
-  "Group Event": {
-    mark: "text-emerald-700",
-  },
-  "Private Event": {
-    mark: "text-amber-700",
-  },
-  "Language Exam": {
-    mark: "text-rose-700",
-  },
-  Other: {
-    mark: "text-sky-700",
-  },
 };
 
 /**
@@ -171,18 +117,17 @@ export function CrosstablesView() {
       <div className="grid gap-4">
         {plannerEventCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
-          const styles = categoryStyles[category];
-          const checkboxStyles = categoryCheckboxStyles[category];
+          const theme = getCalendarTheme(category);
 
           return (
             <article
               key={category}
-              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
+              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${theme.section}`}
             >
               <div className="mb-3 flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
+                <span className={`h-2.5 w-2.5 rounded-full ${theme.accent}`} />
                 <h3
-                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}
+                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${theme.heading}`}
                 >
                   {categoryLabelsPlural[category]}
                 </h3>
@@ -269,7 +214,7 @@ export function CrosstablesView() {
                                   className="peer sr-only"
                                 />
                                 <span
-                                  className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${checkboxStyles.mark}`}
+                                  className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${theme.checkbox}`}
                                 >
                                   <Check size={checkIconSize} strokeWidth={3} />
                                 </span>
