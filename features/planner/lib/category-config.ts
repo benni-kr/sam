@@ -47,7 +47,7 @@ export const CALENDAR_CATEGORY_THEMES: Record<
     checkbox: "text-emerald-700",
   },
   "Private Event": {
-    badge: "border-amber-300 bg-amber-100 text-amber-900",
+    badge: "border-amber-300 bg-[#fcf5d2] text-amber-900",
     section: "border-amber-200 bg-amber-50/80",
     heading: "text-amber-900",
     accent: "bg-amber-400",
