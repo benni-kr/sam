@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -23,6 +28,24 @@ type DraggableEventProps = {
 };
 
 /**
+ * External store subscriptions for touch device detection.
+ * Defined outside the component to ensure stable references for snapshots.
+ */
+const touchDeviceStore = {
+  subscribe(callback: () => void) {
+    const mql = window.matchMedia("(pointer:coarse)");
+    mql.addEventListener("change", callback);
+    return () => mql.removeEventListener("change", callback);
+  },
+  getSnapshot() {
+    return window.matchMedia("(pointer:coarse)").matches;
+  },
+  getServerSnapshot() {
+    return false; // Default to false for SSR and hydration
+  },
+};
+
+/**
  * Shared drag wrapper for calendar and inbox event presentations.
  */
 export function DraggableEvent({
@@ -35,12 +58,23 @@ export function DraggableEvent({
   const { friends } = useFriendsState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+  /**
+   * FIX: Replaces useEffect/useState for touch detection with useSyncExternalStore.
+   * This satisfies the lint rule by subscribing to the browser API as an external system.
+   */
+  const isTouchDevice = useSyncExternalStore(
+    touchDeviceStore.subscribe,
+    touchDeviceStore.getSnapshot,
+    touchDeviceStore.getServerSnapshot,
+  );
+
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `event:${event.id}`,
       data: {
         eventId: event.id,
       },
+      disabled: isTouchDevice,
     });
 
   const canUsePortal = typeof document !== "undefined";
@@ -86,7 +120,7 @@ export function DraggableEvent({
           {...listeners}
           {...attributes}
           onClick={openPreview}
-          className={`touch-none cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
+          className={`${isTouchDevice ? "touch-auto" : "touch-none"} cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
         >
           {event.title}
         </div>
@@ -115,7 +149,7 @@ export function DraggableEvent({
         {...listeners}
         {...attributes}
         onClick={openPreview}
-        className={`touch-none cursor-grab active:cursor-grabbing ${
+        className={`${isTouchDevice ? "touch-auto" : "touch-none"} cursor-grab active:cursor-grabbing ${
           isDragging ? "opacity-0" : "opacity-100"
         }`}
       >
