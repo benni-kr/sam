@@ -6,6 +6,7 @@ import {
   type PlannerEvent,
   type PlannerMonth,
 } from "@/features/planner/lib/planner";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 type MonthWeekEventSegment = {
   event: PlannerEvent;
@@ -198,6 +199,9 @@ export function MonthWeekEventOverlay({
           const isPrivate = segment.event.category === "Private Event";
           const hasParticipants = !!segment.event.participants?.length;
 
+          // Fetch the unified theme object for this event's category
+          const theme = getCalendarTheme(segment.event.category);
+
           return (
             <div
               key={segment.event.id}
@@ -209,9 +213,7 @@ export function MonthWeekEventOverlay({
             >
               <DraggableEvent event={segment.event}>
                 <div
-                  className={`flex h-6 min-w-0 items-center border px-3 text-[10px] font-medium leading-4 ${getEventTone(
-                    segment.event.category,
-                  )} ${getSegmentShape(segment.roundLeft, segment.roundRight)}`}
+                  className={`flex h-6 min-w-0 items-center border px-3 text-[10px] font-medium leading-4 ${theme.badge} ${getSegmentShape(segment.roundLeft, segment.roundRight)}`}
                 >
                   {segment.showLabel ? (
                     <span className="truncate">
@@ -252,21 +254,4 @@ function getSegmentShape(roundLeft: boolean, roundRight: boolean) {
   }
 
   return "rounded-none";
-}
-
-function getEventTone(category: PlannerEvent["category"]) {
-  switch (category) {
-    case "Exam":
-      return "border-violet-300 bg-violet-100 text-violet-900";
-    case "Language Exam":
-      return "border-rose-200 bg-rose-50 text-rose-900";
-    case "Group Event":
-      return "border-emerald-300 bg-emerald-100 text-emerald-900";
-    case "Private Event":
-      return "border-amber-300 bg-amber-100 text-amber-900";
-    case "Other":
-      return "border-sky-300 bg-sky-100 text-sky-900";
-    default:
-      return "border-slate-300 bg-slate-100 text-slate-700";
-  }
 }

@@ -7,6 +7,7 @@ import { PlannerEventForm } from "@/features/planner/components/event-form";
 
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 import type {
   PlannerEvent,
   PlannerEventCategory,
@@ -64,25 +65,6 @@ function getEventStatus(
 
   return "Completed";
 }
-
-function categoryTone(category: string) {
-  switch (category) {
-    case "Exam":
-      return "border-violet-200 bg-violet-50 text-violet-900";
-    case "Language Exam":
-      return "border-rose-200 bg-rose-50 text-rose-900";
-    case "Group Event":
-      return "border-emerald-200 bg-emerald-50 text-emerald-900";
-    case "Private Event":
-      return "border-amber-200 bg-amber-50 text-amber-900";
-    case "Other":
-      return "border-sky-200 bg-sky-50 text-sky-900";
-    default:
-      return "border-stone-200 bg-stone-50 text-stone-700";
-  }
-}
-
-// grouping helpers removed; feed is rendered as a single sorted list
 
 /**
  * Compact schedule feed for quick scanning.
@@ -168,6 +150,8 @@ export function ScheduleFeedView() {
                 const isActive =
                   getEventStatus(event, todayDateKey) === "Active";
 
+                const theme = getCalendarTheme(event.category);
+
                 return (
                   <div key={event.id}>
                     {thisMonth && thisMonth !== prevMonth ? (
@@ -190,9 +174,7 @@ export function ScheduleFeedView() {
                     >
                       <div className="flex gap-3 p-3 sm:p-3.5">
                         <div
-                          className={`relative flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl border ${categoryTone(
-                            event.category,
-                          )}`}
+                          className={`relative flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl border ${theme.badge}`}
                         >
                           {badgeDate ? (
                             <>
@@ -208,8 +190,6 @@ export function ScheduleFeedView() {
                               Draft
                             </span>
                           )}
-
-                          {/* Active indicator: keep ring on badge, remove dot */}
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -230,9 +210,7 @@ export function ScheduleFeedView() {
                             </div>
 
                             <span
-                              className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${categoryTone(
-                                event.category,
-                              )}`}
+                              className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${theme.badge}`}
                             >
                               {event.category}
                             </span>

@@ -1,17 +1,18 @@
-/**
- * Weekly Schedule Event Category UI Configuration
- *
- * This module provides a single source of truth for styling weekly schedule events
- * by category. All weekly event category colors and styles are centralized here.
- */
-
 import type { PlannerWeekEventCategory } from "./week-types";
 
+/**
+ * Defines UI tokens for weekly schedule event blocks.
+ */
 export type WeekCategoryTheme = {
+  /** Applied to the absolute-positioned event buttons in the Week View grid. */
   card: string;
+  /** Used for solid color indicators, such as legend dots or sidebar highlights. */
   accent: string;
 };
 
+/**
+ * Centralized theme configuration for repeating weekly routines.
+ */
 export const WEEK_CATEGORY_THEMES: Record<
   PlannerWeekEventCategory,
   WeekCategoryTheme
@@ -35,7 +36,7 @@ export const WEEK_CATEGORY_THEMES: Record<
 };
 
 /**
- * Safely gets the full theme object for any weekly event category, with a built-in fallback.
+ * Returns the theme object for a given weekly category with a fallback to "Other".
  */
 export function getWeekTheme(category: string): WeekCategoryTheme {
   return (
