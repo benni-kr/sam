@@ -34,9 +34,11 @@ import {
   plannerSemesters,
   type PlannerEventCategory,
   type PlannerEvent,
+} from "@/features/planner/lib/planner";
+import {
   type PlannerWeekEventCategory,
   type PlannerWeekday,
-} from "@/features/planner/lib/planner";
+} from "@/features/weekly-schedule/lib/week-types";
 
 type AppShellProps = {
   children: React.ReactNode;

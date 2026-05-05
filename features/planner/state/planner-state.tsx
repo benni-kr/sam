@@ -24,17 +24,19 @@ import {
   plannerEventCategories,
   plannerSemesterIds,
   plannerSemesters,
-  plannerWeekEventCategories,
   type PlannerCategorySummary,
   type PlannerEventCategory,
   type PlannerEvent,
   type PlannerMonth,
   type PlannerSemester,
   type PlannerSemesterId,
+} from "@/features/planner/lib/planner";
+import {
+  plannerWeekEventCategories,
   type PlannerWeekEvent,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
-} from "@/features/planner/lib/planner";
+} from "@/features/weekly-schedule/lib/week-types";
 
 type EventsBySemester = Record<PlannerSemesterId, PlannerEvent[]>;
 

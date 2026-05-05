@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMonthDays,
   weekdayLabels,
-} from "./planner";
+} from "./planner-utils";
 
 describe("buildMonthDays", () => {
   it("pads leading days for Monday-first calendars", () => {

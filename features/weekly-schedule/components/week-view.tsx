@@ -19,7 +19,7 @@ import {
   type PlannerWeekEvent,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
-} from "@/features/planner/lib/planner";
+} from "@/features/weekly-schedule/lib/week-types";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 

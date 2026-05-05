@@ -56,7 +56,7 @@ const testState: PlannerState = {
       participants: ["Jules", "Maya"],
     },
   ],
-};
+} as PlannerState;
 
 function cloneState(): PlannerState {
   return {
@@ -68,7 +68,7 @@ function cloneState(): PlannerState {
       ...event,
       participants: [...event.participants],
     })),
-  };
+  } as PlannerState;
 }
 
 describe("plannerStateReducer", () => {

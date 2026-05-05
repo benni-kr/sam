@@ -4,8 +4,8 @@ import {
   buildMonthWeekEventLayouts,
   getMonthWeekRowHeight,
 } from "./event-overlay";
+import { buildMonthDays } from "../lib/planner-utils";
 import {
-  buildMonthDays,
   type PlannerEvent,
   type PlannerMonth,
 } from "../lib/planner";

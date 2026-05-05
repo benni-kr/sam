@@ -2,14 +2,16 @@ import {
   defaultPlannerSemesterId,
   plannerEventCategories,
   plannerSemesterIds,
+  type PlannerEvent,
+  type PlannerSemesterId,
+} from "@/features/planner/lib/planner";
+import {
   plannerWeekEventCategories,
   plannerWeekdays,
-  type PlannerEvent,
   type PlannerWeekEvent,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
-  type PlannerSemesterId,
-} from "@/features/planner/lib/planner";
+} from "@/features/weekly-schedule/lib/week-types";
 
 export type PlannerEventsBySemester = Partial<
   Record<PlannerSemesterId, PlannerEvent[]>
