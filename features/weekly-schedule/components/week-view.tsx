@@ -17,9 +17,9 @@ import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker"
 import {
   plannerWeekdays,
   type PlannerWeekEvent,
-  type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
+import { getWeekEventCardStyle } from "@/features/weekly-schedule/lib/week-category-config";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
@@ -44,21 +44,6 @@ type PositionedWeekEvent = {
 const WEEK_START_MINUTES = 6 * 60;
 const WEEK_END_MINUTES = 24 * 60;
 const MIN_EVENT_HEIGHT = 42;
-
-const CATEGORY_STYLES: Record<PlannerWeekEventCategory, { card: string }> = {
-  University: {
-    card: "border-slate-300 bg-slate-100 text-slate-950",
-  },
-  "Language courses": {
-    card: "border-emerald-500 bg-emerald-100 text-emerald-950",
-  },
-  Sports: {
-    card: "border-orange-300 bg-orange-100 text-orange-950",
-  },
-  Other: {
-    card: "border-sky-300 bg-sky-100 text-sky-900",
-  },
-};
 
 function parseTimeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
@@ -243,7 +228,7 @@ function WeekDayColumn({
                   MIN_EVENT_HEIGHT,
                   (item.endMinutes - item.startMinutes) * minuteScale,
                 );
-                const styles = CATEGORY_STYLES[item.event.category];
+                const cardStyle = getWeekEventCardStyle(item.event.category);
 
                 // Logic variables kept so you can easily toggle them later
                 //const showTime = height >= 52 && group.laneCount <= 2;
@@ -254,7 +239,7 @@ function WeekDayColumn({
                     key={item.event.id}
                     type="button"
                     onClick={() => onEdit(item.event)}
-                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${styles.card}`}
+                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${cardStyle}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,

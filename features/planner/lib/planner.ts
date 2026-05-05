@@ -6,9 +6,7 @@
  * semester-based event planning.
  */
 
-import type {
-  PlannerWeekEvent,
-} from "@/features/weekly-schedule/lib/week-types";
+import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
 
 export type PlannerEventCategory =
   | "Exam"

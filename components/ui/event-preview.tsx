@@ -1,5 +1,8 @@
 "use client";
 
+import { getCalendarEventBadgeStyle } from "@/features/planner/lib/category-config";
+import { getWeekEventCardStyle } from "@/features/weekly-schedule/lib/week-category-config";
+
 export type PreviewEventShape = {
   title: string;
   category: string;
@@ -24,6 +27,23 @@ function formatDisplayDate(dateStr?: string | null) {
   return dateStr; // Fallback if it's already formatted or a weird string
 }
 
+/**
+ * Determine if a category is a weekly event category
+ */
+function isWeekEventCategory(category: string): boolean {
+  return ["University", "Language courses", "Sports"].includes(category);
+}
+
+/**
+ * Get the badge style for any category (calendar or weekly)
+ */
+function categoryBadgeStyle(category: string): string {
+  if (isWeekEventCategory(category)) {
+    return getWeekEventCardStyle(category);
+  }
+  return getCalendarEventBadgeStyle(category);
+}
+
 export function EventPreviewModal({
   heading,
   event,
@@ -43,32 +63,6 @@ export function EventPreviewModal({
     : event.startDate
       ? `${formatDisplayDate(event.startDate)}${event.endDate && event.endDate !== event.startDate ? ` - ${formatDisplayDate(event.endDate)}` : ""}`
       : "Date TBD";
-
-  function categoryBadgeStyle(category: string) {
-    switch (category) {
-      //appointment categories
-      case "University":
-        return "border-slate-300 bg-slate-100 text-slate-950";
-      case "Language courses":
-        return "border-emerald-500 bg-emerald-100 text-emerald-950";
-      case "Sports":
-        return "border-orange-300 bg-orange-100 text-orange-950";
-      //event categories
-      case "Exam":
-        return "border-violet-300 bg-violet-50 text-violet-900";
-      case "Language Exam":
-        return "border-rose-300 bg-rose-50 text-rose-900";
-      case "Group Event":
-        return "border-emerald-300 bg-emerald-50 text-emerald-900";
-      case "Private Event":
-        return "border-amber-300 bg-amber-50 text-amber-900";
-      //other for both
-      case "Other":
-        return "border-sky-300 bg-sky-100 text-sky-900";
-      default:
-        return "border-slate-200 bg-slate-50 text-slate-700";
-    }
-  }
 
   return (
     <div
