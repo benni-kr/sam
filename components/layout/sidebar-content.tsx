@@ -8,8 +8,8 @@ import {
   plannerEventCategories,
 } from "@/features/planner/lib/planner";
 import { plannerWeekEventCategories } from "@/features/weekly-schedule/lib/week-types";
-import { getCalendarEventAccentColor } from "@/features/planner/lib/category-config";
-import { getWeekEventAccentColor } from "@/features/weekly-schedule/lib/week-category-config";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
+import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import { useCreateEvent } from "@/features/planner/components/create-event-context";
 
 export function SidebarContent() {
@@ -61,7 +61,7 @@ export function SidebarContent() {
               {plannerWeekEventCategories.map((category) => (
                 <div key={category} className="flex items-center gap-2">
                   <span
-                    className={`h-2.5 w-2.5 rounded-full ${getWeekEventAccentColor(category)}`}
+                    className={`h-2.5 w-2.5 rounded-full ${getWeekTheme(category).accent}`}
                   />
                   {category}
                 </div>
@@ -95,7 +95,7 @@ export function SidebarContent() {
               {plannerEventCategories.map((category) => (
                 <div key={category} className="flex items-center gap-2">
                   <span
-                    className={`h-2.5 w-2.5 rounded-full ${getCalendarEventAccentColor(category)}`}
+                    className={`h-2.5 w-2.5 rounded-full ${getCalendarTheme(category).accent}`}
                   />
                   {category}
                 </div>

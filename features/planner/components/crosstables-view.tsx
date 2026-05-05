@@ -12,10 +12,7 @@ import {
   type PlannerEvent,
   type PlannerEventCategory,
 } from "@/features/planner/lib/planner";
-import {
-  getCalendarEventSectionStyle,
-  getCalendarEventCheckboxStyle,
-} from "@/features/planner/lib/category-config";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
   Exam: "Exams",
@@ -120,18 +117,17 @@ export function CrosstablesView() {
       <div className="grid gap-4">
         {plannerEventCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
-          const styles = getCalendarEventSectionStyle(category);
-          const markStyle = getCalendarEventCheckboxStyle(category);
+          const theme = getCalendarTheme(category);
 
           return (
             <article
               key={category}
-              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${styles.section}`}
+              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${theme.section}`}
             >
               <div className="mb-3 flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${styles.accent}`} />
+                <span className={`h-2.5 w-2.5 rounded-full ${theme.accent}`} />
                 <h3
-                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${styles.heading}`}
+                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${theme.heading}`}
                 >
                   {categoryLabelsPlural[category]}
                 </h3>
@@ -218,7 +214,7 @@ export function CrosstablesView() {
                                   className="peer sr-only"
                                 />
                                 <span
-                                  className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${markStyle}`}
+                                  className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${theme.checkbox}`}
                                 >
                                   <Check size={checkIconSize} strokeWidth={3} />
                                 </span>

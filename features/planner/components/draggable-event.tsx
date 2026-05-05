@@ -14,7 +14,7 @@ import {
   type PlannerEvent,
   type PlannerEventCategory,
 } from "@/features/planner/lib/planner";
-import { getCalendarEventBadgeStyle } from "@/features/planner/lib/category-config";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 type DraggableEventProps = {
   event: PlannerEvent;
@@ -30,6 +30,7 @@ export function DraggableEvent({
   compact = false,
   children,
 }: DraggableEventProps) {
+  const theme = getCalendarTheme(event.category);
   const { updateEvent, deleteEvent } = usePlannerState();
   const { friends } = useFriendsState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -85,9 +86,7 @@ export function DraggableEvent({
           {...listeners}
           {...attributes}
           onClick={openPreview}
-          className={`touch-none cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${getCalendarEventBadgeStyle(
-            event.category,
-          )} ${isDragging ? "opacity-40" : "opacity-100"}`}
+          className={`touch-none cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
         >
           {event.title}
         </div>

@@ -1,14 +1,14 @@
 import type { PlannerEvent } from "@/features/planner/lib/planner";
-import { getCalendarEventBadgeStyle } from "@/features/planner/lib/category-config";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 /**
  * Rich event card used in drag previews and non-compact event contexts.
  */
 export function EventBadge({ event }: { event: PlannerEvent }) {
-  const badgeStyle = getCalendarEventBadgeStyle(event.category);
+  const theme = getCalendarTheme(event.category);
 
   return (
-    <div className={`rounded-xl border px-3 py-2 shadow-sm ${badgeStyle}`}>
+    <div className={`rounded-xl border px-3 py-2 shadow-sm ${theme.badge}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-5 text-slate-950">
           {event.title}

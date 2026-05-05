@@ -7,58 +7,39 @@
 
 import type { PlannerWeekEventCategory } from "./week-types";
 
-export type { PlannerWeekEventCategory };
+export type WeekCategoryTheme = {
+  card: string;
+  accent: string;
+};
 
-/**
- * Card styles for weekly schedule events
- * Used by: week-view, event-preview
- */
-export const weekEventCardStyles: Record<
+export const WEEK_CATEGORY_THEMES: Record<
   PlannerWeekEventCategory,
-  { card: string }
+  WeekCategoryTheme
 > = {
   University: {
     card: "border-slate-300 bg-slate-100 text-slate-950",
+    accent: "bg-slate-500",
   },
   "Language courses": {
     card: "border-emerald-500 bg-emerald-100 text-emerald-950",
+    accent: "bg-emerald-500",
   },
   Sports: {
     card: "border-orange-300 bg-orange-100 text-orange-950",
+    accent: "bg-orange-500",
   },
   Other: {
     card: "border-sky-300 bg-sky-100 text-sky-900",
+    accent: "bg-sky-500",
   },
 };
 
 /**
- * Accent colors for weekly schedule events
- * Used for legend indicators and highlights
+ * Safely gets the full theme object for any weekly event category, with a built-in fallback.
  */
-export const weekEventAccentColors: Record<PlannerWeekEventCategory, string> = {
-  University: "bg-slate-500",
-  "Language courses": "bg-emerald-500",
-  Sports: "bg-orange-500",
-  Other: "bg-sky-500",
-};
-
-/**
- * Get the card style for a weekly schedule event category
- */
-export function getWeekEventCardStyle(
-  category: PlannerWeekEventCategory,
-): string {
+export function getWeekTheme(category: string): WeekCategoryTheme {
   return (
-    weekEventCardStyles[category]?.card ?? weekEventCardStyles["Other"].card
+    WEEK_CATEGORY_THEMES[category as PlannerWeekEventCategory] ??
+    WEEK_CATEGORY_THEMES["Other"]
   );
-}
-
-/**
- * Get the accent color (primary highlight) for a weekly schedule event category
- * Used for legend indicators and highlights
- */
-export function getWeekEventAccentColor(
-  category: PlannerWeekEventCategory,
-): string {
-  return weekEventAccentColors[category] ?? weekEventAccentColors["Other"];
 }

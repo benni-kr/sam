@@ -1,7 +1,7 @@
 "use client";
 
-import { getCalendarEventBadgeStyle } from "@/features/planner/lib/category-config";
-import { getWeekEventCardStyle } from "@/features/weekly-schedule/lib/week-category-config";
+import { getCalendarTheme } from "@/features/planner/lib/category-config";
+import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import type { PlannerWeekEventCategory } from "@/features/weekly-schedule/lib/week-types";
 
 export type PreviewEventShape = {
@@ -44,9 +44,9 @@ function isWeekEventCategory(
  */
 function categoryBadgeStyle(category: string): string {
   if (isWeekEventCategory(category)) {
-    return getWeekEventCardStyle(category);
+    return getWeekTheme(category).card;
   }
-  return getCalendarEventBadgeStyle(category);
+  return getCalendarTheme(category).badge;
 }
 
 export function EventPreviewModal({

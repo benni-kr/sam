@@ -19,7 +19,7 @@ import {
   type PlannerWeekEvent,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
-import { getWeekEventCardStyle } from "@/features/weekly-schedule/lib/week-category-config";
+import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
@@ -228,7 +228,7 @@ function WeekDayColumn({
                   MIN_EVENT_HEIGHT,
                   (item.endMinutes - item.startMinutes) * minuteScale,
                 );
-                const cardStyle = getWeekEventCardStyle(item.event.category);
+                const theme = getWeekTheme(item.event.category);
 
                 // Logic variables kept so you can easily toggle them later
                 //const showTime = height >= 52 && group.laneCount <= 2;
@@ -239,7 +239,7 @@ function WeekDayColumn({
                     key={item.event.id}
                     type="button"
                     onClick={() => onEdit(item.event)}
-                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${cardStyle}`}
+                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${theme.card}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,
