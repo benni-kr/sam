@@ -2,40 +2,44 @@
 
 ## Purpose
 
-SAM (Semester Activity Manager) is a collaborative semester planning UI with three synchronized representations of the same event data:
+SAM (Semester Activity Manager) is a collaborative planner designed to handle two distinct types of scheduling:
 
-- Calendar view (`/`)
-- Category-focused crosstables matrix with participation toggles (`/crosstables`)
-- Schedule Feed (`/list`)
+1. **Chronological Events:** Date-specific occurrences (Exams, Trips) represented across the Calendar (`/`), Crosstables (`/crosstables`), and List (`/list`) views.
+2. **Repeating Routines:** Day-of-the-week recurring blocks (Lectures, Sports) represented in the Weekly Schedule (`/week`).
 
-All views are driven by shared planner state and the same event model, with a dedicated friends master list ensuring consistent participant data across events.
+Both scheduling domains share a centralized "Friends" master list to ensure consistent participant data across all views.
 
-## High-Level Structure
+## Core Design Principles
 
-- `app/(planner)/layout.tsx`: Shared planner chrome and route grouping
-- `app/(planner)/page.tsx`: Calendar route entry
-- `app/(planner)/crosstables/page.tsx`: Crosstables route entry
-- `app/(planner)/list/page.tsx`: Schedule feed route entry
-- `features/planner/components/layout/app-shell.tsx`: Sidebar, semester switcher, DnD context, drag overlay (now generalized AppShell)
-- `features/planner/components/crosstables-view.tsx`: Category participation matrix with per-cell toggles
-- `features/planner/state/planner-state.tsx`: State container and state transitions
-- `features/planner/components/event-form.tsx`: Shared create/edit form fields and delete confirmation
-- `features/planner/components/date-picker.tsx`: Custom popover date picker used by event forms
-- `features/planner/components/month-card.tsx`: Per-month calendar rendering
-- `features/planner/components/event-overlay.tsx`: Multi-day segment + lane calculation and row overlays
-- `features/planner/lib/planner.ts`: Core domain types and static semester/event data
-- `features/planner/lib/planner-persistence.ts`: Persistence adapter and store resolver
+The repository strictly adheres to **Domain-Driven Design (DDD)** and the **Single Responsibility Principle (SRP)**. Code is organized by feature domain rather than technological concern to prevent "god files" and heavily entangled logic.
 
-## Data Model
+### Directory Structure
 
-Core types live in `features/planner/lib/planner.ts`:
+- **`app/`**: Next.js App Router setup. Responsible _only_ for routing, metadata, and high-level layout composition.
+- **`components/`**: Global, domain-agnostic UI.
+  - `ui/`: "Dumb", highly reusable components (TimePicker, EventPreviewModal, Checkbox). Cannot import from `features/`.
+  - `layout/`: Global layout shells that span multiple domains (AppShell, SidebarContent, SidebarInbox).
+- **`features/`**: The core business logic, isolated by domain.
+  - `planner/`: Calendar view, Crosstables, Date-based event models, and Calendar state.
+  - `weekly-schedule/`: Timetable rendering, Time-based event models, and Weekly state.
+  - `friends/`: Participant management, persistence, and Friends state.
+  - `auth/`: Authentication bounds and user session management.
 
-- `PlannerEvent`: Event identity, title, category, date range, participants
-- `PlannerMonth`: Year/month metadata for rendering
-- `PlannerSemester`: Semester identity, months, and events
-- `SEMESTER_FRIENDS`: Seed participant names
+## Data Model & UI Configuration
 
-Dates are represented as `YYYY-MM-DD` strings to simplify persistence and sorting.
+SAM's models are split to respect their domains:
+
+- `PlannerEvent`: Requires specific `startDate` / `endDate` strings (`YYYY-MM-DD`).
+- `PlannerWeekEvent`: Requires a specific `day` ("Mon", "Tue") and `startTime` / `endTime` strings ("08:15").
+
+### The Theme Object Pattern
+
+To keep the UI DRY (Don't Repeat Yourself), styling is driven by **Theme Objects**. Instead of scattering Tailwind classes across multiple UI components, all category styles are centralized into single sources of truth:
+
+- `features/planner/lib/category-config.ts` exports `getCalendarTheme(category)` returning `{ badge, section, heading, accent, checkbox }`.
+- `features/weekly-schedule/lib/week-category-config.ts` exports `getWeekTheme(category)` returning `{ card, accent }`.
+
+UI components simply query the theme object once and apply the resulting string classes.
 
 ## Friends and Participants
 
@@ -50,94 +54,49 @@ This keeps participant data consistent and prevents orphaned or stale names.
 
 ## State and Data Flow
 
-`PlannerStateProvider` is the single source of truth for planner interactions.
+State is managed via modular contexts/reducers for each feature (e.g., `usePlannerState`, `useFriendsState`).
 
-1. Initial state is built from static semester fixtures and friends list as a bootstrap fallback.
-2. Persisted semester events and the canonical friends list are hydrated from Supabase together.
+1. The app initializes with a clean slate.
+2. Persisted semester events, weekly appointments, and the canonical friends list are hydrated from Supabase together.
 3. Hydrated events are sanitized against the loaded friends list so storage never keeps participants outside the master list.
-4. Actions update full event records (title, category, participants, `startDate`, `endDate`) and friend list operations (add, rename, remove).
-5. Friend mutations trigger participant cleanup across events when removing or renaming and are persisted back to the friends table.
-6. Derived selectors feed all views:
+4. Actions (create/update/delete) update local state and are persisted to Supabase.
+5. Derived selectors feed the UI without duplicating logic (e.g., covering events per date, chronological sorting, category groupings).
 
-- covering events per date
-- inbox events across all semesters
-- chronological events
-- category summaries
-- filtered participant visibility
+## Rendering Strategies
 
-This keeps all routes synchronized without duplicating logic.
+### Calendar Rendering
 
-## Calendar Rendering Strategy
+The Calendar utilizes a Monday-first month grid.
 
-Calendar rendering uses a Monday-first week grid.
-
-1. `buildMonthDays` generates week cells with `null` placeholders for out-of-month cells.
-2. `buildMonthWeekEventLayouts` computes row-local event segments:
-   - intersects events with each visible week
-   - splits multi-week events into row segments
-   - assigns deterministic lanes for overlap handling
+1. `buildMonthDays` generates week cells with `null` placeholders for out-of-month bounds.
+2. `buildMonthWeekEventLayouts` computes row-local event segments (splits multi-week events, assigns deterministic lanes for overlap handling).
 3. `MonthWeekEventOverlay` paints segments as bars over each row.
 
-Design intent:
+### Weekly Schedule Rendering
 
-- Deterministic layout independent of render order
-- Row-local computation to reduce cross-row coupling
-- Minimum row height with controlled growth for overlap lanes
+The Week view renders absolute-positioned blocks on a daily time grid.
 
-## Drag and Drop
+1. `buildDayLayouts` groups overlapping events and dynamically calculates `laneCount` to split column width equitably.
+2. Start times are clamped to a maximum of `23:45` to prevent layout overflow before the `24:00` day boundary.
+3. Height is dynamically measured via `ResizeObserver` to calculate the visual scale (`minuteScale`) for the UI overlay.
 
-DnD is provided by `@dnd-kit/core`.
+## Drag and Drop (DnD)
 
-- Draggables: event chips/cards with IDs prefixed by `event:`
-- Drop zones:
-  - `date:<YYYY-MM-DD>` for scheduling
-  - `inbox` for unscheduling
-- `PlannerShell` maps drag end targets to state actions:
-  - `moveEventToDate`
-  - `moveEventToInbox`
+DnD is provided by `@dnd-kit/core` on the Calendar view.
 
-## Crosstables Behavior
-
-- Crosstables render one matrix per category (rows: events, columns: participants).
-- Each cell shows an × mark if the participant is assigned; click to toggle.
-- Date formatting is `DD.MM.YYYY` for readability.
-- Participant membership is updated via `toggleParticipant(eventId, participantName)`.
-- Date sorting keeps undated events at the bottom of each category table.
-- Sidebar filters control visibility:
-  - `hideFinished` (default on): hide events past their end date
-  - `hideUndated` (default off): hide unscheduled events
-  - `hideInactive` (default off): hide friends with no assigned participants
-- All filters are URL-backed query params so view state is shareable.
-
-## Event Forms and Friends Management
-
-Create and edit flows share one reusable form component so the field layout and confirmation handling stay consistent.
-
-- Create is opened from the sidebar `+ Add Event` button or any Calendar day-cell quick add button in a centered modal.
-- Edit is opened from the crosstables event title link in a centered modal.
-- Participants are selected from the managed friends list via toggleable chips.
-- Delete uses an inline confirmation block rather than a browser alert.
-- Manage Friends opens from the sidebar `Manage friends` button, allowing add/edit/remove of canonical friend names.
-
-The form uses a popover calendar picker instead of the native browser date input so the interaction stays visually consistent across browsers. Week layout is Monday-first.
+- **Draggables:** Event chips/cards with IDs prefixed by `event:`.
+- **Drop zones:**
+  - `date:<YYYY-MM-DD>` for scheduling.
+  - `inbox` for unscheduling.
+- Maps drag-end targets directly to state actions (`moveEventToDate`, `moveEventToInbox`).
 
 ## Persistence
 
 Persistence is Supabase-backed.
 
-- Supabase sync persists full event objects and the canonical friends table
-- Supabase records are partitioned by `planner_scope` to isolate environments/deployments
-- Undated events persist with `semester_id = null` and are treated as semester-agnostic in storage.
-
-Store resolution:
-
-- Valid Supabase env vars are required for runtime
-- `NEXT_PUBLIC_SAM_PLANNER_SCOPE` selects the logical data partition (default: `default`)
-
-Source-of-truth behavior:
-
-- Seed fixtures are used only as bootstrap defaults.
-- Once persisted Supabase data exists, it becomes authoritative.
+- Supabase sync persists full event objects, weekly events, and the canonical friends table.
+- Supabase records are partitioned by `planner_scope` to isolate environments/deployments.
+- Store resolution: `NEXT_PUBLIC_SAM_PLANNER_SCOPE` selects the logical data partition (default: `default`).
 
 ## Testing and Quality Gates
 
@@ -145,27 +104,19 @@ Unit tests use Vitest and currently cover:
 
 - Monday-first month-day grid behavior
 - Week-segment event layout and lane behavior
-- Overlay row height growth rules
+- Reducer state transitions
 
-Validation gates:
+Validation gates before PRs:
 
 - `npm test`
 - `npm run lint`
 - `npm run build`
 
-## Known Constraints
-
-- Semester/event fixtures and seed friends are static in `features/planner/lib/planner.ts`
-- Crosstables route is a category-based participation matrix and not a graph canvas
-- List route is a compact schedule feed, not a separate responsive app shell
-- Friend renames and removals affect all events globally; no event-level friend isolation
-- Current Supabase policies allow anon access to planner rows; production rollout should tighten RLS with auth-bound ownership
-
 ## Extension Guidance
 
 Recommended next architectural steps:
 
-1. Move static fixtures behind a typed data service boundary
-2. Add dedicated reducer tests for planner state transitions
-3. Introduce richer event metadata and editing forms
-4. Split persistence adapters into dedicated modules if complexity grows
+1. Add dedicated reducer tests for the newly isolated `features/weekly-schedule` and `features/friends` state transitions.
+2. Introduce richer event metadata (e.g., location strings or URLs) within the specialized forms.
+3. Split Supabase persistence adapters into dedicated feature modules if database complexity grows.
+4. Current Supabase policies allow anon access to planner rows; production rollout should tighten RLS with auth-bound ownership.
