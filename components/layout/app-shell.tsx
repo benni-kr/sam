@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Global application shell for the planner routes.
+ *
+ * This wrapper initializes the shared FriendsProvider and PlannerStateProvider
+ * and hosts the shared @dnd-kit/core drag-and-drop context used across the
+ * planner domain.
+ */
+
 import {
   DndContext,
   DragOverlay,
@@ -45,6 +53,8 @@ type AppShellProps = {
   sidebarContent?: React.ReactNode;
 };
 
+// Prefer pointer collisions over closest-center so drops land on the intended
+// calendar day or inbox target instead of a nearby overlapping layout center.
 const collisionDetection: CollisionDetection = (args) => {
   const pointerCollisions = pointerWithin(args);
 
@@ -97,6 +107,8 @@ function getActivatorPoint(activatorEvent: Event | null) {
   };
 }
 
+// Snap the drag preview to the cursor so the overlay follows the pointer
+// instead of anchoring to the top-left corner of the source element.
 const snapOverlayToCursor: Modifier = ({
   transform,
   activeNodeRect,
@@ -119,6 +131,10 @@ const snapOverlayToCursor: Modifier = ({
   };
 };
 
+/**
+ * Primary planner layout boundary that renders the main content area and an
+ * optional domain-specific sidebar.
+ */
 export function AppShell({ children, sidebarContent }: AppShellProps) {
   const [semesterMenuOpen, setSemesterMenuOpen] = useState(false);
   const semesterMenuRef = useRef<HTMLDivElement | null>(null);

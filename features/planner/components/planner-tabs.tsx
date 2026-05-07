@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Primary navigation for the planner.
+ *
+ * This component keeps the active semester state in the URL while users
+ * switch between the planner's domain views (Calendar, List, Week, and
+ * Crosstables), so navigation does not reset the current semester context.
+ */
+
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Calendar, Clock3, List, Table } from "lucide-react";
@@ -13,6 +21,43 @@ type PlannerTabsProps = {
   activeSemesterId?: string | null;
 };
 
+type PlannerViewLinkProps = {
+  href: string;
+  label: string;
+  icon: typeof Calendar;
+  isActive: boolean;
+};
+
+/**
+ * Shared link button for planner view navigation.
+ */
+function PlannerViewLink({
+  href,
+  label,
+  icon: ViewIcon,
+  isActive,
+}: PlannerViewLinkProps) {
+  return (
+    <Link
+      href={href}
+      aria-current={isActive ? "page" : undefined}
+      aria-label={label}
+      className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+        isActive
+          ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+      }`}
+    >
+      <span className="sr-only">{label}</span>
+      <ViewIcon className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
+/**
+ * Planner view navigation that preserves semester context across routes.
+ */
+
 export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -23,6 +68,9 @@ export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
   function buildViewHref(viewHref: string) {
     const params = new URLSearchParams(searchParams.toString());
 
+    // State Persistence Rule: manually merge the current semester query
+    // parameter into every navigation link so switching tabs never resets the
+    // planner back to the default semester.
     if (semesterId === defaultPlannerSemesterId) {
       params.delete("semester");
     } else {
@@ -52,48 +100,25 @@ export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
           const ViewIcon = iconByViewKey[view.key];
 
           return (
-            <Link
+            <PlannerViewLink
               key={view.key}
               href={href}
-              aria-current={isActive ? "page" : undefined}
-              aria-label={view.label}
-              className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                isActive
-                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-              }`}
-            >
-              <span className="sr-only">{view.label}</span>
-              <ViewIcon className="h-4 w-4" aria-hidden="true" />
-            </Link>
+              label={view.label}
+              icon={ViewIcon}
+              isActive={isActive}
+            />
           );
         })}
       </div>
 
       {weekView ? (
         <div className="ml-auto flex flex-wrap gap-2">
-          {(() => {
-            const isActive = pathname === weekView.href;
-            const href = buildViewHref(weekView.href);
-            const ViewIcon = iconByViewKey[weekView.key];
-
-            return (
-              <Link
-                key={weekView.key}
-                href={href}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={weekView.label}
-                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                  isActive
-                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-                }`}
-              >
-                <span className="sr-only">{weekView.label}</span>
-                <ViewIcon className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            );
-          })()}
+          <PlannerViewLink
+            href={buildViewHref(weekView.href)}
+            label={weekView.label}
+            icon={iconByViewKey[weekView.key]}
+            isActive={pathname === weekView.href}
+          />
         </div>
       ) : null}
     </nav>

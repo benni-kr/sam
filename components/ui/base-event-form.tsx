@@ -2,6 +2,14 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 
+/**
+ * Configures an inline, two-step deletion confirmation block used by event
+ * forms. Supplying this object renders a compact confirmation UI inside the
+ * form (avoiding native browser alerts). The UI displays `prompt` and two
+ * actions: a cancel button (labelled by `cancelLabel` or defaulting to
+ * "Keep") and a confirm button (labelled by `confirmLabel`) which invokes
+ * `onDelete` when pressed.
+ */
 export type DeleteAction = {
   label: string;
   prompt: string;
@@ -26,6 +34,14 @@ type BaseEventFormProps = {
   panelClassName?: string;
 };
 
+/**
+ * Shared modal scaffolding for event forms.
+ *
+ * Renders the common modal overlay, heading, title input, and participant
+ * selection used across different event types. Domain-specific inputs
+ * (for example: calendar date pickers or weekly timeslot selectors) should
+ * be provided via the `children` prop so each form can extend this base UI.
+ */
 export function BaseEventForm({
   heading,
   submitLabel,

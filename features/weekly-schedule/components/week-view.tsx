@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Primary layout engine for the Weekly Routine domain.
+ *
+ * This component renders the responsive time-grid for the weekly schedule
+ * and calculates how overlapping events should be arranged into lanes so
+ * they can be displayed side-by-side instead of stacked on top of each other.
+ */
+
 import {
   useEffect,
   useLayoutEffect,
@@ -65,6 +73,16 @@ function formatHourLabel(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
+/**
+ * Groups overlapping weekly events and assigns lanes using a greedy
+ * interval-layout approach.
+ *
+ * Events are sorted by start/end time, then packed into groups where each
+ * event receives the first available lane that does not overlap with the
+ * preceding item in that lane. This allows the UI to render overlapping
+ * items side-by-side (similar to Google Calendar) rather than stacking them
+ * vertically on top of one another.
+ */
 function buildDayLayouts(events: PlannerWeekEvent[]) {
   const sorted = [...events].sort((left, right) => {
     const startComparison =
@@ -156,6 +174,13 @@ function buildDayLayouts(events: PlannerWeekEvent[]) {
   return groups;
 }
 
+/**
+ * Measures the grid container so the responsive time scale can track the
+ * available viewport height.
+ *
+ * The weekly grid uses this measurement to convert the fixed timeline into
+ * exact pixel values as the browser resizes.
+ */
 function useMeasuredHeight<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const [height, setHeight] = useState(0);
@@ -293,6 +318,9 @@ export function WeekView() {
     null,
   );
 
+  // Map the fixed 18-hour timeline (1080 minutes from 06:00 to 24:00) to the
+  // exact pixel height of the viewport so the grid fits perfectly without
+  // requiring vertical scrolling.
   const minuteScale =
     bodyHeight > 0 ? bodyHeight / (WEEK_END_MINUTES - WEEK_START_MINUTES) : 1.0;
 

@@ -232,6 +232,9 @@ function addDays(date: Date, days: number) {
 }
 
 function normalizeDateRange(startDate: string | null, endDate: string | null) {
+  // Prevent invalid time-travel states: if the user picks an end date before
+  // the start date, we force the range to collapse to the start date so the
+  // event always remains a valid forward-moving interval.
   if (!startDate) {
     return {
       startDate: null,
@@ -775,6 +778,9 @@ export function PlannerStateProvider({
       return;
     }
 
+    // Cross-domain listener: friend renames and deletions cascade into the
+    // planner store here without tightly coupling the friends and planner
+    // domains together.
     if (lastMutation.type === "rename") {
       dispatch({
         type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
@@ -895,6 +901,9 @@ export function PlannerStateProvider({
               category: input.category,
               startDate: normalizedDates.startDate,
               endDate: normalizedDates.endDate,
+              // Sanitize the participant list against the active friends array at
+              // the exact moment of creation so we never persist ghost participants
+              // that no longer exist in the friends domain.
               participants: filterParticipantsByFriends(
                 input.participants,
                 friends,
@@ -923,6 +932,9 @@ export function PlannerStateProvider({
             category: input.category,
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
+            // Sanitize the participant list against the active friends array at
+            // the exact moment of update so we never persist ghost participants
+            // that no longer exist in the friends domain.
             participants: filterParticipantsByFriends(
               input.participants,
               friends,

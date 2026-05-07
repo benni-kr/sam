@@ -32,7 +32,11 @@ type PlannerEventFormProps = {
 };
 
 /**
- * Shared planner event form used for creating and editing events.
+ * Adapts the generic `BaseEventForm` specifically for the Calendar domain.
+ *
+ * This wrapper injects chronological date controls so planner events can be
+ * created and edited with Calendar-specific start/end date inputs while still
+ * reusing the shared modal, title, and participant scaffolding.
  */
 export function PlannerEventForm({
   heading,
@@ -82,6 +86,8 @@ export function PlannerEventForm({
         ))}
       </select>
 
+      {/* We intentionally omit `required` on these date inputs so users can
+          create undated Inbox events and schedule them later. */}
       <div className="grid grid-cols-2 gap-2">
         <DatePicker
           value={startDate}

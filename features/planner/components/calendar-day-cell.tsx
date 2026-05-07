@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Atomic Interaction Unit of the calendar grid.
+ *
+ * This component handles both the manual creation of events via the shortcut
+ * button and acts as a drop target for chronological rescheduling.
+ */
+
 import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 
@@ -13,6 +20,10 @@ type CalendarDayCellProps = {
 
 /**
  * Renders a droppable day cell in the month grid.
+ *
+ * The component uses a group-hover state to reveal the "Add Event" button,
+ * keeping the calendar visually clean while still providing quick-action
+ * shortcuts.
  */
 export function CalendarDayCell({
   day,
@@ -21,6 +32,8 @@ export function CalendarDayCell({
 }: CalendarDayCellProps) {
   const { openCreateEvent } = useCreateEvent();
   const { isOver, setNodeRef } = useDroppable({
+    // Domain Protocol: this ID format is used by the AppShell drag sensors to
+    // distinguish date cells from other drop targets like the inbox.
     id: `date:${dateKey}`,
     data: {
       dateKey,

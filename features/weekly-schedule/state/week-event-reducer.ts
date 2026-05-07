@@ -63,6 +63,13 @@ export type PlannerWeekAction =
       };
     };
 
+/**
+ * Locates the semester that owns a weekly event.
+ *
+ * `PlannerWeekEvent` objects do not store a `semesterId` internally, so the
+ * reducer must search the semester-keyed state tree to find the bucket that
+ * contains a given event before it can update or delete it.
+ */
 function findSemesterForWeekEvent(
   weekEventsBySemester: PlannerWeekEventsBySemester,
   eventId: string,
@@ -99,6 +106,8 @@ export function plannerWeekStateReducer(
         const semesterEvents = weekEventsBySemester[semesterId] ?? [];
         nextState[semesterId] = semesterEvents.map((event) => ({
           ...event,
+          // Deep-clone participants to preserve React state immutability and
+          // avoid reference bugs leaking from the persistence layer.
           participants: [...event.participants],
         }));
       }

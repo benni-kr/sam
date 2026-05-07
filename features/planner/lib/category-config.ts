@@ -1,3 +1,11 @@
+/**
+ * Central configuration for Calendar event UI tokens.
+ *
+ * This module keeps the visual language for planner categories in one place
+ * so all chronological views (calendar grid, schedule feed, sidebar, and
+ * related previews) stay visually consistent as the UI evolves.
+ */
+
 import type { PlannerEventCategory } from "./planner";
 
 /**
@@ -47,6 +55,9 @@ export const CALENDAR_CATEGORY_THEMES: Record<
     checkbox: "text-emerald-700",
   },
   "Private Event": {
+    // Use a solid intermediate amber so the calendar grid lines do not bleed
+    // through; an opacity modifier like `bg-amber-100/70` would leave the
+    // underlying grid visible and reduce legibility.
     badge: "border-amber-300 bg-[#fcf5d2] text-amber-900",
     section: "border-amber-200 bg-amber-50/80",
     heading: "text-amber-900",

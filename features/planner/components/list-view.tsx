@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Chronological Feed View.
+ *
+ * This component transforms the semester's event data into a linear,
+ * grouped timeline focused on upcoming priorities.
+ */
+
 import { CalendarDays } from "lucide-react";
 import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
@@ -45,6 +52,13 @@ function getTodayDateKey() {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Business Rules for feed status calculation.
+ *
+ * An event is `Active` if today falls between its start and end dates
+ * inclusive, `Upcoming` if it starts in the future, and `Completed`
+ * otherwise.
+ */
 function getEventStatus(
   event: PlannerEvent,
   todayDateKey: string,
@@ -69,7 +83,7 @@ function getEventStatus(
 /**
  * Compact schedule feed for quick scanning.
  */
-export function ScheduleFeedView() {
+export function ListView() {
   const { events, updateEvent, deleteEvent } = usePlannerState();
   const { friends } = useFriendsState();
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -144,6 +158,9 @@ export function ScheduleFeedView() {
                   : null;
 
                 const prev = sortedEvents[idx - 1];
+                // On-the-fly Grouping: this month comparison lets us insert
+                // separators into a flat list without pre-processing the data
+                // into nested arrays.
                 const prevMonth = prev?.startDate?.slice(0, 7) ?? null; // YYYY-MM
                 const thisMonth = event.startDate?.slice(0, 7) ?? null;
 
@@ -169,6 +186,8 @@ export function ScheduleFeedView() {
 
                     <article
                       className={`relative overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md ${
+                        // Live status: this high-visibility ring highlights
+                        // currently active events for quick scanning.
                         isActive ? "ring-2 ring-emerald-200" : ""
                       }`}
                     >

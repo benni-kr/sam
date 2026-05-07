@@ -111,9 +111,22 @@ export const plannerSemesterIds: PlannerSemesterId[] = [
   "fall-2026",
 ];
 
-// Starting with an empty friends list!
+/**
+ * Initial seed state for the friends domain.
+ *
+ * This array is used before the user persists any custom friends to
+ * Supabase, giving the app a stable starting point for planner participant
+ * selection.
+ */
 export const SEMESTER_FRIENDS: string[] = [];
 
+/**
+ * Immutable semester template/configuration for the application's timeframes.
+ *
+ * The planner treats this array as the source of truth for the 6-month
+ * boundaries that drive the calendar grid UI, semester switching, and
+ * persistence scoping.
+ */
 export const plannerSemesters: PlannerSemester[] = [
   {
     id: "spring-2026",
@@ -257,6 +270,8 @@ export function getChronologicalEvents(
   const semester = getPlannerSemester(semesterId);
 
   return [...semester.events].sort((left, right) => {
+    // Push undated Inbox events to the bottom so officially scheduled events
+    // remain prioritized at the top of chronological feeds.
     if (left.startDate === null && right.startDate === null) {
       return left.title.localeCompare(right.title);
     }

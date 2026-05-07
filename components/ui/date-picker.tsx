@@ -5,6 +5,16 @@ import { format, parseISO } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { DayPicker } from "react-day-picker";
 
+/**
+ * Props for `DatePicker`.
+ *
+ * - `value`: a date string formatted as YYYY-MM-DD (ISO date). The component
+ *   expects this exact format for parsing and will emit the same format when
+ *   the user selects or clears a date.
+ * - `onChange`: callback invoked with a string formatted as YYYY-MM-DD when
+ *   the selection changes (or an empty string when cleared).
+ * - `placeholder`: optional label shown when no date is selected.
+ */
 type DatePickerProps = {
   value: string;
   onChange: (value: string) => void;
@@ -13,6 +23,10 @@ type DatePickerProps = {
 
 /**
  * Lightweight date picker with a custom popover calendar.
+ *
+ * Provides a visually consistent popover across browsers and avoids the
+ * styling and behavior inconsistencies of native `<input type="date">`
+ * controls (different browsers render and localize that control unevenly).
  */
 export function DatePicker({
   value,
@@ -77,6 +91,9 @@ export function DatePicker({
         <div className="absolute z-30 mt-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
           <DayPicker
             mode="single"
+            // We use the GB locale to ensure the calendar grid starts on
+            // Monday (European/academic convention). Do not change without
+            // verifying week-start expectations across the app.
             locale={enGB}
             selected={selectedDate}
             onDayClick={(_, __, event) => {

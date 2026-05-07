@@ -1,5 +1,5 @@
 /**
- * Weekly Schedule Domain Types, Constants, and Mock Data
+ * Weekly Schedule Domain Types and Constants
  *
  * This module contains all types and constants specific to the weekly schedule feature.
  * It represents the bounded context for weekly time-blocking scheduling.

@@ -35,6 +35,11 @@ const SUPABASE_EVENTS_TABLE = "planner_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
 const DEFAULT_PLANNER_SCOPE = "default";
 
+/**
+ * Row shape mapping directly to the `planner_events` table in Supabase.
+ * The field names intentionally mirror the database schema so this adapter
+ * can serialize and hydrate rows without an extra translation layer.
+ */
 type SupabaseEventRow = {
   planner_scope: string;
   semester_id: PlannerSemesterId | null;
@@ -106,6 +111,8 @@ function eventsBySemesterToRows(
     for (const event of semesterEvents) {
       rows.push({
         planner_scope: plannerScope,
+        // Strip the semester for undated Inbox events so they remain flexible
+        // in the database until the user explicitly schedules them.
         semester_id: event.startDate ? semesterId : null,
         event_id: event.id,
         title: event.title,
@@ -261,6 +268,8 @@ async function upsertSupabaseEventsBySemester(
   const rows = eventsBySemesterToRows(eventsBySemester, config.plannerScope);
 
   if (rows.length > 0) {
+    // Upsert step: write the current calendar state into Supabase so the
+    // database reflects the client's latest event data.
     const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
     const response = await fetch(endpoint, {
       method: "POST",
@@ -278,6 +287,8 @@ async function upsertSupabaseEventsBySemester(
     }
   }
 
+  // Prune step: remove any rows from Supabase that are no longer present in
+  // the client's state, completing the two-way sync.
   const eventIds = rows.map((row) => row.event_id);
   const deleteFilter = buildNotInFilter(eventIds);
   const deleteEndpoint = deleteFilter

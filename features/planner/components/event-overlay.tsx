@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Layout engine for multi-day calendar bars.
+ *
+ * This module segments events across week boundaries and packs the visible
+ * pieces into horizontal lanes so multi-day bars render cleanly inside the
+ * calendar grid.
+ */
+
 import { DraggableEvent } from "@/features/planner/components/draggable-event";
 import { formatDateKey } from "@/features/planner/lib/planner-utils";
 import {
@@ -31,6 +39,8 @@ type BuildMonthWeekEventLayoutsArgs = {
 
 const WEEK_SIZE = 7;
 const DAY_HEADER_HEIGHT = 28;
+// Visual Rhythm: reserve 3 lanes so calendar rows keep a consistent height
+// even when only a few events are present.
 const MIN_EVENT_LANES = 3;
 const EVENT_LANE_HEIGHT = 28;
 const ROW_VERTICAL_PADDING = 4;
@@ -188,6 +198,8 @@ export function MonthWeekEventOverlay({
   }
 
   return (
+    // Layering: `pointer-events-none` lets clicks pass through the overlay to
+    // the calendar day cells beneath it.
     <div className="pointer-events-none absolute inset-x-0 top-[1.75rem] bottom-0 pt-1">
       <div
         className="grid h-full grid-cols-7 content-start"
@@ -199,6 +211,9 @@ export function MonthWeekEventOverlay({
           const isPrivate = segment.event.category === "Private Event";
           const hasParticipants = !!segment.event.participants?.length;
 
+          // Detail Visibility: we show participants for Private Events here so
+          // users can distinguish personal appointments at a glance without
+          // opening the modal.
           // Fetch the unified theme object for this event's category
           const theme = getCalendarTheme(segment.event.category);
 

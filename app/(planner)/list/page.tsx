@@ -1,5 +1,5 @@
-import { ScheduleFeedView } from "@/features/planner/components/schedule-feed-view";
+import { ListView } from "@/features/planner/components/list-view";
 
 export default function Page() {
-  return <ScheduleFeedView />;
+  return <ListView />;
 }

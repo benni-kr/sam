@@ -6,11 +6,22 @@ import { DraggableEvent } from "@/features/planner/components/draggable-event";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
 /**
- * Sidebar drop zone for unscheduled events.
+ * Global inbox for unscheduled events.
+ *
+ * This component renders the repository of events that are not scheduled
+ * on the calendar. Users can drag events off the calendar to "unschedule"
+ * them — dropping onto this inbox stores them as unscheduled. The inbox
+ * is intentionally global (outside specific semester/calendar views) so
+ * that unscheduled events are discoverable and re-schedulable from a
+ * single place in the UI.
  */
 export function SidebarInbox() {
   const { inboxEvents } = usePlannerState();
   const { setNodeRef, isOver } = useDroppable({
+    // NOTE: The exact string "inbox" is a DnD contract. app-shell.tsx's
+    // `handleDragEnd` checks for this id to decide when to call
+    // `moveEventToInbox`. Changing this string requires updating that
+    // check in components/layout/app-shell.tsx accordingly.
     id: "inbox",
     data: {
       targetType: "inbox",

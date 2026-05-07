@@ -37,6 +37,12 @@ const SUPABASE_WEEK_EVENTS_TABLE = "planner_week_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
 const DEFAULT_PLANNER_SCOPE = "default";
 
+/**
+ * Row shape mapping directly to the `planner_week_events` table in Supabase.
+ * Column names intentionally mirror the database schema so rows can be
+ * serialized and deserialized without transformation when calling the REST
+ * endpoints.
+ */
 type SupabaseWeekEventRow = {
   planner_scope: string;
   semester_id: PlannerSemesterId;
@@ -282,6 +288,10 @@ async function upsertSupabaseWeekEventsBySemester(
   );
 
   if (rows.length > 0) {
+    // Upsert step: write or merge the current client-side weekly schedule
+    // into the database. Using `on_conflict` ensures existing rows are
+    // updated while new rows are inserted, performing an idempotent sync
+    // for the provided `rows` payload.
     const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
     const response = await fetch(endpoint, {
       method: "POST",
@@ -299,6 +309,10 @@ async function upsertSupabaseWeekEventsBySemester(
     }
   }
 
+  // Prune step: remove any events from the DB that aren't present in the
+  // client's current state. After upserting the canonical set above, we
+  // delete rows whose `event_id` is not in the supplied `rows` payload,
+  // completing a two-way sync.
   const eventIds = rows.map((row) => row.event_id);
   const deleteFilter = buildNotInFilter(eventIds);
   const deleteEndpoint = deleteFilter
