@@ -17,33 +17,48 @@ import { type PlannerWeekEventsBySemester } from "@/features/weekly-schedule/lib
  */
 export type PlannerWeekAction =
   | {
+      /** Hydrates the weekly semester map from persistence. */
       type: "HYDRATE_WEEK_FROM_STORE";
       payload: {
+        /** Semester-keyed weekly events loaded from Supabase. */
         weekEventsBySemester: PlannerWeekEventsBySemester | null;
       };
     }
   | {
+      /** Creates a new repeating weekly event in one semester. */
       type: "CREATE_WEEK_EVENT";
       payload: {
+        /** Semester that owns the new weekly event. */
         semesterId: PlannerSemesterId;
+        /** Fully formed weekly event object ready for persistence. */
         event: PlannerWeekEvent;
       };
     }
   | {
+      /** Updates an existing weekly event in place. */
       type: "UPDATE_WEEK_EVENT";
       payload: {
+        /** Event identifier from the weekly semester store. */
         eventId: string;
+        /** Updated display title. */
         title: string;
+        /** Updated weekly category used for theming and filtering. */
         category: PlannerWeekEvent["category"];
+        /** Updated weekday that determines the grid column. */
         day: PlannerWeekEvent["day"];
+        /** Updated start time in HH:MM format. */
         startTime: string;
+        /** Updated end time in HH:MM format. */
         endTime: string;
+        /** Updated participant list, normalized against the friends domain. */
         participants: string[];
       };
     }
   | {
+      /** Deletes a weekly event from the current semester store. */
       type: "DELETE_WEEK_EVENT";
       payload: {
+        /** Event identifier from the weekly semester store. */
         eventId: string;
       };
     };

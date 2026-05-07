@@ -33,11 +33,17 @@ export const plannerEventCategories: PlannerEventCategory[] = [
  * A calendar event stored inside a semester plan.
  */
 export type PlannerEvent = {
+  /** Stable event identifier used across persistence and drag/drop actions. */
   id: string;
+  /** User-facing title shown in every planner view. */
   title: string;
+  /** Domain category used for filtering, theme lookup, and summaries. */
   category: PlannerEventCategory;
+  /** Inclusive start date in YYYY-MM-DD format, or null when the event is in the inbox. */
   startDate: string | null;
+  /** Inclusive end date in YYYY-MM-DD format, or null when the event is undated. */
   endDate: string | null;
+  /** Participant names are stored as display strings and matched case-insensitively. */
   participants: string[];
 };
 
@@ -59,12 +65,19 @@ export type PlannerSemesterId = "spring-2026" | "fall-2026";
  * A complete semester aggregate with its calendar months and event collections.
  */
 export type PlannerSemester = {
+  /** Stable semester identifier used as the persistence and reducer key. */
   id: PlannerSemesterId;
+  /** Human-readable semester title shown in the UI. */
   label: string;
+  /** Display text describing the covered date range. */
   dateRangeLabel: string;
+  /** Short semester summary used in route metadata and sidebars. */
   description: string;
+  /** Calendar months that belong to this semester's six-month timeline. */
   months: PlannerMonth[];
+  /** Semester-scoped calendar events stored in the planner persistence layer. */
   events: PlannerEvent[];
+  /** Semester-scoped weekly schedule events stored alongside the calendar data. */
   weekEvents: PlannerWeekEvent[];
 };
 

@@ -112,66 +112,94 @@ type PlannerStateProviderProps = {
 
 type PlannerAction =
   | {
+      /** Hydrates the calendar semester map from persistence. */
       type: "HYDRATE_FROM_STORE";
       payload: {
+        /** Semester-keyed calendar events loaded from Supabase. */
         eventsBySemester: PlannerEventsBySemester | null;
       };
     }
   | {
+      /** Moves a calendar event from the inbox into a dated calendar slot. */
       type: "MOVE_EVENT_TO_DATE";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
+        /** Target date in YYYY-MM-DD format. */
         dateKey: string;
+        /** Semester that should receive the updated event. */
         targetSemesterId: PlannerSemesterId;
       };
     }
   | {
+      /** Returns a dated calendar event back to the inbox. */
       type: "MOVE_EVENT_TO_INBOX";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
       };
     }
   | {
+      /** Creates a new semester-scoped calendar event. */
       type: "CREATE_EVENT";
       payload: {
+        /** Semester that owns the new event. */
         semesterId: PlannerSemesterId;
+        /** Fully formed event object ready for persistence. */
         event: PlannerEvent;
       };
     }
   | {
+      /** Updates an existing calendar event in place. */
       type: "UPDATE_EVENT";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
+        /** Updated display title. */
         title: string;
+        /** Updated planner category used for theming and filtering. */
         category: PlannerEventCategory;
+        /** Updated inclusive start date in YYYY-MM-DD format, or null for inbox items. */
         startDate: string | null;
+        /** Updated inclusive end date in YYYY-MM-DD format, or null for inbox items. */
         endDate: string | null;
+        /** Updated participant list, normalized against the friends domain. */
         participants: string[];
       };
     }
   | {
+      /** Deletes an event from the current semester store. */
       type: "DELETE_EVENT";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
       };
     }
   | {
+      /** Toggles a participant name on a calendar event. */
       type: "TOGGLE_PARTICIPANT";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
+        /** Participant name as entered by the user. */
         participantName: string;
       };
     }
   | {
+      /** Removes one participant from every calendar event. */
       type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS";
       payload: {
+        /** Participant name to remove case-insensitively. */
         participantName: string;
       };
     }
   | {
+      /** Renames one participant across the entire calendar store. */
       type: "RENAME_PARTICIPANT_IN_ALL_EVENTS";
       payload: {
+        /** Existing participant name to replace case-insensitively. */
         currentName: string;
+        /** Replacement participant name stored in normalized form. */
         nextName: string;
       };
     };
