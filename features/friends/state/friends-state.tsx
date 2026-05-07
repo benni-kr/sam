@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Friends State
+ *
+ * This module coordinates friend hydration, persistence, and mutation events
+ * for the planner participant list.
+ */
+
 import {
   createContext,
   useContext,
@@ -181,6 +188,9 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
   }
 }
 
+/**
+ * Provides the mutable friend list and its persistence lifecycle to consumers.
+ */
 export function FriendsProvider({ children }: FriendsProviderProps) {
   const [state, dispatch] = useReducer(friendsReducer, {
     friends: getDefaultFriends(),
@@ -268,6 +278,9 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   );
 }
 
+/**
+ * Returns the active friends state context for planner components.
+ */
 export function useFriendsState() {
   const context = useContext(FriendsStateContext);
 

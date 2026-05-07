@@ -1,3 +1,11 @@
+/**
+ * Weekly Schedule Persistence
+ *
+ * This module owns the weekly-event persistence adapter for the planner
+ * bounded context. It keeps the Supabase shape, auth handling, and semester
+ * hydration logic isolated from the rest of the weekly schedule domain.
+ */
+
 import {
   defaultPlannerSemesterId,
   plannerSemesterIds,
@@ -15,6 +23,9 @@ export type PlannerWeekEventsBySemester = Partial<
   Record<PlannerSemesterId, PlannerWeekEvent[]>
 >;
 
+/**
+ * The weekly-event persistence contract used by the planner state layer.
+ */
 export type PlannerWeekEventStore = {
   loadWeekEventsBySemester: () => Promise<PlannerWeekEventsBySemester | null>;
   saveWeekEventsBySemester: (
@@ -319,6 +330,9 @@ export const supabaseWeekEventStore: PlannerWeekEventStore = {
   },
 };
 
+/**
+ * Resolves the weekly-event store implementation for the current runtime.
+ */
 export function resolveWeekEventStore(): PlannerWeekEventStore {
   const plannerScope = getPlannerScope();
 

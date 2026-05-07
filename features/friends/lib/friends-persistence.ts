@@ -1,5 +1,12 @@
 import { SEMESTER_FRIENDS } from "@/features/planner/lib/planner";
 
+/**
+ * Friends Persistence
+ *
+ * This module isolates the Supabase adapter for planner participants so the
+ * friends domain can hydrate and persist its own state independently.
+ */
+
 const SUPABASE_FRIENDS_TABLE = "planner_friends";
 const DEFAULT_PLANNER_SCOPE = "default";
 
@@ -87,6 +94,9 @@ function getClientAuthToken() {
   return window.localStorage.getItem("sam_auth_token");
 }
 
+/**
+ * Loads the persisted friend list for the active planner scope.
+ */
 export async function loadFriends() {
   const config = getSupabaseConfig();
 
@@ -148,6 +158,9 @@ export async function loadFriends() {
   return rowsToFriends(rows);
 }
 
+/**
+ * Persists the current friend list for the active planner scope.
+ */
 export async function saveFriends(friends: string[]) {
   const config = getSupabaseConfig();
 
@@ -266,6 +279,9 @@ export async function saveFriends(friends: string[]) {
   }
 }
 
+/**
+ * Returns the built-in starter list for the friends domain.
+ */
 export function getDefaultFriends() {
   return dedupeNames([...SEMESTER_FRIENDS]).sort((left, right) =>
     left.localeCompare(right),

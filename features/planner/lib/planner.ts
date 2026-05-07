@@ -8,6 +8,9 @@
 
 import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
 
+/**
+ * The fixed category set for semester-based calendar events.
+ */
 export type PlannerEventCategory =
   | "Exam"
   | "Language Exam"
@@ -15,6 +18,9 @@ export type PlannerEventCategory =
   | "Private Event"
   | "Other";
 
+/**
+ * The fixed set of planner categories used to classify semester events.
+ */
 export const plannerEventCategories: PlannerEventCategory[] = [
   "Exam",
   "Language Exam",
@@ -23,6 +29,9 @@ export const plannerEventCategories: PlannerEventCategory[] = [
   "Other",
 ];
 
+/**
+ * A calendar event stored inside a semester plan.
+ */
 export type PlannerEvent = {
   id: string;
   title: string;
@@ -32,14 +41,23 @@ export type PlannerEvent = {
   participants: string[];
 };
 
+/**
+ * A month slot that belongs to one planner semester.
+ */
 export type PlannerMonth = {
   label: string;
   year: number;
   monthIndex: number;
 };
 
+/**
+ * Stable semester identifiers used to key planner state and persistence.
+ */
 export type PlannerSemesterId = "spring-2026" | "fall-2026";
 
+/**
+ * A complete semester aggregate with its calendar months and event collections.
+ */
 export type PlannerSemester = {
   id: PlannerSemesterId;
   label: string;
@@ -50,14 +68,24 @@ export type PlannerSemester = {
   weekEvents: PlannerWeekEvent[];
 };
 
+/**
+ * Named planner views exposed in the app shell navigation.
+ */
 export type PlannerViewKey = "calendar" | "crosstables" | "list" | "week";
 
+/**
+ * Metadata describing a navigable planner view.
+ */
 export type PlannerView = {
   key: PlannerViewKey;
   label: string;
   href: string;
   description: string;
 };
+
+/**
+ * Aggregated summary for a category within a semester.
+ */
 export type PlannerCategorySummary = {
   category: PlannerEventCategory;
   count: number;
@@ -141,6 +169,10 @@ export const plannerViews: PlannerView[] = [
   },
 ];
 
+/**
+ * Resolves a semester by id, falling back to the default semester when the
+ * requested id is missing or unknown.
+ */
 export function getPlannerSemester(
   semesterId: string | null | undefined = defaultPlannerSemesterId,
 ): PlannerSemester {
@@ -150,6 +182,9 @@ export function getPlannerSemester(
   );
 }
 
+/**
+ * Returns the events that begin on a specific calendar date.
+ */
 export function getEventsForDate(
   dateKey: string,
   semesterId: string | null | undefined = defaultPlannerSemesterId,
@@ -159,6 +194,9 @@ export function getEventsForDate(
   );
 }
 
+/**
+ * Returns the undated events that still live in a semester inbox.
+ */
 export function getInboxEvents(
   semesterId: string | null | undefined = defaultPlannerSemesterId,
 ) {
@@ -167,6 +205,9 @@ export function getInboxEvents(
   );
 }
 
+/**
+ * Builds per-category counts, participants, and event lists for one semester.
+ */
 export function getCategorySummaries(
   semesterId: string | null | undefined = defaultPlannerSemesterId,
 ): PlannerCategorySummary[] {
@@ -194,6 +235,9 @@ export function getCategorySummaries(
   });
 }
 
+/**
+ * Returns semester events sorted by schedule date and title for list views.
+ */
 export function getChronologicalEvents(
   semesterId: string | null | undefined = defaultPlannerSemesterId,
 ): PlannerEvent[] {
@@ -240,6 +284,9 @@ export function getChronologicalEvents(
   });
 }
 
+/**
+ * Returns the months that make up the active semester timeline.
+ */
 export function getSemesterMonths(
   semesterId: string | null | undefined = defaultPlannerSemesterId,
 ): PlannerMonth[] {

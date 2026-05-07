@@ -5,12 +5,18 @@
  * It represents the bounded context for weekly time-blocking scheduling.
  */
 
+/**
+ * The fixed category set for repeating weekly schedule events.
+ */
 export type PlannerWeekEventCategory =
   | "University"
   | "Language courses"
   | "Sports"
   | "Other";
 
+/**
+ * The fixed category set for weekly schedule events.
+ */
 export const plannerWeekEventCategories: PlannerWeekEventCategory[] = [
   "University",
   "Language courses",
@@ -18,6 +24,9 @@ export const plannerWeekEventCategories: PlannerWeekEventCategory[] = [
   "Other",
 ];
 
+/**
+ * Short weekday identifiers used by the weekly timetable view.
+ */
 export type PlannerWeekday =
   | "Mon"
   | "Tue"
@@ -27,6 +36,9 @@ export type PlannerWeekday =
   | "Sat"
   | "Sun";
 
+/**
+ * The ordered weekday labels used when rendering the weekly grid.
+ */
 export const plannerWeekdays: PlannerWeekday[] = [
   "Mon",
   "Tue",
@@ -37,6 +49,9 @@ export const plannerWeekdays: PlannerWeekday[] = [
   "Sun",
 ];
 
+/**
+ * A repeating weekly schedule event stored in the weekly schedule domain.
+ */
 export type PlannerWeekEvent = {
   id: string;
   title: string;
@@ -47,4 +62,7 @@ export type PlannerWeekEvent = {
   participants: string[];
 };
 
+/**
+ * Single-letter labels used in compact weekly calendar headers.
+ */
 export const weekdayLabels = ["M", "T", "W", "T", "F", "S", "S"];

@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Planner State
+ *
+ * This module coordinates planner hydration, local reducer state, persistence
+ * writes, and derived selectors for both calendar and weekly schedule views.
+ */
+
 import {
   createContext,
   useContext,
@@ -333,6 +340,9 @@ function findSemesterForEvent(
   return null;
 }
 
+/**
+ * Extracts and sorts all undated events across semesters for the inbox view.
+ */
 export function getInboxEventsFromState(eventsBySemester: EventsBySemester) {
   return plannerSemesterIds
     .flatMap((semesterId) => eventsBySemester[semesterId] ?? [])
@@ -340,6 +350,9 @@ export function getInboxEventsFromState(eventsBySemester: EventsBySemester) {
     .sort((left, right) => left.title.localeCompare(right.title));
 }
 
+/**
+ * Applies planner calendar mutations to the semester-scoped event state tree.
+ */
 export function plannerStateReducer(
   state: EventsBySemester,
   action: PlannerAction,
@@ -648,6 +661,10 @@ function sortChronological(events: PlannerEvent[]): PlannerEvent[] {
   });
 }
 
+/**
+ * Provides the planner state tree, reducer actions, and derived selectors to
+ * all planner routes.
+ */
 export function PlannerStateProvider({
   activeSemesterId,
   children,
@@ -983,6 +1000,9 @@ export function PlannerStateProvider({
 
 /**
  * Accessor hook for planner state and actions.
+ */
+/**
+ * Returns the active planner state context for consumer components.
  */
 export function usePlannerState() {
   const context = useContext(PlannerStateContext);

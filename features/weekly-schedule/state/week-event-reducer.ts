@@ -1,3 +1,10 @@
+/**
+ * Weekly Event Reducer
+ *
+ * This reducer owns the immutable update rules for semester-scoped weekly
+ * events, including hydration, creation, update, and deletion.
+ */
+
 import {
   plannerSemesterIds,
   type PlannerSemesterId,
@@ -5,6 +12,9 @@ import {
 import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
 import { type PlannerWeekEventsBySemester } from "@/features/weekly-schedule/lib/week-persistence";
 
+/**
+ * Actions that can mutate the weekly-event state tree.
+ */
 export type PlannerWeekAction =
   | {
       type: "HYDRATE_WEEK_FROM_STORE";
@@ -53,6 +63,9 @@ function findSemesterForWeekEvent(
   return null;
 }
 
+/**
+ * Applies weekly-event mutations to the semester-scoped state tree.
+ */
 export function plannerWeekStateReducer(
   state: PlannerWeekEventsBySemester,
   action: PlannerWeekAction,

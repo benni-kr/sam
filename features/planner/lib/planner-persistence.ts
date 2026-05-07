@@ -1,3 +1,11 @@
+/**
+ * Planner Event Persistence
+ *
+ * This module owns the calendar-event persistence adapter for the planner
+ * bounded context. It converts semester state to and from the Supabase schema
+ * and hides auth, scope, and row-shaping details from the rest of the app.
+ */
+
 import {
   defaultPlannerSemesterId,
   plannerEventCategories,
@@ -6,10 +14,16 @@ import {
   type PlannerSemesterId,
 } from "@/features/planner/lib/planner";
 
+/**
+ * Planner calendar events grouped by semester id for persistence and hydration.
+ */
 export type PlannerEventsBySemester = Partial<
   Record<PlannerSemesterId, PlannerEvent[]>
 >;
 
+/**
+ * The calendar-event persistence contract used by the planner state layer.
+ */
 export type PlannerEventStore = {
   loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
   saveEventsBySemester: (
@@ -295,6 +309,9 @@ export const supabasePlannerEventStore: PlannerEventStore = {
   },
 };
 
+/**
+ * Resolves the calendar-event store implementation for the current runtime.
+ */
 export function resolvePlannerEventStore(): PlannerEventStore {
   const plannerScope = getPlannerScope();
 
