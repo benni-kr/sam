@@ -1,8 +1,20 @@
 import { SEMESTER_FRIENDS } from "@/features/planner/lib/planner";
 
+/**
+ * Friends Persistence
+ *
+ * This module isolates the Supabase adapter for planner participants so the
+ * friends domain can hydrate and persist its own state independently.
+ */
+
 const SUPABASE_FRIENDS_TABLE = "planner_friends";
 const DEFAULT_PLANNER_SCOPE = "default";
 
+/**
+ * Row shape mapping directly to the `planner_friends` Supabase table.
+ * Fields are named to match the database column names used by the REST API
+ * so rows can be serialized/deserialized without transformation.
+ */
 type SupabaseFriendRow = {
   planner_scope: string;
   friend_name: string;
@@ -33,6 +45,9 @@ function dedupeNames(names: string[]) {
       continue;
     }
 
+    // Use the lower-cased string as the Map key to enforce case-insensitive
+    // uniqueness. This ensures "Alex" and "alex" are treated as the same
+    // participant rather than two separate entries.
     const key = normalized.toLocaleLowerCase();
 
     if (!uniqueByLowerCase.has(key)) {
@@ -87,6 +102,9 @@ function getClientAuthToken() {
   return window.localStorage.getItem("sam_auth_token");
 }
 
+/**
+ * Loads the persisted friend list for the active planner scope.
+ */
 export async function loadFriends() {
   const config = getSupabaseConfig();
 
@@ -148,6 +166,9 @@ export async function loadFriends() {
   return rowsToFriends(rows);
 }
 
+/**
+ * Persists the current friend list for the active planner scope.
+ */
 export async function saveFriends(friends: string[]) {
   const config = getSupabaseConfig();
 
@@ -169,6 +190,9 @@ export async function saveFriends(friends: string[]) {
     const authHeader = `Bearer ${token}`;
 
     if (rows.length > 0) {
+      // Upsert the current client list into Supabase. This first POST call
+      // writes or merges the provided rows so existing entries are preserved
+      // and new names are inserted (on_conflict handles deduplication).
       const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
       const response = await fetch(endpoint, {
         method: "POST",
@@ -197,6 +221,9 @@ export async function saveFriends(friends: string[]) {
       }
     }
 
+    // Prune step: remove any rows in the database that are not present in
+    // the client's current list. This keeps the server-side data synced with
+    // the client: names omitted by the user are deleted from Supabase.
     const friendNames = rows.map((row) => row.friend_name);
     const deleteFilter = buildNotInFilter(friendNames);
     const deleteEndpoint = deleteFilter
@@ -230,6 +257,7 @@ export async function saveFriends(friends: string[]) {
   }
 
   if (rows.length > 0) {
+    // Upsert (server-side): ensure the canonical list exists in the DB.
     const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
     const response = await fetch(endpoint, {
       method: "POST",
@@ -247,6 +275,9 @@ export async function saveFriends(friends: string[]) {
     }
   }
 
+  // Prune step (server-side): remove any rows from Supabase not present
+  // in the client's current array. This keeps the server in sync with the
+  // client's desired friend list.
   const friendNames = rows.map((row) => row.friend_name);
   const deleteFilter = buildNotInFilter(friendNames);
   const deleteEndpoint = deleteFilter
@@ -266,6 +297,9 @@ export async function saveFriends(friends: string[]) {
   }
 }
 
+/**
+ * Returns the built-in starter list for the friends domain.
+ */
 export function getDefaultFriends() {
   return dedupeNames([...SEMESTER_FRIENDS]).sort((left, right) =>
     left.localeCompare(right),

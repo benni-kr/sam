@@ -40,9 +40,20 @@ export function buildMonthDays(year: number, monthIndex: number) {
   return cells;
 }
 
+/**
+ * Cached `Intl.DateTimeFormat` instance for month headers.
+ *
+ * Reusing the formatter avoids recreating it on every render and keeps month
+ * names consistently in English by enforcing the `en-US` locale, regardless
+ * of the user's browser settings.
+ */
 export const monthFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
   year: "numeric",
 });
 
+/**
+ * Localized single-letter abbreviations for compact chronological calendar
+ * headers.
+ */
 export const weekdayLabels = ["M", "T", "W", "T", "F", "S", "S"];

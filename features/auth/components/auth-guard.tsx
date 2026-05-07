@@ -2,6 +2,10 @@
 
 import { useState, useEffect, type ReactNode } from "react";
 
+/**
+ * Client-side authentication boundary that verifies the Supabase JWT in local
+ * storage and either renders the planner app or shows the login form.
+ */
 export function AuthGuard({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -9,6 +13,9 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  /**
+   * Returns whether the stored JWT is missing, malformed, or past its exp claim.
+   */
   function isJwtExpired(token: string | null) {
     if (!token) return true;
 
@@ -28,7 +35,8 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
-    // Wait for client mount before touching localStorage.
+    // This stays in an effect because the auth decision depends on
+    // localStorage and must not diverge between server and client renders.
     const token = window.localStorage.getItem("sam_auth_token");
 
     if (!token) {

@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Friends State
+ *
+ * This module coordinates friend hydration, persistence, and mutation events
+ * for the planner participant list.
+ */
+
 import {
   createContext,
   useContext,
@@ -17,6 +24,15 @@ import {
   saveFriends,
 } from "@/features/friends/lib/friends-persistence";
 
+/**
+ * A discrete description of the most recent friend mutation.
+ *
+ * This value is exposed in the friends state so other bounded contexts
+ * (for example, the Planner domain) can observe and react to changes
+ * without creating tight coupling. Consumers can listen for mutations
+ * (like `remove`) to perform cascading updates such as removing a
+ * deleted friend from all events.
+ */
 type FriendMutation =
   | { type: "add"; name: string }
   | { type: "rename"; currentName: string; nextName: string }
@@ -85,6 +101,9 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
     }
 
     case "addFriend": {
+      // Enforce case-insensitive uniqueness and keep the list sorted for
+      // predictable UI ordering. Names are normalized then compared lower-cased
+      // to avoid duplicates like "Alex" vs "alex".
       const normalizedName = normalizeFriendName(action.name);
 
       if (!normalizedName) {
@@ -181,6 +200,9 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
   }
 }
 
+/**
+ * Provides the mutable friend list and its persistence lifecycle to consumers.
+ */
 export function FriendsProvider({ children }: FriendsProviderProps) {
   const [state, dispatch] = useReducer(friendsReducer, {
     friends: getDefaultFriends(),
@@ -234,7 +256,9 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
     if (!didHydrateFromStorage) {
       return;
     }
-
+    // Important: only persist after initial hydration. If we attempted to
+    // save before `didHydrateFromStorage` is true we might overwrite the
+    // remote database with the local default state (losing server-side data).
     void saveFriends(state.friends).catch((error: unknown) => {
       setPersistenceError(
         error instanceof Error
@@ -268,6 +292,9 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   );
 }
 
+/**
+ * Returns the active friends state context for planner components.
+ */
 export function useFriendsState() {
   const context = useContext(FriendsStateContext);
 

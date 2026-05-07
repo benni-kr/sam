@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Dynamic command center for the App Shell.
+ *
+ * This component switches its navigation, filters, and legends based on the
+ * active Next.js route so each planner domain can keep its own sidebar controls
+ * without leaking concerns into the shared layout.
+ */
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PlannerTabs } from "@/features/planner/components/planner-tabs";
 import { SidebarInbox } from "@/components/layout/sidebar-inbox";
@@ -12,6 +20,9 @@ import { getCalendarTheme } from "@/features/planner/lib/category-config";
 import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import { useCreateEvent } from "@/features/planner/components/create-event-context";
 
+/**
+ * Renders the route-aware sidebar controls for the active planner domain.
+ */
 export function SidebarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -29,6 +40,8 @@ export function SidebarContent() {
     key: "hideFinished" | "hideUndated" | "hideInactive",
     enabled: boolean,
   ) {
+    // URLSearchParams lets us toggle one view filter while preserving the rest
+    // of the current route state, including the active semester and other flags.
     const params = new URLSearchParams(searchParams.toString());
 
     if (key === "hideFinished" || key === "hideInactive") {
@@ -52,6 +65,8 @@ export function SidebarContent() {
       </div>
 
       {pathname === "/week" ? (
+        // Swap the calendar legend and buttons for the weekly routine controls
+        // so the sidebar stays aligned with the active domain.
         <>
           <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -86,6 +101,8 @@ export function SidebarContent() {
           </button>
         </>
       ) : (
+        // Swap the weekly routine controls back to the calendar legend and
+        // creation buttons when the active route is a calendar domain view.
         <>
           <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -122,6 +139,8 @@ export function SidebarContent() {
       )}
 
       {(pathname === "/crosstables" || pathname === "/list") && (
+        // These route-specific filters belong to the table and list views, not
+        // the calendar or weekly routines, so they are rendered conditionally.
         <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             View Filters

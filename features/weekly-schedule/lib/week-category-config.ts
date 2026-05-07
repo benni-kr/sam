@@ -1,3 +1,10 @@
+/**
+ * Weekly Category Theme Tokens
+ *
+ * This module centralizes the visual tokens for weekly schedule categories so
+ * the timetable, legends, and previews stay visually aligned.
+ */
+
 import type { PlannerWeekEventCategory } from "./week-types";
 
 /**

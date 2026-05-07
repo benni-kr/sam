@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Grid Coordinator for the calendar.
+ *
+ * This component slices a month's days into 7-column rows and keeps each
+ * row's height in sync with the multi-day event overlay that paints on top of
+ * it.
+ */
+
 import { CalendarDayCell } from "@/features/planner/components/calendar-day-cell";
 import {
   MonthWeekEventOverlay,
@@ -17,6 +25,9 @@ import { usePlannerState } from "@/features/planner/state/planner-state";
 type MonthCardProps = {
   month: PlannerMonth;
 };
+
+const STRIPED_BACKGROUND =
+  "bg-[repeating-linear-gradient(135deg,_rgba(148,163,184,0.18)_0,_rgba(148,163,184,0.18)_8px,_rgba(248,250,252,0.72)_8px,_rgba(248,250,252,0.72)_16px)]";
 
 /**
  * Displays one month grid with a row-level multi-day event overlay.
@@ -67,21 +78,21 @@ export function MonthCard({ month }: MonthCardProps) {
           return (
             <div
               key={`${month.year}-${month.monthIndex}-row-${rowIndex}`}
+              // Layout Contract: this row MUST be relative because the
+              // `MonthWeekEventOverlay` relies on it as the positioning
+              // context for multi-day bars spanning the week.
               className="relative grid grid-cols-7"
               style={{ minHeight: rowHeight }}
             >
               {rowCells.map((day, columnIndex) => {
                 const absoluteIndex = rowIndex * 7 + columnIndex;
                 const isWeekend = columnIndex >= 5;
-                // Visually marks days outside the current month in each row.
-                const stripedBackground =
-                  "bg-[repeating-linear-gradient(135deg,_rgba(148,163,184,0.18)_0,_rgba(148,163,184,0.18)_8px,_rgba(248,250,252,0.72)_8px,_rgba(248,250,252,0.72)_16px)]";
 
                 if (!day) {
                   return (
                     <div
                       key={`empty-${month.year}-${month.monthIndex}-${absoluteIndex}`}
-                      className={`h-full min-h-28 border-b border-r border-slate-200 last:border-r-0 ${stripedBackground}`}
+                      className={`h-full min-h-28 border-b border-r border-slate-200 last:border-r-0 ${STRIPED_BACKGROUND}`}
                     />
                   );
                 }

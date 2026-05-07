@@ -1,54 +1,59 @@
 /**
- * Planner Event Persistence
+ * Weekly Schedule Persistence
  *
- * This module owns the calendar-event persistence adapter for the planner
- * bounded context. It converts semester state to and from the Supabase schema
- * and hides auth, scope, and row-shaping details from the rest of the app.
+ * This module owns the weekly-event persistence adapter for the planner
+ * bounded context. It keeps the Supabase shape, auth handling, and semester
+ * hydration logic isolated from the rest of the weekly schedule domain.
  */
 
 import {
   defaultPlannerSemesterId,
-  plannerEventCategories,
   plannerSemesterIds,
-  type PlannerEvent,
   type PlannerSemesterId,
 } from "@/features/planner/lib/planner";
+import {
+  plannerWeekEventCategories,
+  plannerWeekdays,
+  type PlannerWeekEvent,
+  type PlannerWeekEventCategory,
+  type PlannerWeekday,
+} from "@/features/weekly-schedule/lib/week-types";
 
-/**
- * Planner calendar events grouped by semester id for persistence and hydration.
- */
-export type PlannerEventsBySemester = Partial<
-  Record<PlannerSemesterId, PlannerEvent[]>
+export type PlannerWeekEventsBySemester = Partial<
+  Record<PlannerSemesterId, PlannerWeekEvent[]>
 >;
 
 /**
- * The calendar-event persistence contract used by the planner state layer.
+ * The weekly-event persistence contract used by the planner state layer.
  */
-export type PlannerEventStore = {
-  loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
-  saveEventsBySemester: (
-    eventsBySemester: PlannerEventsBySemester,
+export type PlannerWeekEventStore = {
+  loadWeekEventsBySemester: () => Promise<PlannerWeekEventsBySemester | null>;
+  saveWeekEventsBySemester: (
+    data: PlannerWeekEventsBySemester,
   ) => Promise<void>;
 };
 
-const SUPABASE_EVENTS_TABLE = "planner_events";
+const SUPABASE_WEEK_EVENTS_TABLE = "planner_week_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
 const DEFAULT_PLANNER_SCOPE = "default";
 
 /**
- * Row shape mapping directly to the `planner_events` table in Supabase.
- * The field names intentionally mirror the database schema so this adapter
- * can serialize and hydrate rows without an extra translation layer.
+ * Row shape mapping directly to the `planner_week_events` table in Supabase.
+ * Column names intentionally mirror the database schema so rows can be
+ * serialized and deserialized without transformation when calling the REST
+ * endpoints.
  */
-type SupabaseEventRow = {
+type SupabaseWeekEventRow = {
   planner_scope: string;
-  semester_id: PlannerSemesterId | null;
+  semester_id: PlannerSemesterId;
   event_id: string;
   title: string;
   category: string;
-  start_date: string | null;
-  end_date: string | null;
+  day: string;
+  start_time: string | null;
+  end_time: string | null;
   participants: unknown;
+  updated_at?: string;
 };
 
 function shouldLogPersistenceHealth() {
@@ -81,14 +86,23 @@ function getPlannerScope() {
   return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
 }
 
-function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
+function isWeekCategoryValue(
+  value: unknown,
+): value is PlannerWeekEventCategory {
   return (
     typeof value === "string" &&
-    plannerEventCategories.includes(value as PlannerEvent["category"])
+    plannerWeekEventCategories.includes(value as PlannerWeekEventCategory)
   );
 }
 
-export function normalizeParticipants(value: unknown) {
+function isWeekdayValue(value: unknown): value is PlannerWeekday {
+  return (
+    typeof value === "string" &&
+    plannerWeekdays.includes(value as PlannerWeekday)
+  );
+}
+
+function normalizeParticipants(value: unknown) {
   if (!Array.isArray(value)) {
     return [] as string[];
   }
@@ -99,26 +113,25 @@ export function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
-function eventsBySemesterToRows(
-  eventsBySemester: PlannerEventsBySemester,
+function weekEventsBySemesterToRows(
+  weekEventsBySemester: PlannerWeekEventsBySemester,
   plannerScope: string,
-): SupabaseEventRow[] {
-  const rows: SupabaseEventRow[] = [];
+): SupabaseWeekEventRow[] {
+  const rows: SupabaseWeekEventRow[] = [];
 
   for (const semesterId of plannerSemesterIds) {
-    const semesterEvents = eventsBySemester[semesterId] ?? [];
+    const semesterEvents = weekEventsBySemester[semesterId] ?? [];
 
     for (const event of semesterEvents) {
       rows.push({
         planner_scope: plannerScope,
-        // Strip the semester for undated Inbox events so they remain flexible
-        // in the database until the user explicitly schedules them.
-        semester_id: event.startDate ? semesterId : null,
+        semester_id: semesterId,
         event_id: event.id,
         title: event.title,
         category: event.category,
-        start_date: event.startDate,
-        end_date: event.endDate,
+        day: event.day,
+        start_time: event.startTime,
+        end_time: event.endTime,
         participants: event.participants,
       });
     }
@@ -127,34 +140,38 @@ function eventsBySemesterToRows(
   return rows;
 }
 
-export function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
-  const eventsBySemester: PlannerEventsBySemester = {};
+function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
+  const weekEventsBySemester: PlannerWeekEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
-    eventsBySemester[semesterId] = [];
+    weekEventsBySemester[semesterId] = [];
   }
 
   for (const row of rows) {
-    if (!isCategoryValue(row.category)) {
+    if (!isWeekCategoryValue(row.category) || !isWeekdayValue(row.day)) {
       continue;
     }
 
-    const targetSemesterId =
-      row.semester_id && plannerSemesterIds.includes(row.semester_id)
-        ? row.semester_id
-        : defaultPlannerSemesterId;
+    const targetSemesterId = plannerSemesterIds.includes(row.semester_id)
+      ? row.semester_id
+      : defaultPlannerSemesterId;
 
-    eventsBySemester[targetSemesterId]?.push({
+    if (!row.start_time || !row.end_time) {
+      continue;
+    }
+
+    weekEventsBySemester[targetSemesterId]?.push({
       id: row.event_id,
       title: row.title,
-      category: row.category as PlannerEvent["category"],
-      startDate: row.start_date,
-      endDate: row.end_date,
+      category: row.category,
+      day: row.day,
+      startTime: row.start_time,
+      endTime: row.end_time,
       participants: normalizeParticipants(row.participants),
     });
   }
 
-  return eventsBySemester;
+  return weekEventsBySemester;
 }
 
 function buildNotInFilter(values: string[]) {
@@ -200,17 +217,17 @@ function hasSupabaseConfig() {
   return Boolean(getSupabaseConfig());
 }
 
-async function fetchSupabaseEventsBySemester(
+async function fetchSupabaseWeekEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,day,start_time,end_time,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();
 
     if (!token) {
       logPersistenceHealth(
-        "No client auth token available yet; deferring events load.",
+        "No client auth token available yet; deferring week events load.",
       );
       return null;
     }
@@ -233,16 +250,16 @@ async function fetchSupabaseEventsBySemester(
         }
 
         logPersistenceHealth(
-          "Auth token invalid or expired while loading events.",
+          "Auth token invalid or expired while loading week events.",
         );
         return null;
       }
 
-      throw new Error("Failed to load planner events from Supabase.");
+      throw new Error("Failed to load planner week events from Supabase.");
     }
 
-    const rows = (await response.json()) as SupabaseEventRow[];
-    return rowsToEventsBySemester(rows);
+    const rows = (await response.json()) as SupabaseWeekEventRow[];
+    return rowsToWeekEventsBySemester(rows);
   }
 
   const response = await fetch(endpoint, {
@@ -254,23 +271,28 @@ async function fetchSupabaseEventsBySemester(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to load planner events from Supabase.");
+    throw new Error("Failed to load planner week events from Supabase.");
   }
 
-  const rows = (await response.json()) as SupabaseEventRow[];
-  return rowsToEventsBySemester(rows);
+  const rows = (await response.json()) as SupabaseWeekEventRow[];
+  return rowsToWeekEventsBySemester(rows);
 }
 
-async function upsertSupabaseEventsBySemester(
+async function upsertSupabaseWeekEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-  eventsBySemester: PlannerEventsBySemester,
+  weekEventsBySemester: PlannerWeekEventsBySemester,
 ) {
-  const rows = eventsBySemesterToRows(eventsBySemester, config.plannerScope);
+  const rows = weekEventsBySemesterToRows(
+    weekEventsBySemester,
+    config.plannerScope,
+  );
 
   if (rows.length > 0) {
-    // Upsert step: write the current calendar state into Supabase so the
-    // database reflects the client's latest event data.
-    const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
+    // Upsert step: write or merge the current client-side weekly schedule
+    // into the database. Using `on_conflict` ensures existing rows are
+    // updated while new rows are inserted, performing an idempotent sync
+    // for the provided `rows` payload.
+    const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -283,17 +305,19 @@ async function upsertSupabaseEventsBySemester(
     });
 
     if (!response.ok) {
-      throw new Error("Failed to save planner events to Supabase.");
+      throw new Error("Failed to save planner week events to Supabase.");
     }
   }
 
-  // Prune step: remove any rows from Supabase that are no longer present in
-  // the client's state, completing the two-way sync.
+  // Prune step: remove any events from the DB that aren't present in the
+  // client's current state. After upserting the canonical set above, we
+  // delete rows whose `event_id` is not in the supplied `rows` payload,
+  // completing a two-way sync.
   const eventIds = rows.map((row) => row.event_id);
   const deleteFilter = buildNotInFilter(eventIds);
   const deleteEndpoint = deleteFilter
-    ? `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}`
-    : `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+    ? `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}`
+    : `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   const deleteResponse = await fetch(deleteEndpoint, {
     method: "DELETE",
@@ -304,26 +328,26 @@ async function upsertSupabaseEventsBySemester(
   });
 
   if (!deleteResponse.ok) {
-    throw new Error("Failed to prune planner events in Supabase.");
+    throw new Error("Failed to prune planner week events in Supabase.");
   }
 }
 
-export const supabasePlannerEventStore: PlannerEventStore = {
-  async loadEventsBySemester() {
+export const supabaseWeekEventStore: PlannerWeekEventStore = {
+  async loadWeekEventsBySemester() {
     const config = requireSupabaseConfig();
-    return fetchSupabaseEventsBySemester(config);
+    return fetchSupabaseWeekEventsBySemester(config);
   },
 
-  async saveEventsBySemester(eventsBySemester) {
+  async saveWeekEventsBySemester(data) {
     const config = requireSupabaseConfig();
-    await upsertSupabaseEventsBySemester(config, eventsBySemester);
+    await upsertSupabaseWeekEventsBySemester(config, data);
   },
 };
 
 /**
- * Resolves the calendar-event store implementation for the current runtime.
+ * Resolves the weekly-event store implementation for the current runtime.
  */
-export function resolvePlannerEventStore(): PlannerEventStore {
+export function resolveWeekEventStore(): PlannerWeekEventStore {
   const plannerScope = getPlannerScope();
 
   if (!hasSupabaseConfig()) {
@@ -333,5 +357,5 @@ export function resolvePlannerEventStore(): PlannerEventStore {
   }
 
   logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
-  return supabasePlannerEventStore;
+  return supabaseWeekEventStore;
 }

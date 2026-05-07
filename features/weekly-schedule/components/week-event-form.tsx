@@ -38,6 +38,13 @@ type PlannerWeekEventFormProps = {
   deleteAction?: DeleteAction;
 };
 
+/**
+ * Adapts the shared `BaseEventForm` for the weekly schedule domain.
+ *
+ * This wrapper injects the weekly domain constraints by adding weekday and
+ * time controls, while still reusing the generic modal, title, and
+ * participant handling from the base event form.
+ */
 export function PlannerWeekEventForm({
   heading,
   submitLabel,
@@ -67,6 +74,9 @@ export function PlannerWeekEventForm({
     onStartTimeChange(value);
 
     const nextRange = getDefaultWeekAppointmentTimeRange(value, endTime);
+    // Keep the end time moving forward so we preserve the minimum 1-hour
+    // duration rule and avoid negative or invalid time blocks when the
+    // start time changes.
     onEndTimeChange(nextRange.endTime);
   }
 

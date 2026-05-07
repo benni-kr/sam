@@ -29,7 +29,10 @@ type DraggableEventProps = {
 
 /**
  * External store subscriptions for touch device detection.
- * Defined outside the component to ensure stable references for snapshots.
+ *
+ * Why: We use `useSyncExternalStore` to subscribe to browser media queries
+ * without causing hydration mismatches or lint warnings, ensuring the UI knows
+ * whether it is on a touch device before the first render completes.
  */
 const touchDeviceStore = {
   subscribe(callback: () => void) {
@@ -46,7 +49,12 @@ const touchDeviceStore = {
 };
 
 /**
- * Shared drag wrapper for calendar and inbox event presentations.
+ * Universal interaction wrapper for events.
+ *
+ * This component orchestrates drag-and-drop state, touch-safety, and the
+ * transition between preview/edit modals for event interactions.
+ * The `compact` prop switches the visual presentation between the pill style
+ * used in the Inbox/List and the badge style used in the Calendar.
  */
 export function DraggableEvent({
   event,
@@ -74,6 +82,9 @@ export function DraggableEvent({
       data: {
         eventId: event.id,
       },
+      // Dragging is disabled on touch devices to prevent the "stuck scroll"
+      // bug, where a user tries to scroll the page but accidentally picks up
+      // an event instead.
       disabled: isTouchDevice,
     });
 

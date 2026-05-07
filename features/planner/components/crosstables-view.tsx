@@ -37,6 +37,8 @@ export function CrosstablesView() {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const crosstableEvents = useMemo(
+    // Deduplicate here to avoid rendering bugs if an event briefly appears in
+    // both the "Chronological" and "Inbox" arrays during a state transition.
     () =>
       dedupeEventsById([
         ...events.filter((event) => Boolean(event.startDate)),
@@ -85,6 +87,13 @@ export function CrosstablesView() {
     {} as Record<PlannerEventCategory, PlannerEvent[]>,
   );
 
+  /**
+   * Density logic calibrated for standard 1440px laptop screens.
+   *
+   * The 7- and 14-participant thresholds prevent horizontal layout breaks
+   * while keeping the checkbox targets large enough for accessible touch and
+   * pointer interaction.
+   */
   // --- DENSITY LOGIC ---
   const count = participantNames.length;
   // Stage 1: Relaxed
@@ -151,6 +160,9 @@ export function CrosstablesView() {
                         >
                           <span
                             className={`inline-block origin-center -rotate-180 whitespace-nowrap font-medium tracking-[0.14em] text-slate-600 [writing-mode:vertical-rl] ${labelSize}`}
+                            // `vertical-rl` writes text top-to-bottom; rotating
+                            // it ensures names read naturally bottom-to-top,
+                            // which is the standard for vertical table headers.
                           >
                             {participantName}
                           </span>

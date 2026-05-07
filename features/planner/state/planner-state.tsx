@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Planner State
+ *
+ * This module coordinates planner hydration, local reducer state, persistence
+ * writes, and derived selectors for both calendar and weekly schedule views.
+ */
+
 import {
   createContext,
   useContext,
@@ -13,8 +20,11 @@ import {
 import {
   resolvePlannerEventStore,
   type PlannerEventsBySemester,
-  type PlannerWeekEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
+import {
+  resolveWeekEventStore,
+  type PlannerWeekEventsBySemester,
+} from "@/features/weekly-schedule/lib/week-persistence";
 import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 
@@ -102,66 +112,94 @@ type PlannerStateProviderProps = {
 
 type PlannerAction =
   | {
+      /** Hydrates the calendar semester map from persistence. */
       type: "HYDRATE_FROM_STORE";
       payload: {
+        /** Semester-keyed calendar events loaded from Supabase. */
         eventsBySemester: PlannerEventsBySemester | null;
       };
     }
   | {
+      /** Moves a calendar event from the inbox into a dated calendar slot. */
       type: "MOVE_EVENT_TO_DATE";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
+        /** Target date in YYYY-MM-DD format. */
         dateKey: string;
+        /** Semester that should receive the updated event. */
         targetSemesterId: PlannerSemesterId;
       };
     }
   | {
+      /** Returns a dated calendar event back to the inbox. */
       type: "MOVE_EVENT_TO_INBOX";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
       };
     }
   | {
+      /** Creates a new semester-scoped calendar event. */
       type: "CREATE_EVENT";
       payload: {
+        /** Semester that owns the new event. */
         semesterId: PlannerSemesterId;
+        /** Fully formed event object ready for persistence. */
         event: PlannerEvent;
       };
     }
   | {
+      /** Updates an existing calendar event in place. */
       type: "UPDATE_EVENT";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
+        /** Updated display title. */
         title: string;
+        /** Updated planner category used for theming and filtering. */
         category: PlannerEventCategory;
+        /** Updated inclusive start date in YYYY-MM-DD format, or null for inbox items. */
         startDate: string | null;
+        /** Updated inclusive end date in YYYY-MM-DD format, or null for inbox items. */
         endDate: string | null;
+        /** Updated participant list, normalized against the friends domain. */
         participants: string[];
       };
     }
   | {
+      /** Deletes an event from the current semester store. */
       type: "DELETE_EVENT";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
       };
     }
   | {
+      /** Toggles a participant name on a calendar event. */
       type: "TOGGLE_PARTICIPANT";
       payload: {
+        /** Event identifier from the semester store. */
         eventId: string;
+        /** Participant name as entered by the user. */
         participantName: string;
       };
     }
   | {
+      /** Removes one participant from every calendar event. */
       type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS";
       payload: {
+        /** Participant name to remove case-insensitively. */
         participantName: string;
       };
     }
   | {
+      /** Renames one participant across the entire calendar store. */
       type: "RENAME_PARTICIPANT_IN_ALL_EVENTS";
       payload: {
+        /** Existing participant name to replace case-insensitively. */
         currentName: string;
+        /** Replacement participant name stored in normalized form. */
         nextName: string;
       };
     };
@@ -194,6 +232,9 @@ function addDays(date: Date, days: number) {
 }
 
 function normalizeDateRange(startDate: string | null, endDate: string | null) {
+  // Prevent invalid time-travel states: if the user picks an end date before
+  // the start date, we force the range to collapse to the start date so the
+  // event always remains a valid forward-moving interval.
   if (!startDate) {
     return {
       startDate: null,
@@ -330,6 +371,9 @@ function findSemesterForEvent(
   return null;
 }
 
+/**
+ * Extracts and sorts all undated events across semesters for the inbox view.
+ */
 export function getInboxEventsFromState(eventsBySemester: EventsBySemester) {
   return plannerSemesterIds
     .flatMap((semesterId) => eventsBySemester[semesterId] ?? [])
@@ -337,6 +381,9 @@ export function getInboxEventsFromState(eventsBySemester: EventsBySemester) {
     .sort((left, right) => left.title.localeCompare(right.title));
 }
 
+/**
+ * Applies planner calendar mutations to the semester-scoped event state tree.
+ */
 export function plannerStateReducer(
   state: EventsBySemester,
   action: PlannerAction,
@@ -645,6 +692,10 @@ function sortChronological(events: PlannerEvent[]): PlannerEvent[] {
   });
 }
 
+/**
+ * Provides the planner state tree, reducer actions, and derived selectors to
+ * all planner routes.
+ */
 export function PlannerStateProvider({
   activeSemesterId,
   children,
@@ -661,6 +712,7 @@ export function PlannerStateProvider({
   );
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
+  const weekEventStore = useRef(resolveWeekEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
   const {
     friends,
@@ -681,7 +733,7 @@ export function PlannerStateProvider({
 
     void Promise.all([
       eventStore.current.loadEventsBySemester(),
-      eventStore.current.loadWeekEventsBySemester(),
+      weekEventStore.current.loadWeekEventsBySemester(),
     ])
       .then(([eventsBySemester, weekEventsBySemester]) => {
         if (cancelled) {
@@ -726,6 +778,9 @@ export function PlannerStateProvider({
       return;
     }
 
+    // Cross-domain listener: friend renames and deletions cascade into the
+    // planner store here without tightly coupling the friends and planner
+    // domains together.
     if (lastMutation.type === "rename") {
       dispatch({
         type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
@@ -768,7 +823,7 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
-    void eventStore.current
+    void weekEventStore.current
       .saveWeekEventsBySemester(snapshot)
       .catch((error: unknown) => {
         setPersistenceError(
@@ -846,6 +901,9 @@ export function PlannerStateProvider({
               category: input.category,
               startDate: normalizedDates.startDate,
               endDate: normalizedDates.endDate,
+              // Sanitize the participant list against the active friends array at
+              // the exact moment of creation so we never persist ghost participants
+              // that no longer exist in the friends domain.
               participants: filterParticipantsByFriends(
                 input.participants,
                 friends,
@@ -874,6 +932,9 @@ export function PlannerStateProvider({
             category: input.category,
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
+            // Sanitize the participant list against the active friends array at
+            // the exact moment of update so we never persist ghost participants
+            // that no longer exist in the friends domain.
             participants: filterParticipantsByFriends(
               input.participants,
               friends,
@@ -979,6 +1040,9 @@ export function PlannerStateProvider({
 
 /**
  * Accessor hook for planner state and actions.
+ */
+/**
+ * Returns the active planner state context for consumer components.
  */
 export function usePlannerState() {
   const context = useContext(PlannerStateContext);

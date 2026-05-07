@@ -2,8 +2,18 @@
 
 import { getCalendarTheme } from "@/features/planner/lib/category-config";
 import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
-import type { PlannerWeekEventCategory } from "@/features/weekly-schedule/lib/week-types";
+import {
+  plannerWeekEventCategories,
+  type PlannerWeekEventCategory,
+} from "@/features/weekly-schedule/lib/week-types";
 
+/**
+ * Adapter shape used by the preview UI.
+ *
+ * Acts as a unified view model so a single preview component can render
+ * both date-based calendar events and time-based weekly routines. Fields
+ * for the alternate domain are optional and only populated when relevant.
+ */
 export type PreviewEventShape = {
   title: string;
   category: string;
@@ -34,8 +44,8 @@ function formatDisplayDate(dateStr?: string | null) {
 function isWeekEventCategory(
   category: string,
 ): category is PlannerWeekEventCategory {
-  return ["University", "Language courses", "Sports", "Other"].includes(
-    category,
+  return plannerWeekEventCategories.includes(
+    category as PlannerWeekEventCategory,
   );
 }
 
@@ -49,6 +59,14 @@ function categoryBadgeStyle(category: string): string {
   return getCalendarTheme(category).badge;
 }
 
+/**
+ * Read-only preview modal for an event.
+ *
+ * Displays a stylized, non-editable summary card for an event. Use this
+ * when the user needs a quick inspection of event details before opening
+ * the full edit form. The component accepts the unified `PreviewEventShape`
+ * and adapts rendering based on which domain-specific fields are present.
+ */
 export function EventPreviewModal({
   heading,
   event,

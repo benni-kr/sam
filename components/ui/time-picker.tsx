@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+/**
+ * Props for `TimePicker`.
+ *
+ * `value`, `onChange`, and `excludeBefore` operate on 24-hour strings in
+ * the "HH:MM" format. `onChange` will be called with a string in the same
+ * format when the selection changes (for example: "09:30").
+ */
 type TimePickerProps = {
   value: string;
   onChange: (value: string) => void;
@@ -40,7 +47,7 @@ function buildTimeOptions(
     for (let minute = 0; minute < 60; minute += minuteStep) {
       const time = minutesToTime(hour * 60 + minute);
 
-      // FIX: Only stop minutes from generating if the hour is strictly 24 (midnight)
+      // Only stop minutes from generating if the hour is strictly 24 (midnight)
       // This allows latestHour={23} to generate 23:00, 23:15, 23:30, 23:45.
       if (hour === 24 && minute > 0) {
         continue;
@@ -61,6 +68,14 @@ function deriveSelection(options: string[], value: string) {
   return "";
 }
 
+/**
+ * Normalized step-based time picker.
+ *
+ * Provides a dropdown of times in regular steps (controlled by
+ * `minuteStep`) and avoids inconsistencies across native HTML time inputs
+ * which vary in styling and browser behavior. Values are normalized to the
+ * "HH:MM" 24-hour format.
+ */
 export function TimePicker({
   value,
   onChange,
@@ -170,6 +185,14 @@ export function TimePicker({
   );
 }
 
+/**
+ * Normalize and enforce a sensible default time range for weekly appointments.
+ *
+ * This helper ensures a minimum one-hour duration for events to avoid
+ * zero-height or negative-height rendering bugs in the timetable grid. It
+ * clamps start times to a sensible earliest start and guarantees the end
+ * time is at least one hour after the normalized start.
+ */
 export function getDefaultWeekAppointmentTimeRange(
   startTime?: string,
   endTime?: string,
