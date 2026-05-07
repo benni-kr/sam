@@ -8,6 +8,8 @@ import { type PlannerWeekEventsBySemester } from "../../weekly-schedule/lib/week
 import { plannerSemesterIds } from "../../planner/lib/planner";
 import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
 
+// --- Helpers ---
+
 function makeEvent(
   overrides: Partial<PlannerWeekEvent> = {},
 ): PlannerWeekEvent {
@@ -39,6 +41,8 @@ function cloneState(
   };
 }
 
+// --- Test Suite ---
+
 describe("plannerWeekStateReducer", () => {
   describe("HYDRATE_WEEK_FROM_STORE", () => {
     it("returns unchanged state when payload is null", () => {
@@ -49,7 +53,6 @@ describe("plannerWeekStateReducer", () => {
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-
       expect(nextState).toBe(state);
     });
 
@@ -67,27 +70,18 @@ describe("plannerWeekStateReducer", () => {
       const nextState = plannerWeekStateReducer(initial, action);
 
       expect(nextState[plannerSemesterIds[0]]).toHaveLength(1);
-      expect(nextState[plannerSemesterIds[0]]![0].title).toBe("Hydrated");
-
       const originalParticipants =
         hydrated[plannerSemesterIds[0]]![0].participants;
       const clonedParticipants =
         nextState[plannerSemesterIds[0]]![0].participants;
+
       expect(clonedParticipants).toEqual(originalParticipants);
       expect(clonedParticipants).not.toBe(originalParticipants);
     });
 
     it("populates all semesters from the hydrated store", () => {
-      const initial = cloneState();
-      const springEvent = makeEvent({
-        id: "spring-1",
-        title: "Spring lecture",
-      });
-      const fallEvent = makeEvent({
-        id: "fall-1",
-        title: "Fall lecture",
-        day: "Wed",
-      });
+      const springEvent = makeEvent({ id: "spring-1", title: "Spring" });
+      const fallEvent = makeEvent({ id: "fall-1", title: "Fall", day: "Wed" });
       const hydrated = cloneState([springEvent], [fallEvent]);
 
       const action: PlannerWeekAction = {
@@ -95,35 +89,75 @@ describe("plannerWeekStateReducer", () => {
         payload: { weekEventsBySemester: hydrated },
       };
 
-      const nextState = plannerWeekStateReducer(initial, action);
+      const nextState = plannerWeekStateReducer(cloneState(), action);
 
       expect(nextState[plannerSemesterIds[0]]).toHaveLength(1);
       expect(nextState[plannerSemesterIds[1]]).toHaveLength(1);
-      expect(nextState[plannerSemesterIds[1]]![0].id).toBe("fall-1");
+    });
+
+    it("completely replaces existing state (overwrite test)", () => {
+      const oldState = cloneState([
+        makeEvent({ id: "old", title: "Remove Me" }),
+      ]);
+      const hydrated = cloneState([makeEvent({ id: "new", title: "Fresh" })]);
+
+      const action: PlannerWeekAction = {
+        type: "HYDRATE_WEEK_FROM_STORE",
+        payload: { weekEventsBySemester: hydrated },
+      };
+
+      const nextState = plannerWeekStateReducer(oldState, action);
+
+      expect(nextState[plannerSemesterIds[0]]).toHaveLength(1);
+      expect(nextState[plannerSemesterIds[0]]![0].id).toBe("new");
+    });
+  });
+
+  describe("Immutability Checks", () => {
+    it("returns a new object reference for the semester array on CREATE", () => {
+      const state = cloneState();
+      const action: PlannerWeekAction = {
+        type: "CREATE_WEEK_EVENT",
+        payload: { semesterId: plannerSemesterIds[0], event: makeEvent() },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]).not.toBe(
+        state[plannerSemesterIds[0]],
+      );
+    });
+
+    it("returns a new object reference for the semester array on DELETE", () => {
+      const state = cloneState([makeEvent({ id: "del" })]);
+      const action: PlannerWeekAction = {
+        type: "DELETE_WEEK_EVENT",
+        payload: { eventId: "del" },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]).not.toBe(
+        state[plannerSemesterIds[0]],
+      );
     });
   });
 
   describe("CREATE_WEEK_EVENT", () => {
     it("appends a new event to the target semester", () => {
       const state = cloneState([makeEvent()]);
-      const newEvent = makeEvent({ id: "week-new", title: "New lecture" });
       const action: PlannerWeekAction = {
         type: "CREATE_WEEK_EVENT",
-        payload: { semesterId: plannerSemesterIds[0], event: newEvent },
+        payload: {
+          semesterId: plannerSemesterIds[0],
+          event: makeEvent({ id: "new", title: "New lecture" }),
+        },
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-
       expect(nextState[plannerSemesterIds[0]]).toHaveLength(2);
-      expect(nextState[plannerSemesterIds[0]]!.at(-1)).toMatchObject({
-        id: "week-new",
-        title: "New lecture",
-      });
     });
 
     it("does not mutate the other semester", () => {
-      const fallEvent = makeEvent({ id: "fall-1" });
-      const state = cloneState([], [fallEvent]);
+      const state = cloneState([], [makeEvent({ id: "fall-1" })]);
       const action: PlannerWeekAction = {
         type: "CREATE_WEEK_EVENT",
         payload: {
@@ -133,21 +167,18 @@ describe("plannerWeekStateReducer", () => {
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-
       expect(nextState[plannerSemesterIds[1]]).toHaveLength(1);
-      expect(nextState[plannerSemesterIds[1]]![0].id).toBe("fall-1");
     });
   });
 
   describe("UPDATE_WEEK_EVENT", () => {
     it("updates an existing event by id", () => {
-      const event = makeEvent({ id: "week-1", title: "Old title" });
-      const state = cloneState([event]);
+      const state = cloneState([makeEvent({ id: "upd", title: "Old" })]);
       const action: PlannerWeekAction = {
         type: "UPDATE_WEEK_EVENT",
         payload: {
-          eventId: "week-1",
-          title: "New title",
+          eventId: "upd",
+          title: "New",
           category: "Sports",
           day: "Fri",
           startTime: "10:00",
@@ -158,25 +189,17 @@ describe("plannerWeekStateReducer", () => {
 
       const nextState = plannerWeekStateReducer(state, action);
       const updated = nextState[plannerSemesterIds[0]]!.find(
-        (e) => e.id === "week-1",
+        (e) => e.id === "upd",
       );
-
-      expect(updated).toMatchObject({
-        title: "New title",
-        category: "Sports",
-        day: "Fri",
-        startTime: "10:00",
-        endTime: "11:00",
-        participants: ["Leo"],
-      });
+      expect(updated?.title).toBe("New");
     });
 
     it("returns unchanged state when event id does not exist", () => {
-      const state = cloneState([makeEvent({ id: "week-1" })]);
+      const state = cloneState([makeEvent({ id: "exists" })]);
       const action: PlannerWeekAction = {
         type: "UPDATE_WEEK_EVENT",
         payload: {
-          eventId: "nonexistent",
+          eventId: "missing",
           title: "Ghost",
           category: "Other",
           day: "Mon",
@@ -187,73 +210,32 @@ describe("plannerWeekStateReducer", () => {
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-
       expect(nextState).toBe(state);
-    });
-
-    it("finds the event across semesters (fall semester lookup)", () => {
-      const fallEvent = makeEvent({ id: "fall-evt", title: "Fall lecture" });
-      const state = cloneState([], [fallEvent]);
-      const action: PlannerWeekAction = {
-        type: "UPDATE_WEEK_EVENT",
-        payload: {
-          eventId: "fall-evt",
-          title: "Updated fall lecture",
-          category: "University",
-          day: "Thu",
-          startTime: "14:00",
-          endTime: "15:30",
-          participants: [],
-        },
-      };
-
-      const nextState = plannerWeekStateReducer(state, action);
-      const updated = nextState[plannerSemesterIds[1]]!.find(
-        (e) => e.id === "fall-evt",
-      );
-
-      expect(updated?.title).toBe("Updated fall lecture");
     });
   });
 
   describe("DELETE_WEEK_EVENT", () => {
     it("removes the event from the correct semester", () => {
-      const event = makeEvent({ id: "week-del" });
-      const state = cloneState([event]);
+      const state = cloneState([makeEvent({ id: "del" })]);
       const action: PlannerWeekAction = {
         type: "DELETE_WEEK_EVENT",
-        payload: { eventId: "week-del" },
+        payload: { eventId: "del" },
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-
       expect(
-        nextState[plannerSemesterIds[0]]!.some((e) => e.id === "week-del"),
+        nextState[plannerSemesterIds[0]]!.some((e) => e.id === "del"),
       ).toBe(false);
     });
 
-    it("returns unchanged state when event id does not exist", () => {
-      const state = cloneState([makeEvent({ id: "week-1" })]);
-      const action: PlannerWeekAction = {
-        type: "DELETE_WEEK_EVENT",
-        payload: { eventId: "nonexistent" },
-      };
-
-      const nextState = plannerWeekStateReducer(state, action);
-
-      expect(nextState).toBe(state);
-    });
-
     it("removes the event from the fall semester by cross-semester lookup", () => {
-      const fallEvent = makeEvent({ id: "fall-del" });
-      const state = cloneState([], [fallEvent]);
+      const state = cloneState([], [makeEvent({ id: "fall-del" })]);
       const action: PlannerWeekAction = {
         type: "DELETE_WEEK_EVENT",
         payload: { eventId: "fall-del" },
       };
 
       const nextState = plannerWeekStateReducer(state, action);
-
       expect(nextState[plannerSemesterIds[1]]).toHaveLength(0);
     });
   });

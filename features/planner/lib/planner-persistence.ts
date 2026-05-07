@@ -88,7 +88,7 @@ function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
   );
 }
 
-function normalizeParticipants(value: unknown) {
+export function normalizeParticipants(value: unknown) {
   if (!Array.isArray(value)) {
     return [] as string[];
   }
@@ -127,7 +127,7 @@ function eventsBySemesterToRows(
   return rows;
 }
 
-function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
+export function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
   const eventsBySemester: PlannerEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
