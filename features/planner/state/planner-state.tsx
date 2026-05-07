@@ -13,8 +13,11 @@ import {
 import {
   resolvePlannerEventStore,
   type PlannerEventsBySemester,
-  type PlannerWeekEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
+import {
+  resolveWeekEventStore,
+  type PlannerWeekEventsBySemester,
+} from "@/features/weekly-schedule/lib/week-persistence";
 import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 
@@ -661,6 +664,7 @@ export function PlannerStateProvider({
   );
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
+  const weekEventStore = useRef(resolveWeekEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
   const {
     friends,
@@ -681,7 +685,7 @@ export function PlannerStateProvider({
 
     void Promise.all([
       eventStore.current.loadEventsBySemester(),
-      eventStore.current.loadWeekEventsBySemester(),
+      weekEventStore.current.loadWeekEventsBySemester(),
     ])
       .then(([eventsBySemester, weekEventsBySemester]) => {
         if (cancelled) {
@@ -768,7 +772,7 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
-    void eventStore.current
+    void weekEventStore.current
       .saveWeekEventsBySemester(snapshot)
       .catch((error: unknown) => {
         setPersistenceError(

@@ -4,7 +4,7 @@ import {
   plannerWeekStateReducer,
   type PlannerWeekAction,
 } from "./week-event-reducer";
-import { type PlannerWeekEventsBySemester } from "../../planner/lib/planner-persistence";
+import { type PlannerWeekEventsBySemester } from "../../weekly-schedule/lib/week-persistence";
 import { plannerSemesterIds } from "../../planner/lib/planner";
 import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
 

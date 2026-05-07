@@ -3,7 +3,7 @@ import {
   type PlannerSemesterId,
 } from "@/features/planner/lib/planner";
 import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types";
-import { type PlannerWeekEventsBySemester } from "@/features/planner/lib/planner-persistence";
+import { type PlannerWeekEventsBySemester } from "@/features/weekly-schedule/lib/week-persistence";
 
 export type PlannerWeekAction =
   | {
