@@ -7,10 +7,7 @@ export type Theme = "light" | "dark";
 const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (theme: Theme) => void;
-}>({
-  theme: "light",
-  setTheme: () => {},
-});
+} | null>(null);
 
 function readInitialTheme(): Theme {
   // Guard for SSR — window is not available on the server.
@@ -37,6 +34,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Listen for system theme changes only when no stored preference exists.
+  // This keeps the theme in sync if the user changes their OS theme preference.
+  useEffect(() => {
+    const stored = localStorage.getItem("sam-theme");
+    if (stored) return; // Skip if user has an explicit preference
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function handleChange(e: MediaQueryListEvent) {
+      const newTheme = e.matches ? "dark" : "light";
+      setThemeState(newTheme);
+      applyThemeClass(newTheme);
+    }
+
+    // Use addEventListener for better browser support
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
   function setTheme(next: Theme) {
     setThemeState(next);
     localStorage.setItem("sam-theme", next);
@@ -57,5 +73,9 @@ function applyThemeClass(theme: Theme) {
 }
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
 }
