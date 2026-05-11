@@ -126,7 +126,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-page p-4 text-sam-text-1">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-page p-4 text-sam-text-1">
       <form
         onSubmit={handleLogin}
         className="w-full max-w-sm bg-sam-surface p-8 rounded-[1.5rem] shadow-xl border border-sam-border"
@@ -174,6 +174,27 @@ export function AuthGuard({ children }: { children: ReactNode }) {
           </button>
         </div>
       </form>
+
+      {/* Fun Birthday Announcement Box */}
+      <div className="w-full max-w-sm mt-6 p-6 rounded-[1.5rem] bg-gradient-to-br from-indigo-50 to-fuchsia-50 dark:from-indigo-950/40 dark:to-fuchsia-950/40 border border-indigo-100 dark:border-indigo-900/50 shadow-md text-center">
+        <div className="text-4xl mb-3">🎂🎉</div>
+        <h2 className="text-lg font-bold text-indigo-900 dark:text-indigo-300 mb-3 tracking-tight">
+          SAM now supports Birthdays!
+        </h2>
+        <div className="text-sm text-indigo-800/80 dark:text-indigo-200/80 space-y-3 leading-relaxed">
+          <p>
+            So go to the <strong>manage friends</strong> section and enter your
+            birthday, so your friends don't forget to buy you a present!
+          </p>
+          <p>
+            You know the birthday of your best friend as well? Nice, show them
+            how much they mean to you and enter their birthday as well!
+          </p>
+          <p className="text-xs italic opacity-80 mt-1">
+            (Be careful, would be embarrassing if it's wrong...)
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
