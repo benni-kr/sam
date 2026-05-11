@@ -92,7 +92,7 @@ export function MonthCard({ month }: MonthCardProps) {
                   return (
                     <div
                       key={`empty-${month.year}-${month.monthIndex}-${absoluteIndex}`}
-                      className={`h-full min-h-28 border-b border-r border-slate-200 last:border-r-0 ${STRIPED_BACKGROUND}`}
+                      className={`h-full min-h-28 border-b border-r border-sam-border last:border-r-0 ${STRIPED_BACKGROUND}`}
                     />
                   );
                 }
