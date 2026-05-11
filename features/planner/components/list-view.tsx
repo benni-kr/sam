@@ -188,7 +188,9 @@ export function ListView() {
                       className={`relative overflow-hidden rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm transition-shadow hover:shadow-md ${
                         // Live status: this high-visibility ring highlights
                         // currently active events for quick scanning.
-                        isActive ? "ring-2 ring-emerald-200 dark:ring-emerald-800" : ""
+                        isActive
+                          ? "ring-2 ring-emerald-300 dark:ring-emerald-400"
+                          : ""
                       }`}
                     >
                       <div className="flex gap-3 p-3 sm:p-3.5">
@@ -200,7 +202,7 @@ export function ListView() {
                               <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">
                                 {badgeDate.month}
                               </span>
-                              <span className="text-base font-semibold leading-none text-slate-900">
+                              <span className="text-base font-semibold leading-none">
                                 {badgeDate.day}
                               </span>
                             </>

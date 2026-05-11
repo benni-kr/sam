@@ -595,10 +595,10 @@ function AppShellFrame({
                   >
                     {friendToDelete === friend ? (
                       <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2">
-                        <p className="text-xs font-medium text-red-800 dark:text-red-300 text-center">
+                        <p className="text-xs font-medium text-red-800 dark:text-red-700 text-center">
                           Remove {friend} from all events?
                           <br />
-                          <span className="mt-1 block font-normal opacity-80">
+                          <span className="mt-1 block font-normal opacity-80 dark:opacity-100 dark:text-red-500">
                             (Be careful, it&apos;s always easier to lose friends
                             than to make new ones!)
                           </span>
