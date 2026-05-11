@@ -96,19 +96,19 @@ export function EventPreviewModal({
       aria-label={`${heading}: ${event.title}`}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header: Title and Top Right Actions */}
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-sam-text-3">
             {heading}
           </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-slate-200 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-sam-border text-sam-text-2 transition-colors hover:bg-sam-surface-2 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
               aria-label="Edit"
             >
               <svg
@@ -128,7 +128,7 @@ export function EventPreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-slate-200 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-sam-border text-sam-text-2 transition-colors hover:bg-sam-surface-2 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
               aria-label="Close"
             >
               <svg
@@ -160,7 +160,7 @@ export function EventPreviewModal({
               <p className="mt-2 text-sm font-medium opacity-80">{dateLine}</p>
             </div>
 
-            <span className="shrink-0 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] shadow-sm">
+            <span className="shrink-0 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-900 shadow-sm">
               {event.category}
             </span>
           </div>

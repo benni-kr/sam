@@ -33,12 +33,12 @@ export function SidebarInbox() {
       ref={setNodeRef}
       className={`overflow-hidden rounded-[1.25rem] border border-dashed p-3 transition-colors ${
         isOver
-          ? "border-slate-900 bg-slate-100"
-          : "border-slate-300 bg-white/90"
+          ? "border-sam-solid bg-sam-surface-3 dark:bg-sam-surface-3"
+          : "border-sam-border-2 bg-sam-surface/90"
       }`}
     >
-      <div className="mb-3 border-b border-slate-200 pb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+      <div className="mb-3 border-b border-sam-border pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
           Inbox
         </p>
       </div>

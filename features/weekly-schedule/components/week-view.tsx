@@ -218,7 +218,7 @@ function WeekDayColumn({
   onEdit: (event: PlannerWeekEvent) => void;
 }) {
   return (
-    <div className="relative border-r border-slate-200 last:border-r-0">
+    <div className="relative border-r border-sam-border last:border-r-0">
       <div className="relative h-full min-h-0" style={{ minHeight: 1 }}>
         <div
           className="absolute inset-0"
@@ -404,18 +404,18 @@ export function WeekView() {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur">
-      <div className="grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] border-b border-slate-200 bg-slate-50/90 text-slate-600">
-        <div className="flex items-center justify-center border-r border-slate-200 px-1.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
+      <div className="grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90">
+        <div className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sam-text-4">
           Time
         </div>
         {plannerWeekdays.map((day) => {
           return (
             <div
               key={day}
-              className="flex items-center justify-center border-r border-slate-200 px-1.5 py-2.5 last:border-r-0"
+              className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 last:border-r-0"
             >
-              <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+              <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-sam-text-2">
                 {day}
               </div>
             </div>
@@ -427,7 +427,7 @@ export function WeekView() {
         ref={bodyRef}
         className="grid min-h-0 flex-1 grid-cols-[4rem_repeat(7,minmax(0,1fr))] overflow-hidden"
       >
-        <div className="relative border-r border-slate-200 bg-slate-50/80">
+        <div className="relative border-r border-sam-border bg-slate-50/80 dark:bg-slate-800/60">
           <div
             className="absolute inset-0"
             style={
@@ -444,7 +444,7 @@ export function WeekView() {
           ).map((hour) => (
             <div
               key={hour}
-              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-slate-500"
+              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-sam-text-3"
             >
               <span
                 className={hour === 24 ? "font-semibold text-slate-700" : ""}

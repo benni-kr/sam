@@ -140,26 +140,26 @@ export function CrosstablesView() {
                 >
                   {categoryLabelsPlural[category]}
                 </h3>
-                <span className="ml-auto rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                <span className="ml-auto rounded-full border border-sam-border-2 bg-sam-surface/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-sam-text-3 dark:bg-sam-surface-2/80">
                   {categoryEvents.length}{" "}
                   {categoryEvents.length === 1 ? "event" : "events"}
                 </span>
               </div>
 
               <div className="max-w-full overflow-x-auto">
-                <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white/90 text-sm">
+                <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-sam-border bg-sam-surface/90 text-sm">
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-sam-border bg-sam-surface-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-sam-text-3">
                         Event
                       </th>
                       {participantNames.map((participantName) => (
                         <th
                           key={`${category}-${participantName}-header`}
-                          className={`${colWidthClass} border-b border-slate-200 bg-slate-50 ${cellPaddingClass} py-2 text-center align-bottom transition-all duration-200`}
+                          className={`${colWidthClass} border-b border-sam-border bg-sam-surface-2 ${cellPaddingClass} py-2 text-center align-bottom transition-all duration-200`}
                         >
                           <span
-                            className={`inline-block origin-center -rotate-180 whitespace-nowrap font-medium tracking-[0.14em] text-slate-600 [writing-mode:vertical-rl] ${labelSize}`}
+                            className={`inline-block origin-center -rotate-180 whitespace-nowrap font-medium tracking-[0.14em] text-sam-text-3 [writing-mode:vertical-rl] ${labelSize}`}
                             // `vertical-rl` writes text top-to-bottom; rotating
                             // it ensures names read naturally bottom-to-top,
                             // which is the standard for vertical table headers.
@@ -174,13 +174,13 @@ export function CrosstablesView() {
                   <tbody>
                     {categoryEvents.length === 0 ? (
                       <tr>
-                        <td className="sticky left-0 z-20 border-r border-slate-200 bg-slate-50 px-3 py-4 text-left text-sm text-slate-500">
+                        <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface-2 px-3 py-4 text-left text-sm text-sam-text-3">
                           No events in this category yet.
                         </td>
                         {participantNames.map((n) => (
                           <td
                             key={n}
-                            className={`${colWidthClass} border-l border-slate-100`}
+                            className={`${colWidthClass} border-l border-sam-border dark:border-slate-800`}
                           />
                         ))}
                       </tr>
@@ -188,17 +188,17 @@ export function CrosstablesView() {
                       categoryEvents.map((event) => (
                         <tr
                           key={`${category}-${event.id}`}
-                          className="odd:bg-white even:bg-slate-50/50"
+                          className="odd:bg-sam-surface even:bg-sam-surface-2/50"
                         >
-                          <td className="sticky left-0 z-20 border-r border-slate-200 bg-white px-3 py-2">
+                          <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface px-3 py-2">
                             <button
                               type="button"
                               onClick={() => setEditingEventId(event.id)}
-                              className="font-medium text-slate-900 underline-offset-2 hover:underline"
+                              className="font-medium text-sam-text-1 underline-offset-2 hover:underline"
                             >
                               {event.title}
                             </button>
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-sam-text-3">
                               {event.startDate
                                 ? formatDisplayDate(event.startDate)
                                 : "Undated"}
@@ -212,7 +212,7 @@ export function CrosstablesView() {
                           {participantNames.map((participantName) => (
                             <td
                               key={`${event.id}-${participantName}`}
-                              className={`${colWidthClass} border-l border-slate-100 ${cellPaddingClass} py-2 text-center transition-all duration-200`}
+                              className={`${colWidthClass} border-l border-sam-border ${cellPaddingClass} py-2 text-center transition-all duration-200 dark:border-slate-800`}
                             >
                               <label className="inline-flex cursor-pointer items-center justify-center">
                                 <input
@@ -371,7 +371,7 @@ function EventEditModal({
       aria-label={`Edit event: ${event.title}`}
     >
       <section
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
+        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-4 shadow-2xl"
         onClick={(nextEvent) => nextEvent.stopPropagation()}
       >
         <PlannerEventForm

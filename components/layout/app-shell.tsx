@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { CreateEventProvider } from "@/features/planner/components/create-event-context";
@@ -440,14 +441,15 @@ function AppShellFrame({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8f7f3,_#efede6_55%,_#e7e2d7)] text-slate-950">
+        <main className="min-h-screen bg-page text-sam-text-1">
           <div className="mx-auto grid min-h-screen w-full max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
-            <aside className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/80 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+            <aside className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/80 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_20px_60px_rgba(0,0,0,0.3)] lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
               <div className="min-w-0 flex flex-col gap-4 lg:h-full lg:overflow-y-auto">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sam-text-3">
                     Semester Activity Manager
                   </p>
+                  <ThemeToggle />
                 </div>
 
                 <div ref={semesterMenuRef} className="relative">
@@ -456,14 +458,14 @@ function AppShellFrame({
                     onClick={() => setSemesterMenuOpen((current) => !current)}
                     aria-expanded={semesterMenuOpen}
                     aria-haspopup="menu"
-                    className="inline-flex w-full items-center justify-between rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-white"
+                    className="inline-flex w-full items-center justify-between rounded-full border border-sam-border bg-sam-surface-2 px-4 py-2 text-sm text-sam-text-2 shadow-sm transition-colors hover:border-sam-border-2 hover:bg-sam-surface dark:hover:border-slate-600 dark:hover:bg-slate-700"
                   >
                     <span className="font-medium">{activeSemester.label}</span>
-                    <span className="text-slate-400">▾</span>
+                    <span className="text-sam-text-4">▾</span>
                   </button>
 
                   {semesterMenuOpen ? (
-                    <div className="absolute left-0 right-0 top-12 z-20 overflow-hidden rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+                    <div className="absolute left-0 right-0 top-12 z-20 overflow-hidden rounded-[1rem] border border-sam-border bg-sam-surface p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
                       {plannerSemesters.map((semester) => {
                         const isActive = semester.id === semesterId;
                         const href = buildSemesterHref(semester.id);
@@ -476,8 +478,8 @@ function AppShellFrame({
                             onClick={() => setSemesterMenuOpen(false)}
                             className={`mt-1 block rounded-xl px-3 py-2 text-left transition-colors ${
                               isActive
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-700 hover:bg-slate-100"
+                                ? "bg-sam-solid text-sam-solid-fg"
+                                : "text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-sam-surface-2"
                             }`}
                           >
                             <span className="text-sm font-medium">
@@ -556,16 +558,16 @@ function AppShellFrame({
             onClick={() => setIsManageFriendsOpen(false)}
           >
             <section
-              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+              className="w-full max-w-md rounded-2xl border border-sam-border bg-sam-surface p-5 shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
                 Friends
               </p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-900">
+              <h3 className="mt-1 text-lg font-semibold text-sam-text-1">
                 Manage your friends
               </h3>
-              <p className="mt-1 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-sam-text-3">
                 Add, rename, or remove friends used in event participants.
               </p>
 
@@ -575,11 +577,11 @@ function AppShellFrame({
                   onChange={(event) => setNewFriendName(event.target.value)}
                   placeholder="Add friend"
                   maxLength={15}
-                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
+                  className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
                 />
                 <button
                   type="submit"
-                  className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                  className="rounded-lg bg-sam-solid px-3 py-2 text-sm font-medium text-sam-solid-fg hover:bg-slate-700 dark:hover:bg-slate-200"
                 >
                   Add
                 </button>
@@ -589,14 +591,14 @@ function AppShellFrame({
                 {friends.map((friend: string) => (
                   <div
                     key={friend}
-                    className="rounded-xl border border-slate-200 bg-slate-50/80 p-2"
+                    className="rounded-xl border border-sam-border bg-sam-surface-2/80 p-2"
                   >
                     {friendToDelete === friend ? (
                       <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2">
-                        <p className="text-xs font-medium text-red-800 text-center">
+                        <p className="text-xs font-medium text-red-800 dark:text-red-700 text-center">
                           Remove {friend} from all events?
                           <br />
-                          <span className="mt-1 block font-normal opacity-80">
+                          <span className="mt-1 block font-normal opacity-80 dark:opacity-100 dark:text-red-500">
                             (Be careful, it&apos;s always easier to lose friends
                             than to make new ones!)
                           </span>
@@ -605,7 +607,7 @@ function AppShellFrame({
                           <button
                             type="button"
                             onClick={() => setFriendToDelete(null)}
-                            className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
+                            className="flex-1 rounded-md border border-sam-border bg-sam-surface px-2 py-1.5 text-xs text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
                           >
                             Keep
                           </button>
@@ -629,34 +631,34 @@ function AppShellFrame({
                             setEditingFriendValue(event.target.value)
                           }
                           maxLength={15}
-                          className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
+                          className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
                           aria-label={`Edit ${friend}`}
                         />
                         <button
                           type="button"
                           onClick={saveEditedFriend}
-                          className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                          className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
                         >
                           Save
                         </button>
                         <button
                           type="button"
                           onClick={cancelEditingFriend}
-                          className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                          className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-3 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
                         >
                           Cancel
                         </button>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-slate-700">
+                        <span className="truncate text-sm text-sam-text-2">
                           {friend}
                         </span>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditingFriend(friend)}
-                            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                            className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-3 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
                             aria-label={`Edit ${friend}`}
                           >
                             Edit
@@ -669,7 +671,7 @@ function AppShellFrame({
                               }
                               setFriendToDelete(friend);
                             }}
-                            className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-600 hover:bg-rose-100"
+                            className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-600 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-400 dark:hover:bg-rose-900"
                             aria-label={`Remove ${friend}`}
                           >
                             Remove
@@ -681,7 +683,7 @@ function AppShellFrame({
                 ))}
 
                 {friends.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-xs text-slate-500">
+                  <p className="rounded-lg border border-dashed border-sam-border bg-sam-surface-2 px-3 py-5 text-center text-xs text-sam-text-3">
                     No friends yet. Add someone to start assigning participants.
                   </p>
                 ) : null}
@@ -691,7 +693,7 @@ function AppShellFrame({
                 <button
                   type="button"
                   onClick={() => setIsManageFriendsOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  className="rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2"
                 >
                   Close
                 </button>

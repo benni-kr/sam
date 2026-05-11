@@ -77,7 +77,7 @@ export function PlannerEventForm({
           onCategoryChange(event.target.value as PlannerEventCategory)
         }
         required
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
+        className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600"
       >
         {plannerEventCategories.map((option) => (
           <option key={option} value={option}>

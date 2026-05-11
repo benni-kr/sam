@@ -139,16 +139,16 @@ export function TimePicker({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none ring-slate-300 transition-colors hover:bg-slate-50 focus:ring"
+        className="flex w-full items-center justify-between rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-xs text-sam-text-2 outline-none ring-slate-300 transition-colors hover:bg-sam-surface-2 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 dark:hover:bg-slate-700"
       >
-        <span className={selectedValue ? "text-slate-900" : "text-slate-400"}>
+        <span className={selectedValue ? "text-sam-text-1" : "text-sam-text-4"}>
           {selectedValue || placeholder}
         </span>
       </button>
 
       {isOpen ? (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
-          <div className="border-b border-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="absolute left-0 top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-sam-border bg-sam-surface shadow-lg">
+          <div className="border-b border-sam-border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sam-text-4 dark:border-slate-800">
             Time
           </div>
           <div className="max-h-56 overflow-y-auto p-1">
@@ -165,8 +165,8 @@ export function TimePicker({
                   }}
                   className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
                     isSelected
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-700 hover:bg-slate-100"
+                      ? "bg-sam-solid text-sam-solid-fg"
+                      : "text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-sam-surface-2"
                   }`}
                 >
                   <span>{option}</span>
