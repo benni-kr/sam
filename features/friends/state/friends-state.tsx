@@ -178,6 +178,10 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
       const normalizedCurrentName = normalizeFriendName(action.currentName);
       const normalizedNextName = normalizeFriendName(action.nextName);
       const normalizedBirthday = normalizeBirthday(action.birthday);
+      const hasBirthdayInput = Object.prototype.hasOwnProperty.call(
+        action,
+        "birthday",
+      );
 
       if (!normalizedCurrentName || !normalizedNextName) {
         return state;
@@ -200,10 +204,9 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
       const currentFriend = state.friends[currentIndex];
       const nextFriend = {
         name: normalizedNextName,
-        birthday:
-          normalizedBirthday !== undefined
-            ? normalizedBirthday
-            : currentFriend.birthday,
+        birthday: hasBirthdayInput
+          ? normalizedBirthday
+          : currentFriend.birthday,
       };
 
       const hasNameChanged =

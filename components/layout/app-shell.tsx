@@ -37,6 +37,7 @@ import {
   useFriendsState,
 } from "@/features/friends/state/friends-state";
 import type { Friend } from "@/features/friends/lib/friend";
+import { DatePicker } from "@/components/ui/date-picker";
 import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   defaultPlannerSemesterId,
@@ -430,9 +431,15 @@ function AppShellFrame({
 
     updateFriend(editingFriendName, {
       name: editingFriendValue,
-      birthday: editingFriendBirthday || undefined,
+      birthday: editingFriendBirthday,
     });
     cancelEditingFriend();
+  }
+
+  function closeManageFriends() {
+    cancelEditingFriend();
+    setFriendToDelete(null);
+    setIsManageFriendsOpen(false);
   }
 
   return (
@@ -565,7 +572,7 @@ function AppShellFrame({
         {isManageFriendsOpen ? (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-            onClick={() => setIsManageFriendsOpen(false)}
+            onClick={closeManageFriends}
           >
             <section
               className="w-full max-w-md rounded-2xl border border-sam-border bg-sam-surface p-5 shadow-2xl"
@@ -592,12 +599,14 @@ function AppShellFrame({
                   maxLength={15}
                   className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
                 />
-                <input
-                  type="date"
+                <DatePicker
                   value={newFriendBirthday}
-                  onChange={(event) => setNewFriendBirthday(event.target.value)}
-                  aria-label="Birthday"
-                  className="min-w-0 rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
+                  onChange={setNewFriendBirthday}
+                  placeholder="Birthday"
+                  clearLabel="Clear birthday"
+                  ariaLabel="Birthday"
+                  className="min-w-0"
+                  buttonClassName="px-3 py-2 text-sm"
                 />
                 <button
                   type="submit"
@@ -654,14 +663,14 @@ function AppShellFrame({
                           className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
                           aria-label={`Edit ${friend.name}`}
                         />
-                        <input
-                          type="date"
+                        <DatePicker
                           value={editingFriendBirthday}
-                          onChange={(event) =>
-                            setEditingFriendBirthday(event.target.value)
-                          }
-                          aria-label={`Birthday for ${friend.name}`}
-                          className="min-w-0 rounded-lg border border-sam-border bg-sam-surface px-3 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
+                          onChange={setEditingFriendBirthday}
+                          placeholder="Birthday"
+                          clearLabel="Clear birthday"
+                          ariaLabel={`Birthday for ${friend.name}`}
+                          className="min-w-0"
+                          buttonClassName="px-3 py-1.5 text-sm"
                         />
                         <button
                           type="button"
@@ -728,7 +737,7 @@ function AppShellFrame({
               <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setIsManageFriendsOpen(false)}
+                  onClick={closeManageFriends}
                   className="rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2"
                 >
                   Close
