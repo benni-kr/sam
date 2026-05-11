@@ -124,21 +124,21 @@ export function ListView() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5 dark:border-slate-700 dark:bg-slate-900/90">
+      <div className="rounded-[2rem] border border-sam-border bg-sam-surface/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="mt-4 space-y-4">
           {sortedEvents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-slate-200 bg-slate-50/70 px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
+              <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm dark:bg-sam-surface-2">
                 <CalendarDays
-                  className="h-7 w-7 text-slate-400 dark:text-slate-500"
+                  className="h-7 w-7 text-sam-text-4"
                   aria-hidden="true"
                 />
                 <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h3 className="text-lg font-semibold text-sam-text-1">
                 No events match your current view
               </h3>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 max-w-sm text-sm leading-6 text-sam-text-3">
                 Try showing completed events again, or add something new from
                 the Calendar. Unscheduled ideas will still live in the Inbox.
               </p>
@@ -173,7 +173,7 @@ export function ListView() {
                   <div key={event.id}>
                     {thisMonth && thisMonth !== prevMonth ? (
                       <div className="mb-2 flex items-center gap-3 px-2">
-                        <span className="text-lg font-semibold text-slate-800 sm:text-xl dark:text-slate-200">
+                        <span className="text-lg font-semibold text-sam-text-1 sm:text-xl">
                           {new Date(
                             `${event.startDate}T12:00:00`,
                           ).toLocaleString(undefined, {
@@ -185,7 +185,7 @@ export function ListView() {
                     ) : null}
 
                     <article
-                      className={`relative overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900 ${
+                      className={`relative overflow-hidden rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm transition-shadow hover:shadow-md ${
                         // Live status: this high-visibility ring highlights
                         // currently active events for quick scanning.
                         isActive ? "ring-2 ring-emerald-200 dark:ring-emerald-800" : ""
@@ -217,12 +217,12 @@ export function ListView() {
                               <button
                                 type="button"
                                 onClick={() => setEditingEventId(event.id)}
-                                className="truncate text-sm font-semibold text-slate-950 text-left hover:underline dark:text-slate-100"
+                                className="truncate text-sm font-semibold text-sam-text-1 text-left hover:underline"
                               >
                                 {event.title}
                               </button>
                               {scheduledLabel ? (
-                                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-sam-text-3">
                                   {scheduledLabel}
                                 </p>
                               ) : null}
@@ -239,7 +239,7 @@ export function ListView() {
                             {event.participants.map((participant) => (
                               <span
                                 key={participant}
-                                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                                className="rounded-full border border-sam-border bg-sam-surface-2 px-2.5 py-1 text-[11px] text-sam-text-3"
                               >
                                 {participant}
                               </span>
@@ -337,7 +337,7 @@ function EventEditModal({
       aria-label={`Edit event: ${event.title}`}
     >
       <section
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-4 shadow-2xl"
         onClick={(nextEvent) => nextEvent.stopPropagation()}
       >
         <PlannerEventForm

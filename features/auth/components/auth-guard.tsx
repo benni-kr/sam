@@ -126,10 +126,10 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8f7f3] p-4 text-slate-950 dark:bg-[#0d0d11] dark:text-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-page p-4 text-sam-text-1">
       <form
         onSubmit={handleLogin}
-        className="w-full max-w-sm bg-white p-8 rounded-[1.5rem] shadow-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900"
+        className="w-full max-w-sm bg-sam-surface p-8 rounded-[1.5rem] shadow-xl border border-sam-border"
       >
         <h1 className="text-xl font-bold mb-6 text-center tracking-tight">
           SAM Login
@@ -143,32 +143,32 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">
+            <label className="block text-xs font-semibold text-sam-text-3 uppercase tracking-wider mb-1">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:ring-white dark:focus:border-white"
+              className="w-full border border-sam-border rounded-lg p-2.5 text-sm text-sam-text-2 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all bg-sam-surface dark:bg-sam-surface-2 dark:focus:ring-white dark:focus:border-white"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 dark:text-slate-400">
+            <label className="block text-xs font-semibold text-sam-text-3 uppercase tracking-wider mb-1">
               Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:ring-white dark:focus:border-white"
+              className="w-full border border-sam-border rounded-lg p-2.5 text-sm text-sam-text-2 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all bg-sam-surface dark:bg-sam-surface-2 dark:focus:ring-white dark:focus:border-white"
               required
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-slate-900 text-white font-medium p-2.5 rounded-lg hover:bg-slate-800 transition-colors mt-2 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            className="w-full bg-sam-solid text-sam-solid-fg font-medium p-2.5 rounded-lg hover:bg-slate-800 transition-colors mt-2 dark:hover:bg-slate-200"
           >
             Enter Planner
           </button>

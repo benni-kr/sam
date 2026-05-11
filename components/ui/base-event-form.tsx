@@ -69,12 +69,12 @@ export function BaseEventForm({
       onClick={onCancel}
     >
       <section
-        className={`w-full max-w-md border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 ${panelClassName}`}
+        className={`w-full max-w-md border border-sam-border bg-sam-surface shadow-2xl ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
       >
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
               {heading}
             </p>
           </div>
@@ -85,13 +85,13 @@ export function BaseEventForm({
             placeholder={titlePlaceholder}
             maxLength={40}
             required
-            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600 dark:placeholder:text-slate-500"
+            className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 dark:placeholder:text-slate-500"
           />
 
           {children}
 
-          <div className="rounded-md border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
-            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <div className="rounded-md border border-sam-border bg-sam-surface p-2 dark:bg-sam-surface-2">
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sam-text-3">
               Participants
             </p>
             <div className="mt-2 grid grid-cols-3 gap-1">
@@ -113,8 +113,8 @@ export function BaseEventForm({
                     }}
                     className={`rounded-sm border px-2 py-1 text-left text-xs transition-colors ${
                       isSelected
-                        ? "border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-600 dark:text-slate-100"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                        ? "border-sam-border-2 bg-sam-surface-3 text-sam-text-1 dark:border-slate-500 dark:bg-slate-600"
+                        : "border-sam-border bg-sam-surface text-sam-text-2 hover:bg-sam-surface-2 dark:bg-sam-surface-2 dark:hover:bg-slate-600"
                     }`}
                   >
                     {participantName}
@@ -128,13 +128,13 @@ export function BaseEventForm({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              className="flex-1 rounded-md border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 dark:bg-sam-surface-2"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="flex-1 rounded-md bg-sam-solid px-3 py-2 text-sm font-medium text-sam-solid-fg transition-colors hover:bg-slate-700 dark:hover:bg-slate-200"
             >
               {submitLabel}
             </button>
@@ -159,7 +159,7 @@ export function BaseEventForm({
                     <button
                       type="button"
                       onClick={() => setIsDeleteConfirmOpen(false)}
-                      className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      className="flex-1 rounded-md border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 dark:bg-sam-surface-2"
                     >
                       {deleteAction.cancelLabel ?? "Keep"}
                     </button>

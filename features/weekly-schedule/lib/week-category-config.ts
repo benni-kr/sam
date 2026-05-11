@@ -29,15 +29,15 @@ export const WEEK_CATEGORY_THEMES: Record<
     accent: "bg-slate-500",
   },
   "Language courses": {
-    card: "border-emerald-500 bg-emerald-100 text-emerald-950 dark:border-emerald-400 dark:bg-emerald-800/80 dark:text-emerald-100",
+    card: "border-emerald-500 bg-emerald-100 text-emerald-950 dark:border-emerald-400 dark:bg-emerald-800 dark:text-emerald-100",
     accent: "bg-emerald-500",
   },
   Sports: {
-    card: "border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-400 dark:bg-orange-800/80 dark:text-orange-100",
+    card: "border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-400 dark:bg-orange-800 dark:text-orange-100",
     accent: "bg-orange-500",
   },
   Other: {
-    card: "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400 dark:bg-sky-800/80 dark:text-sky-100",
+    card: "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400 dark:bg-sky-800 dark:text-sky-100",
     accent: "bg-sky-500",
   },
 };

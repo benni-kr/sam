@@ -68,11 +68,11 @@ export function SidebarContent() {
         // Swap the calendar legend and buttons for the weekly routine controls
         // so the sidebar stays aligned with the active domain.
         <>
-          <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+          <section className="rounded-[1.25rem] border border-sam-border bg-sam-surface p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
               Weekly categories
             </p>
-            <div className="mt-3 space-y-2 text-xs text-slate-700 dark:text-slate-300">
+            <div className="mt-3 space-y-2 text-xs text-sam-text-2">
               {plannerWeekEventCategories.map((category) => (
                 <div key={category} className="flex items-center gap-2">
                   <span
@@ -87,7 +87,7 @@ export function SidebarContent() {
           <button
             type="button"
             onClick={() => openManageFriends()}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
           >
             Manage friends
           </button>
@@ -95,7 +95,7 @@ export function SidebarContent() {
           <button
             type="button"
             onClick={() => openCreateWeekEvent()}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
           >
             + Add weekly appointment
           </button>
@@ -104,11 +104,11 @@ export function SidebarContent() {
         // Swap the weekly routine controls back to the calendar legend and
         // creation buttons when the active route is a calendar domain view.
         <>
-          <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+          <section className="rounded-[1.25rem] border border-sam-border bg-sam-surface p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
               Categories
             </p>
-            <div className="mt-3 space-y-2 text-xs text-slate-700 dark:text-slate-300">
+            <div className="mt-3 space-y-2 text-xs text-sam-text-2">
               {plannerEventCategories.map((category) => (
                 <div key={category} className="flex items-center gap-2">
                   <span
@@ -123,7 +123,7 @@ export function SidebarContent() {
           <button
             type="button"
             onClick={() => openManageFriends()}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
           >
             Manage friends
           </button>
@@ -131,7 +131,7 @@ export function SidebarContent() {
           <button
             type="button"
             onClick={() => openCreateEvent()}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
           >
             + Add Event
           </button>
@@ -141,12 +141,12 @@ export function SidebarContent() {
       {(pathname === "/crosstables" || pathname === "/list") && (
         // These route-specific filters belong to the table and list views, not
         // the calendar or weekly routines, so they are rendered conditionally.
-        <section className="rounded-[1.25rem] border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+        <section className="rounded-[1.25rem] border border-sam-border bg-sam-surface p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
             View Filters
           </p>
           <div className="mt-3 space-y-2">
-            <div className="flex items-center justify-between gap-3 text-xs text-slate-700 dark:text-slate-300">
+            <div className="flex items-center justify-between gap-3 text-xs text-sam-text-2">
               <span>Hide finished events</span>
               <button
                 type="button"
@@ -157,13 +157,15 @@ export function SidebarContent() {
                 }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
                   hideFinished
-                    ? "border-slate-900 bg-slate-900 dark:border-white dark:bg-white"
-                    : "border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-700"
+                    ? "border-slate-900 bg-slate-900 dark:border-slate-400 dark:bg-slate-400"
+                    : "border-sam-border-2 bg-slate-200 dark:bg-sam-surface-3"
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                    hideFinished ? "translate-x-5" : "translate-x-1"
+                  className={`inline-block h-4 w-4 rounded-full shadow-sm transition-transform ${
+                    hideFinished
+                      ? "translate-x-5 bg-white"
+                      : "translate-x-1 bg-white"
                   }`}
                 />
               </button>
@@ -171,7 +173,7 @@ export function SidebarContent() {
 
             {pathname === "/crosstables" && (
               <>
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-700 dark:text-slate-300">
+                <div className="flex items-center justify-between gap-3 text-xs text-sam-text-2">
                   <span>Hide undated events</span>
                   <button
                     type="button"
@@ -182,19 +184,21 @@ export function SidebarContent() {
                     }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
                       hideUndated
-                        ? "border-slate-900 bg-slate-900 dark:border-white dark:bg-white"
-                        : "border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-700"
+                        ? "border-slate-900 bg-slate-900 dark:border-slate-400 dark:bg-slate-400"
+                        : "border-sam-border-2 bg-slate-200 dark:bg-sam-surface-3"
                     }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                        hideUndated ? "translate-x-5" : "translate-x-1"
+                      className={`inline-block h-4 w-4 rounded-full shadow-sm transition-transform ${
+                        hideUndated
+                          ? "translate-x-5 bg-white"
+                          : "translate-x-1 bg-white"
                       }`}
                     />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-700 dark:text-slate-300">
+                <div className="flex items-center justify-between gap-3 text-xs text-sam-text-2">
                   <span>Hide inactive participants</span>
                   <button
                     type="button"
@@ -208,15 +212,15 @@ export function SidebarContent() {
                     }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 ${
                       hideInactiveParticipants
-                        ? "border-slate-900 bg-slate-900 dark:border-white dark:bg-white"
-                        : "border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-700"
+                        ? "border-slate-900 bg-slate-900 dark:border-slate-400 dark:bg-slate-400"
+                        : "border-sam-border-2 bg-slate-200 dark:bg-sam-surface-3"
                     }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                      className={`inline-block h-4 w-4 rounded-full shadow-sm transition-transform ${
                         hideInactiveParticipants
-                          ? "translate-x-5"
-                          : "translate-x-1"
+                          ? "translate-x-5 bg-white"
+                          : "translate-x-1 bg-white"
                       }`}
                     />
                   </button>

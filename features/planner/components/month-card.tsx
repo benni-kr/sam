@@ -43,23 +43,23 @@ export function MonthCard({ month }: MonthCardProps) {
   const rowCount = Math.ceil(cells.length / 7);
 
   return (
-    <article className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+    <article className="overflow-hidden rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm">
+      <div className="flex items-start justify-between gap-3 border-b border-sam-border px-4 py-3">
         <div>
-          <p className="text-base font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-lg dark:text-slate-400">
+          <p className="text-base font-semibold uppercase tracking-[0.22em] text-sam-text-3 sm:text-lg">
             {month.label}
           </p>
         </div>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+        <span className="rounded-full border border-sam-border bg-sam-surface-2 px-3 py-1 text-xs text-sam-text-3">
           {month.year}
         </span>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500">
+      <div className="grid grid-cols-7 border-b border-sam-border bg-slate-50/70 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-sam-text-4 dark:bg-slate-800/50">
         {weekdayLabels.map((weekday: string, index: number) => (
           <div
             key={`${weekday}-${index}`}
-            className="border-r border-slate-200 py-1 last:border-r-0 dark:border-slate-700"
+            className="border-r border-sam-border py-1 last:border-r-0"
           >
             {weekday}
           </div>

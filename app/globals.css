@@ -13,34 +13,82 @@
   }
 }
 
+/* ── Chrome color tokens ───────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --sam-surface:   #ffffff;
+  --sam-surface-2: #f8fafc;   /* slate-50  */
+  --sam-surface-3: #f1f5f9;   /* slate-100 */
+  --sam-border:    #e2e8f0;   /* slate-200 */
+  --sam-border-2:  #cbd5e1;   /* slate-300 */
+  --sam-text-1:    #020617;   /* slate-950 */
+  --sam-text-2:    #334155;   /* slate-700 */
+  --sam-text-3:    #64748b;   /* slate-500 */
+  --sam-text-4:    #94a3b8;   /* slate-400 */
+  --sam-solid:     #0f172a;   /* slate-900 */
+  --sam-solid-fg:  #ffffff;
+  --sam-page-bg:   radial-gradient(circle at top, #f8f7f3, #efede6 55%, #e7e2d7);
 }
 
 @media (prefers-color-scheme: dark) {
   html:not(.light) {
     color-scheme: dark;
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --sam-surface:   #0f172a;   /* slate-900 */
+    --sam-surface-2: #1e293b;   /* slate-800 */
+    --sam-surface-3: #334155;   /* slate-700 */
+    --sam-border:    #334155;   /* slate-700 */
+    --sam-border-2:  #475569;   /* slate-600 */
+    --sam-text-1:    #f8fafc;   /* slate-50  */
+    --sam-text-2:    #cbd5e1;   /* slate-300 */
+    --sam-text-3:    #94a3b8;   /* slate-400 */
+    --sam-text-4:    #64748b;   /* slate-500 */
+    --sam-solid:     #ffffff;
+    --sam-solid-fg:  #0f172a;   /* slate-900 */
+    --sam-page-bg:   radial-gradient(circle at top, #1c1c24, #141419 55%, #0d0d11);
   }
 }
 
 html.dark {
   color-scheme: dark;
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --sam-surface:   #0f172a;
+  --sam-surface-2: #1e293b;
+  --sam-surface-3: #334155;
+  --sam-border:    #334155;
+  --sam-border-2:  #475569;
+  --sam-text-1:    #f8fafc;
+  --sam-text-2:    #cbd5e1;
+  --sam-text-3:    #94a3b8;
+  --sam-text-4:    #64748b;
+  --sam-solid:     #ffffff;
+  --sam-solid-fg:  #0f172a;
+  --sam-page-bg:   radial-gradient(circle at top, #1c1c24, #141419 55%, #0d0d11);
+}
+
+/* ── Tailwind color utilities from chrome tokens ───────────────────────── */
+@theme inline {
+  --color-sam-surface:   var(--sam-surface);
+  --color-sam-surface-2: var(--sam-surface-2);
+  --color-sam-surface-3: var(--sam-surface-3);
+  --color-sam-border:    var(--sam-border);
+  --color-sam-border-2:  var(--sam-border-2);
+  --color-sam-text-1:    var(--sam-text-1);
+  --color-sam-text-2:    var(--sam-text-2);
+  --color-sam-text-3:    var(--sam-text-3);
+  --color-sam-text-4:    var(--sam-text-4);
+  --color-sam-solid:     var(--sam-solid);
+  --color-sam-solid-fg:  var(--sam-solid-fg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ── Page background utility ───────────────────────────────────────────── */
+@layer utilities {
+  .bg-page {
+    background: var(--sam-page-bg);
+  }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--sam-surface);
+  color: var(--sam-text-1);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
