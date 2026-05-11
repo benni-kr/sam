@@ -13,7 +13,6 @@ import { Plus } from "lucide-react";
 import { BirthdayCakeIcon } from "@/components/ui/birthday-cake-icon";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
-  calculateAge,
   formatBirthdayMessage,
   getBirthdaysForDate,
 } from "@/features/friends/lib/birthday-utils";

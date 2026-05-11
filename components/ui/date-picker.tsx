@@ -95,14 +95,6 @@ export function DatePicker({
     [],
   );
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    setDisplayMonth(selectedDate ?? new Date());
-  }, [isOpen, selectedDate]);
-
   function updatePopoverPosition() {
     const anchor = containerRef.current;
     const popover = popoverRef.current;
@@ -195,7 +187,12 @@ export function DatePicker({
       <button
         type="button"
         aria-label={ariaLabel}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          if (!isOpen) {
+            setDisplayMonth(selectedDate ?? new Date());
+          }
+          setIsOpen(!isOpen);
+        }}
         className={`w-full rounded-lg border border-sam-border bg-sam-surface px-2 py-1.5 text-left text-xs text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 ${buttonClassName ?? ""}`}
       >
         {selectedDate ? format(selectedDate, "MMM d, yyyy") : placeholder}

@@ -82,7 +82,7 @@ export function ManageFriendsModal({
 
         <form
           onSubmit={handleAddFriend}
-          className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]"
+          className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
         >
           <input
             value={newFriendName}
@@ -94,7 +94,7 @@ export function ManageFriendsModal({
           <DatePicker
             value={newFriendBirthday}
             onChange={setNewFriendBirthday}
-            placeholder="Birthday"
+            placeholder="Add birthday"
             clearLabel="Clear birthday"
             ariaLabel="Birthday"
             className="min-w-0"
@@ -145,7 +145,7 @@ export function ManageFriendsModal({
                   </div>
                 </div>
               ) : editingFriendName === friend.name ? (
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto_auto] sm:items-center">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_auto_auto] sm:items-center">
                   <input
                     value={editingFriendValue}
                     onChange={(event) =>
@@ -158,7 +158,7 @@ export function ManageFriendsModal({
                   <DatePicker
                     value={editingFriendBirthday}
                     onChange={setEditingFriendBirthday}
-                    placeholder="Birthday"
+                    placeholder="birthday"
                     clearLabel="Clear birthday"
                     ariaLabel={`Birthday for ${friend.name}`}
                     className="min-w-0"
