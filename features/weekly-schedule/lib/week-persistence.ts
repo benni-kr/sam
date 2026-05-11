@@ -282,6 +282,21 @@ async function upsertSupabaseWeekEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
   weekEventsBySemester: PlannerWeekEventsBySemester,
 ) {
+  let authHeader = `Bearer ${config.anonKey}`;
+
+  if (typeof window !== "undefined") {
+    const token = getClientAuthToken();
+
+    if (!token) {
+      logPersistenceHealth(
+        "No client auth token available yet; deferring week events save.",
+      );
+      return;
+    }
+
+    authHeader = `Bearer ${token}`;
+  }
+
   const rows = weekEventsBySemesterToRows(
     weekEventsBySemester,
     config.plannerScope,
@@ -297,7 +312,7 @@ async function upsertSupabaseWeekEventsBySemester(
       method: "POST",
       headers: {
         apikey: config.anonKey,
-        Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+        Authorization: authHeader,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
@@ -305,6 +320,27 @@ async function upsertSupabaseWeekEventsBySemester(
     });
 
     if (!response.ok) {
+      if (typeof window !== "undefined") {
+        if (response.status === 401 || response.status === 403) {
+          try {
+            window.localStorage.removeItem("sam_auth_token");
+            window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+          } catch {
+            // noop
+          }
+
+          logPersistenceHealth(
+            "Auth token invalid or expired while saving week events.",
+          );
+          return;
+        }
+
+        logPersistenceHealth(
+          `Failed to save planner week events to Supabase (status ${response.status}).`,
+        );
+        return;
+      }
+
       throw new Error("Failed to save planner week events to Supabase.");
     }
   }
@@ -323,11 +359,32 @@ async function upsertSupabaseWeekEventsBySemester(
     method: "DELETE",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+      Authorization: authHeader,
     },
   });
 
   if (!deleteResponse.ok) {
+    if (typeof window !== "undefined") {
+      if (deleteResponse.status === 401 || deleteResponse.status === 403) {
+        try {
+          window.localStorage.removeItem("sam_auth_token");
+          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
+        } catch {
+          // noop
+        }
+
+        logPersistenceHealth(
+          "Auth token invalid or expired while pruning week events.",
+        );
+        return;
+      }
+
+      logPersistenceHealth(
+        `Failed to prune planner week events in Supabase (status ${deleteResponse.status}).`,
+      );
+      return;
+    }
+
     throw new Error("Failed to prune planner week events in Supabase.");
   }
 }
