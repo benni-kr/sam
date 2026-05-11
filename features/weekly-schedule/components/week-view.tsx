@@ -308,7 +308,7 @@ function WeekDayColumn({
 
 export function WeekView() {
   const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
-  const { friends } = useFriendsState();
+  const { friendNames } = useFriendsState();
   const { ref: bodyRef, height: bodyHeight } =
     useMeasuredHeight<HTMLDivElement>();
   const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(
@@ -492,7 +492,7 @@ export function WeekView() {
               startTime={editingEvent.startTime}
               endTime={editingEvent.endTime}
               participants={editingEvent.participants}
-              availableParticipants={friends}
+              availableParticipants={friendNames}
               onTitleChange={(value) =>
                 setEditingEvent((current) =>
                   current ? { ...current, title: value } : current,

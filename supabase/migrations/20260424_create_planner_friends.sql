@@ -1,9 +1,13 @@
 create table if not exists public.planner_friends (
   planner_scope text not null default 'default'::text,
   friend_name text not null,
+  birthday text,
   updated_at timestamptz not null default now(),
   constraint planner_friends_pkey primary key (planner_scope, friend_name),
-  constraint friend_name_length_check check ((char_length(friend_name) <= 30))
+  constraint friend_name_length_check check ((char_length(friend_name) <= 30)),
+  constraint birthday_format_check check (
+    birthday is null or birthday ~ '^\\d{4}-\\d{2}-\\d{2}$'
+  )
 );
 
 create index if not exists planner_friends_scope_updated_at_idx

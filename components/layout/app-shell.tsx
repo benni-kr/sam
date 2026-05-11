@@ -36,6 +36,7 @@ import {
   FriendsProvider,
   useFriendsState,
 } from "@/features/friends/state/friends-state";
+import type { Friend } from "@/features/friends/lib/friend";
 import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
   defaultPlannerSemesterId,
@@ -228,7 +229,8 @@ function AppShellFrame({
     createEvent,
     createWeekEvent,
   } = usePlannerState();
-  const { friends, addFriend, renameFriend, removeFriend } = useFriendsState();
+  const { friends, friendNames, addFriend, updateFriend, removeFriend } =
+    useFriendsState();
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -246,10 +248,12 @@ function AppShellFrame({
   const [weekEndTime, setWeekEndTime] = useState("");
   const [weekParticipants, setWeekParticipants] = useState<string[]>([]);
   const [newFriendName, setNewFriendName] = useState("");
+  const [newFriendBirthday, setNewFriendBirthday] = useState("");
   const [editingFriendName, setEditingFriendName] = useState<string | null>(
     null,
   );
   const [editingFriendValue, setEditingFriendValue] = useState("");
+  const [editingFriendBirthday, setEditingFriendBirthday] = useState("");
   const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
   const [friendToDelete, setFriendToDelete] = useState<string | null>(null);
 
@@ -402,18 +406,21 @@ function AppShellFrame({
   function handleAddFriend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    addFriend(newFriendName);
+    addFriend(newFriendName, newFriendBirthday || undefined);
     setNewFriendName("");
+    setNewFriendBirthday("");
   }
 
-  function startEditingFriend(friendName: string) {
-    setEditingFriendName(friendName);
-    setEditingFriendValue(friendName);
+  function startEditingFriend(friend: Friend) {
+    setEditingFriendName(friend.name);
+    setEditingFriendValue(friend.name);
+    setEditingFriendBirthday(friend.birthday ?? "");
   }
 
   function cancelEditingFriend() {
     setEditingFriendName(null);
     setEditingFriendValue("");
+    setEditingFriendBirthday("");
   }
 
   function saveEditedFriend() {
@@ -421,7 +428,10 @@ function AppShellFrame({
       return;
     }
 
-    renameFriend(editingFriendName, editingFriendValue);
+    updateFriend(editingFriendName, {
+      name: editingFriendValue,
+      birthday: editingFriendBirthday || undefined,
+    });
     cancelEditingFriend();
   }
 
@@ -517,7 +527,7 @@ function AppShellFrame({
             startDate={startDate}
             endDate={endDate}
             participants={participants}
-            availableParticipants={friends}
+            availableParticipants={friendNames}
             onTitleChange={setTitle}
             onCategoryChange={(nextCategory: PlannerEventCategory) =>
               setCategory(nextCategory)
@@ -540,7 +550,7 @@ function AppShellFrame({
             startTime={weekStartTime}
             endTime={weekEndTime}
             participants={weekParticipants}
-            availableParticipants={friends}
+            availableParticipants={friendNames}
             onTitleChange={setWeekTitle}
             onCategoryChange={setWeekCategory}
             onDayChange={setWeekDay}
@@ -571,13 +581,23 @@ function AppShellFrame({
                 Add, rename, or remove friends used in event participants.
               </p>
 
-              <form onSubmit={handleAddFriend} className="mt-3 flex gap-2">
+              <form
+                onSubmit={handleAddFriend}
+                className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]"
+              >
                 <input
                   value={newFriendName}
                   onChange={(event) => setNewFriendName(event.target.value)}
                   placeholder="Add friend"
                   maxLength={15}
                   className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
+                />
+                <input
+                  type="date"
+                  value={newFriendBirthday}
+                  onChange={(event) => setNewFriendBirthday(event.target.value)}
+                  aria-label="Birthday"
+                  className="min-w-0 rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
                 />
                 <button
                   type="submit"
@@ -588,15 +608,15 @@ function AppShellFrame({
               </form>
 
               <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
-                {friends.map((friend: string) => (
+                {friends.map((friend) => (
                   <div
-                    key={friend}
+                    key={friend.name}
                     className="rounded-xl border border-sam-border bg-sam-surface-2/80 p-2"
                   >
-                    {friendToDelete === friend ? (
+                    {friendToDelete === friend.name ? (
                       <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2">
                         <p className="text-xs font-medium text-red-800 dark:text-red-700 text-center">
-                          Remove {friend} from all events?
+                          Remove {friend.name} from all events?
                           <br />
                           <span className="mt-1 block font-normal opacity-80 dark:opacity-100 dark:text-red-500">
                             (Be careful, it&apos;s always easier to lose friends
@@ -614,7 +634,7 @@ function AppShellFrame({
                           <button
                             type="button"
                             onClick={() => {
-                              removeFriend(friend);
+                              removeFriend(friend.name);
                               setFriendToDelete(null);
                             }}
                             className="flex-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-red-700"
@@ -623,8 +643,8 @@ function AppShellFrame({
                           </button>
                         </div>
                       </div>
-                    ) : editingFriendName === friend ? (
-                      <div className="flex items-center gap-2">
+                    ) : editingFriendName === friend.name ? (
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto_auto] sm:items-center">
                         <input
                           value={editingFriendValue}
                           onChange={(event) =>
@@ -632,7 +652,16 @@ function AppShellFrame({
                           }
                           maxLength={15}
                           className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
-                          aria-label={`Edit ${friend}`}
+                          aria-label={`Edit ${friend.name}`}
+                        />
+                        <input
+                          type="date"
+                          value={editingFriendBirthday}
+                          onChange={(event) =>
+                            setEditingFriendBirthday(event.target.value)
+                          }
+                          aria-label={`Birthday for ${friend.name}`}
+                          className="min-w-0 rounded-lg border border-sam-border bg-sam-surface px-3 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
                         />
                         <button
                           type="button"
@@ -651,28 +680,35 @@ function AppShellFrame({
                       </div>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-sam-text-2">
-                          {friend}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="block truncate text-sm text-sam-text-2">
+                            {friend.name}
+                          </span>
+                          {friend.birthday ? (
+                            <span className="block text-[11px] text-sam-text-3">
+                              Birthday: {friend.birthday}
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => startEditingFriend(friend)}
                             className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-3 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
-                            aria-label={`Edit ${friend}`}
+                            aria-label={`Edit ${friend.name}`}
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => {
-                              if (editingFriendName === friend) {
+                              if (editingFriendName === friend.name) {
                                 cancelEditingFriend();
                               }
-                              setFriendToDelete(friend);
+                              setFriendToDelete(friend.name);
                             }}
                             className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-600 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-400 dark:hover:bg-rose-900"
-                            aria-label={`Remove ${friend}`}
+                            aria-label={`Remove ${friend.name}`}
                           >
                             Remove
                           </button>

@@ -29,7 +29,7 @@ export function CrosstablesView() {
   const searchParams = useSearchParams();
   const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
     usePlannerState();
-  const { friends } = useFriendsState();
+  const { friendNames } = useFriendsState();
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
@@ -71,11 +71,11 @@ export function CrosstablesView() {
   const participantNames = useMemo(() => {
     return Array.from(
       new Set([
-        ...(hideInactiveParticipants ? [] : friends),
+        ...(hideInactiveParticipants ? [] : friendNames),
         ...filteredCrosstableEvents.flatMap((event) => event.participants),
       ]),
     ).sort((a, b) => a.localeCompare(b));
-  }, [friends, filteredCrosstableEvents, hideInactiveParticipants]);
+  }, [friendNames, filteredCrosstableEvents, hideInactiveParticipants]);
 
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
@@ -250,7 +250,7 @@ export function CrosstablesView() {
       {editingEvent && (
         <EventEditModal
           event={editingEvent}
-          availableParticipants={friends}
+          availableParticipants={friendNames}
           onSave={updateEvent}
           onDelete={deleteEvent}
           onClose={() => setEditingEventId(null)}

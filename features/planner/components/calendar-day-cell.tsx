@@ -10,6 +10,14 @@
 import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 
+import { BirthdayCakeIcon } from "@/components/ui/birthday-cake-icon";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  calculateAge,
+  formatBirthdayMessage,
+  getBirthdaysForDate,
+} from "@/features/friends/lib/birthday-utils";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 import { useCreateEvent } from "@/features/planner/components/create-event-context";
 
 type CalendarDayCellProps = {
@@ -31,6 +39,9 @@ export function CalendarDayCell({
   isWeekend = false,
 }: CalendarDayCellProps) {
   const { openCreateEvent } = useCreateEvent();
+  const { friends } = useFriendsState();
+  const birthdays = getBirthdaysForDate(dateKey, friends);
+  const birthdayTooltip = formatBirthdayMessage(dateKey, birthdays);
   const { isOver, setNodeRef } = useDroppable({
     // Domain Protocol: this ID format is used by the AppShell drag sensors to
     // distinguish date cells from other drop targets like the inbox.
@@ -53,7 +64,21 @@ export function CalendarDayCell({
             : "border-sam-border bg-sam-surface hover:bg-sam-surface-2 dark:hover:bg-slate-800"
       }`}
     >
-      <div className="text-[11px] font-medium text-sam-text-3">{day}</div>
+      <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1">
+        <div className="text-[11px] font-medium text-sam-text-3">{day}</div>
+
+        {birthdays.length > 0 ? (
+          <Tooltip content={birthdayTooltip}>
+            <button
+              type="button"
+              aria-label={birthdayTooltip}
+              className="inline-flex rounded-full bg-rose-50 p-1 text-rose-500 shadow-sm ring-1 ring-rose-200 transition hover:bg-rose-100 focus-visible:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900 dark:hover:bg-rose-950 dark:focus-visible:ring-rose-700"
+            >
+              <BirthdayCakeIcon count={birthdays.length} className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        ) : null}
+      </div>
 
       <button
         type="button"

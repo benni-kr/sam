@@ -23,6 +23,7 @@ import {
   loadFriends,
   saveFriends,
 } from "@/features/friends/lib/friends-persistence";
+import type { Friend } from "@/features/friends/lib/friend";
 
 /**
  * A discrete description of the most recent friend mutation.
@@ -40,9 +41,14 @@ type FriendMutation =
   | null;
 
 type FriendsStateContextValue = {
-  friends: string[];
+  friends: Friend[];
+  friendNames: string[];
   isHydrated: boolean;
-  addFriend: (name: string) => void;
+  addFriend: (name: string, birthday?: string) => void;
+  updateFriend: (
+    currentName: string,
+    input: { name: string; birthday?: string },
+  ) => void;
   renameFriend: (currentName: string, nextName: string) => void;
   removeFriend: (name: string) => void;
   lastMutation: FriendMutation;
@@ -53,14 +59,19 @@ type FriendsProviderProps = {
 };
 
 type FriendState = {
-  friends: string[];
+  friends: Friend[];
   lastMutation: FriendMutation;
 };
 
 type FriendAction =
-  | { type: "hydrate"; friends: string[] }
-  | { type: "addFriend"; name: string }
-  | { type: "renameFriend"; currentName: string; nextName: string }
+  | { type: "hydrate"; friends: Friend[] }
+  | { type: "addFriend"; name: string; birthday?: string }
+  | {
+      type: "updateFriend";
+      currentName: string;
+      nextName: string;
+      birthday?: string;
+    }
   | { type: "removeFriend"; name: string };
 
 const FriendsStateContext = createContext<FriendsStateContextValue | null>(
@@ -71,31 +82,68 @@ function normalizeFriendName(name: string) {
   return name.trim();
 }
 
-function dedupeParticipantNames(participants: string[]) {
-  const uniqueByLowerCase = new Map<string, string>();
+function normalizeBirthday(birthday: string | undefined) {
+  if (!birthday) {
+    return undefined;
+  }
 
-  for (const participant of participants) {
-    const normalized = normalizeFriendName(participant);
+  return /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : undefined;
+}
 
-    if (!normalized) {
+function dedupeFriends(friends: Friend[]) {
+  const uniqueByLowerCase = new Map<string, Friend>();
+
+  for (const friend of friends) {
+    const normalizedName = normalizeFriendName(friend.name);
+
+    if (!normalizedName) {
       continue;
     }
 
-    const key = normalized.toLocaleLowerCase();
+    const key = normalizedName.toLocaleLowerCase();
 
     if (!uniqueByLowerCase.has(key)) {
-      uniqueByLowerCase.set(key, normalized);
+      uniqueByLowerCase.set(key, {
+        name: normalizedName,
+        birthday: normalizeBirthday(friend.birthday),
+      });
     }
   }
 
   return Array.from(uniqueByLowerCase.values());
 }
 
+function normalizeHydratedFriends(
+  friends: Friend[] | string[] | null | undefined,
+) {
+  if (!friends || friends.length === 0) {
+    return dedupeFriends(
+      SEMESTER_FRIENDS.map((name) => ({ name, birthday: undefined })),
+    );
+  }
+
+  const normalizedFriends = friends.map((friend) =>
+    typeof friend === "string" ? { name: friend } : friend,
+  );
+
+  return dedupeFriends(normalizedFriends);
+}
+
+function findFriendIndex(friends: Friend[], friendName: string) {
+  const normalized = normalizeFriendName(friendName).toLocaleLowerCase();
+
+  return friends.findIndex(
+    (friend) => friend.name.toLocaleLowerCase() === normalized,
+  );
+}
+
 function friendsReducer(state: FriendState, action: FriendAction): FriendState {
   switch (action.type) {
     case "hydrate": {
       return {
-        friends: action.friends,
+        friends: dedupeFriends(action.friends).sort((left, right) =>
+          left.name.localeCompare(right.name),
+        ),
         lastMutation: null,
       };
     }
@@ -110,66 +158,78 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
         return state;
       }
 
-      if (
-        state.friends.some(
-          (friend) =>
-            friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
-        )
-      ) {
+      if (findFriendIndex(state.friends, normalizedName) !== -1) {
         return state;
       }
 
       return {
-        friends: [...state.friends, normalizedName].sort((left, right) =>
-          left.localeCompare(right),
-        ),
+        friends: [
+          ...state.friends,
+          {
+            name: normalizedName,
+            birthday: normalizeBirthday(action.birthday),
+          },
+        ].sort((left, right) => left.name.localeCompare(right.name)),
         lastMutation: { type: "add", name: normalizedName },
       };
     }
 
-    case "renameFriend": {
+    case "updateFriend": {
       const normalizedCurrentName = normalizeFriendName(action.currentName);
       const normalizedNextName = normalizeFriendName(action.nextName);
+      const normalizedBirthday = normalizeBirthday(action.birthday);
 
       if (!normalizedCurrentName || !normalizedNextName) {
         return state;
       }
 
-      if (
-        normalizedCurrentName.toLocaleLowerCase() ===
-        normalizedNextName.toLocaleLowerCase()
-      ) {
+      const currentIndex = findFriendIndex(
+        state.friends,
+        normalizedCurrentName,
+      );
+      const targetIndex = findFriendIndex(state.friends, normalizedNextName);
+
+      if (currentIndex === -1) {
         return state;
       }
 
-      const hasCurrentName = state.friends.some(
-        (friend) =>
-          friend.toLocaleLowerCase() ===
-          normalizedCurrentName.toLocaleLowerCase(),
-      );
-      const hasTargetName = state.friends.some(
-        (friend) =>
-          friend.toLocaleLowerCase() === normalizedNextName.toLocaleLowerCase(),
-      );
+      if (targetIndex !== -1 && targetIndex !== currentIndex) {
+        return state;
+      }
 
-      if (!hasCurrentName || hasTargetName) {
+      const currentFriend = state.friends[currentIndex];
+      const nextFriend = {
+        name: normalizedNextName,
+        birthday:
+          normalizedBirthday !== undefined
+            ? normalizedBirthday
+            : currentFriend.birthday,
+      };
+
+      const hasNameChanged =
+        currentFriend.name.toLocaleLowerCase() !==
+        normalizedNextName.toLocaleLowerCase();
+      const hasBirthdayChanged = currentFriend.birthday !== nextFriend.birthday;
+
+      if (!hasNameChanged && !hasBirthdayChanged) {
         return state;
       }
 
       return {
         friends: state.friends
-          .map((friend) =>
-            friend.toLocaleLowerCase() ===
-            normalizedCurrentName.toLocaleLowerCase()
-              ? normalizedNextName
-              : friend,
+          .map((friend, index) =>
+            index === currentIndex ? nextFriend : friend,
           )
-          .sort((left, right) => left.localeCompare(right)),
-        lastMutation: {
-          type: "rename",
-          currentName: normalizedCurrentName,
-          nextName: normalizedNextName,
-        },
+          .sort((left, right) => left.name.localeCompare(right.name)),
+        lastMutation: hasNameChanged
+          ? {
+              type: "rename",
+              currentName: normalizedCurrentName,
+              nextName: normalizedNextName,
+            }
+          : hasBirthdayChanged
+            ? null
+            : state.lastMutation,
       };
     }
 
@@ -182,7 +242,8 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
 
       const nextFriends = state.friends.filter(
         (friend) =>
-          friend.toLocaleLowerCase() !== normalizedName.toLocaleLowerCase(),
+          friend.name.toLocaleLowerCase() !==
+          normalizedName.toLocaleLowerCase(),
       );
 
       if (nextFriends.length === state.friends.length) {
@@ -224,11 +285,9 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
           return;
         }
 
-        const hydratedFriends = dedupeParticipantNames(
-          friendsFromStore && friendsFromStore.length > 0
-            ? friendsFromStore
-            : [...SEMESTER_FRIENDS],
-        ).sort((left, right) => left.localeCompare(right));
+        const hydratedFriends = normalizeHydratedFriends(friendsFromStore).sort(
+          (left, right) => left.name.localeCompare(right.name),
+        );
 
         dispatch({ type: "hydrate", friends: hydratedFriends });
       })
@@ -271,13 +330,26 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   const value = useMemo<FriendsStateContextValue>(() => {
     return {
       friends: state.friends,
+      friendNames: state.friends.map((friend) => friend.name),
       isHydrated: didHydrateFromStorage,
       lastMutation: state.lastMutation,
-      addFriend: (name) => {
-        dispatch({ type: "addFriend", name });
+      addFriend: (name, birthday) => {
+        dispatch({ type: "addFriend", name, birthday });
+      },
+      updateFriend: (currentName, input) => {
+        dispatch({
+          type: "updateFriend",
+          currentName,
+          nextName: input.name,
+          birthday: input.birthday,
+        });
       },
       renameFriend: (currentName, nextName) => {
-        dispatch({ type: "renameFriend", currentName, nextName });
+        dispatch({
+          type: "updateFriend",
+          currentName,
+          nextName,
+        });
       },
       removeFriend: (name) => {
         dispatch({ type: "removeFriend", name });
