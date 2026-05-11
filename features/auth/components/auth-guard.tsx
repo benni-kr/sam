@@ -184,14 +184,14 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         <div className="text-sm text-indigo-800/80 dark:text-indigo-200/80 space-y-3 leading-relaxed">
           <p>
             So go to the <strong>manage friends</strong> section and enter your
-            birthday, so your friends don't forget to buy you a present!
+            birthday, so your friends don&apos;t forget to buy you a present!
           </p>
           <p>
             You know the birthday of your best friend as well? Nice, show them
             how much they mean to you and enter their birthday as well!
           </p>
           <p className="text-xs italic opacity-80 mt-1">
-            (Be careful, would be embarrassing if it's wrong...)
+            (Be careful, would be embarrassing if it&apos;s wrong...)
           </p>
         </div>
       </div>
