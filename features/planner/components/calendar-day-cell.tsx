@@ -72,7 +72,7 @@ export function CalendarDayCell({
             <button
               type="button"
               aria-label={birthdayTooltip}
-              className="inline-flex rounded-full bg-rose-50 p-1 text-rose-500 shadow-sm ring-1 ring-rose-200 transition hover:bg-rose-100 focus-visible:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900 dark:hover:bg-rose-950 dark:focus-visible:ring-rose-700"
+              className="inline-flex rounded-full bg-rose-50 p-1 text-rose-600 shadow-sm ring-1 ring-rose-300 transition hover:bg-rose-100 focus-visible:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 dark:bg-rose-800/80 dark:text-rose-50 dark:ring-rose-300 dark:hover:bg-rose-700 dark:focus-visible:ring-rose-200"
             >
               <BirthdayCakeIcon count={birthdays.length} className="h-4 w-4" />
             </button>

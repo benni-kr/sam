@@ -11,6 +11,8 @@ function BirthdayCakeSvg({
   count,
   className,
 }: BirthdayCakeIconProps & SVGProps<SVGSVGElement>) {
+  const variant = count === 1 ? "single" : count === 2 ? "double" : "party";
+
   return (
     <svg
       viewBox="0 0 24 24"
@@ -18,21 +20,76 @@ function BirthdayCakeSvg({
       className={className}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       data-birthday-count={count}
     >
-      {/* Placeholder cake body */}
-      <path d="M4 13h16v7H4z" />
-      <path d="M5 13V9h14v4" />
-      <path d="M8 9V7" />
-      <path d="M12 9V6" />
-      <path d="M16 9V7" />
-      {/* Candle placeholder variants will be swapped in later with the raw SVG paths. */}
-      {count === 1 ? <path d="M12 4v2" /> : null}
-      {count === 2 ? <path d="M10 4v2M14 4v2" /> : null}
-      {count >= 3 ? <path d="M9 4v2M12 3v3M15 4v2" /> : null}
+      {variant === "single" ? (
+        <>
+          {/* Bottom tier, open top */}
+          <path d="M4 14v6h16v-6" />
+          {/* Top tier */}
+          <path d="M5 14V9h14v5" />
+          {/* Continuous squiggle */}
+          <path d="M4 14Q6 12 8 14T12 14T16 14T20 14" />
+
+          {/* Add more candles (three symmetrically) */}
+          <path d="M9 9V5" />
+          <path d="M12 9V5" />
+          <path d="M15 9V5" />
+
+          {/* Add flame points for more candles */}
+          <circle cx="9" cy="4" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="4" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="4" r="0.75" fill="currentColor" stroke="none" />
+        </>
+      ) : null}
+
+      {variant === "double" ? (
+        <g transform="rotate(180 12 12)">
+          {/* Double: An EXACT copy of single, just rotated.
+              Everything inside this G block is the same as the improved single. */}
+          {/* Bottom tier, open top */}
+          <path d="M4 14v6h16v-6" />
+          {/* Top tier */}
+          <path d="M5 14V9h14v5" />
+          {/* Continuous squiggle */}
+          <path d="M4 14Q6 12 8 14T12 14T16 14T20 14" />
+
+          {/* Add more candles (three symmetrically) */}
+          <path d="M9 9V5" />
+          <path d="M12 9V5" />
+          <path d="M15 9V5" />
+
+          {/* Add flame points for more candles */}
+          <circle cx="9" cy="4" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="4" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="4" r="0.75" fill="currentColor" stroke="none" />
+        </g>
+      ) : null}
+
+      {variant === "party" ? (
+        <>
+          {/* Party: A fun version of single, keep structure but make it playful. */}
+
+          {/* Bottom tier, open top (keeping core structure) */}
+          <path d="M4 14v6h16v-6" />
+          {/* Top tier (keeping core structure) */}
+          <path d="M5 14V9h14v5" />
+
+          {/* Keep multiple candles for consistency (varied party style, smaller flames) */}
+          <path d="M9 9V5M12 9V4M15 9V5" />
+          <circle cx="9" cy="4" r="0.65" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="3" r="0.65" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="4" r="0.65" fill="currentColor" stroke="none" />
+
+          {/* Add clear Smiley Face! (eyes and smile moved tiny bit lower) */}
+          <circle cx="8" cy="12" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="16" cy="12" r="0.75" fill="currentColor" stroke="none" />
+          <path d="M8 14Q12 17 16 14" />
+        </>
+      ) : null}
     </svg>
   );
 }
