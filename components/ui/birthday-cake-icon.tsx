@@ -10,8 +10,73 @@ type BirthdayCakeIconProps = {
 function BirthdayCakeSvg({
   count,
   className,
+  ...props
 }: BirthdayCakeIconProps & SVGProps<SVGSVGElement>) {
   const variant = count === 1 ? "single" : count === 2 ? "double" : "party";
+
+  const styleBlock = (
+    <style>{`
+      @keyframes birthday-flame-flicker-A {
+        0%, 100% { opacity: 1; transform: scaleY(1.4) translateY(0.5px); }
+        50% { opacity: 0.6; transform: scaleY(1) translateY(-0.5px); }
+      }
+      @keyframes birthday-flame-flicker-B {
+        0%, 100% { opacity: 0.7; transform: scaleY(1.4) translateY(1.5px); }
+        50% { opacity: 1; transform: scaleY(1) translateY(-0.6px); }
+      }
+      .flame-1 {
+        animation: birthday-flame-flicker-A 1.5s infinite ease-in-out;
+        transform-origin: center center;
+      }
+      .flame-2 {
+        animation: birthday-flame-flicker-B 1.3s infinite ease-in-out;
+        transform-origin: center center;
+      }
+      .flame-3 {
+        animation: birthday-flame-flicker-A 1.2s infinite ease-in-out 0.2s;
+        transform-origin: center center;
+      }
+      
+      /* Dark mode enhancements */
+      @media (prefers-color-scheme: dark) {
+        [class^="flame-"] {
+          filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
+        }
+      }
+    `}</style>
+  );
+
+  const RegularCandlesAndFlames = (
+    <>
+      {/* Middle candle is now taller (V5 instead of V7) */}
+      <path d="M8 9V7 M12 9V5 M16 9V7" />
+      <circle
+        className="flame-1"
+        cx="8"
+        cy="6"
+        r="0.75"
+        fill="var(--flame-color, currentColor)"
+        stroke="none"
+      />
+      {/* Middle flame moved up to match taller candle (cy=4 instead of 6) */}
+      <circle
+        className="flame-2"
+        cx="12"
+        cy="4"
+        r="0.75"
+        fill="var(--flame-color, currentColor)"
+        stroke="none"
+      />
+      <circle
+        className="flame-3"
+        cx="16"
+        cy="6"
+        r="0.75"
+        fill="var(--flame-color, currentColor)"
+        stroke="none"
+      />
+    </>
+  );
 
   return (
     <svg
@@ -24,83 +89,72 @@ function BirthdayCakeSvg({
       strokeLinecap="round"
       strokeLinejoin="round"
       data-birthday-count={count}
+      {...props}
     >
-      {variant === "single" ? (
-        <>
-          {/* Bottom tier, open top */}
-          <path d="M4 14v6h16v-6" />
-          {/* Top tier */}
-          <path d="M5 14V9h14v5" />
-          {/* Continuous squiggle */}
-          <path d="M4 14Q6 12 8 14T12 14T16 14T20 14" />
+      {styleBlock}
 
-          {/* Add more candles (three symmetrically) */}
-          <path d="M9 9V5" />
-          <path d="M12 9V5" />
-          <path d="M15 9V5" />
-
-          {/* Add flame points for more candles */}
-          <circle cx="9" cy="4" r="0.75" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="4" r="0.75" fill="currentColor" stroke="none" />
-          <circle cx="15" cy="4" r="0.75" fill="currentColor" stroke="none" />
-        </>
-      ) : null}
-
-      {variant === "double" ? (
-        <g transform="rotate(180 12 12)">
-          {/* Double: An EXACT copy of single, just rotated.
-              Everything inside this G block is the same as the improved single. */}
-          {/* Bottom tier, open top */}
-          <path d="M4 14v6h16v-6" />
-          {/* Top tier */}
-          <path d="M5 14V9h14v5" />
-          {/* Continuous squiggle */}
-          <path d="M4 14Q6 12 8 14T12 14T16 14T20 14" />
-
-          {/* Add more candles (three symmetrically) */}
-          <path d="M9 9V5" />
-          <path d="M12 9V5" />
-          <path d="M15 9V5" />
-
-          {/* Add flame points for more candles */}
-          <circle cx="9" cy="4" r="0.75" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="4" r="0.75" fill="currentColor" stroke="none" />
-          <circle cx="15" cy="4" r="0.75" fill="currentColor" stroke="none" />
+      {/* Single and Double Cake (Squiggly Top) */}
+      {(variant === "single" || variant === "double") && (
+        <g transform={variant === "double" ? "rotate(180 12 12)" : undefined}>
+          <path d="M4 14 Q6 12 8 14 T12 14 T16 14 T20 14 V20 H4 Z" />
+          <path d="M5 13.25 V9 h14 V14.75" />
+          {RegularCandlesAndFlames}
         </g>
-      ) : null}
+      )}
 
-      {variant === "party" ? (
+      {/* Party Variant (Flat Top, open middle) */}
+      {variant === "party" && (
         <>
-          {/* Party: A fun version of single, keep structure but make it playful. */}
-
-          {/* Bottom tier, open top (keeping core structure) */}
+          {/* Bottom tier, open top */}
           <path d="M4 14v6h16v-6" />
-          {/* Top tier (keeping core structure) */}
+
+          {/* Top tier, open bottom */}
           <path d="M5 14V9h14v5" />
 
-          {/* Keep multiple candles for consistency (varied party style, smaller flames) */}
-          <path d="M9 9V5M12 9V4M15 9V5" />
-          <circle cx="9" cy="4" r="0.65" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="3" r="0.65" fill="currentColor" stroke="none" />
-          <circle cx="15" cy="4" r="0.65" fill="currentColor" stroke="none" />
+          {/* Varied party style candles with a taller middle candle */}
+          <path d="M8 9V7 M12 9V5 M16 9V7" />
+          <circle
+            className="flame-1"
+            cx="8"
+            cy="6"
+            r="0.65"
+            fill="var(--flame-color, currentColor)"
+            stroke="none"
+          />
+          <circle
+            className="flame-2"
+            cx="12"
+            cy="4"
+            r="0.65"
+            fill="var(--flame-color, currentColor)"
+            stroke="none"
+          />
+          <circle
+            className="flame-3"
+            cx="16"
+            cy="6"
+            r="0.65"
+            fill="var(--flame-color, currentColor)"
+            stroke="none"
+          />
 
-          {/* Add clear Smiley Face! (eyes and smile moved tiny bit lower) */}
+          {/* Smiley Face */}
           <circle cx="8" cy="12" r="0.75" fill="currentColor" stroke="none" />
           <circle cx="16" cy="12" r="0.75" fill="currentColor" stroke="none" />
           <path d="M8 14Q12 17 16 14" />
         </>
-      ) : null}
+      )}
     </svg>
   );
 }
 
-/**
- * Birthday cake icon with count-based candle variants.
- */
-export function BirthdayCakeIcon({ count, className }: BirthdayCakeIconProps) {
+export function BirthdayCakeIcon({
+  count,
+  className,
+  ...props
+}: BirthdayCakeIconProps & SVGProps<SVGSVGElement>) {
   if (count <= 0) {
     return null;
   }
-
-  return <BirthdayCakeSvg count={count} className={className} />;
+  return <BirthdayCakeSvg count={count} className={className} {...props} />;
 }
