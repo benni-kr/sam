@@ -139,16 +139,16 @@ export function TimePicker({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none ring-slate-300 transition-colors hover:bg-slate-50 focus:ring"
+        className="flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none ring-slate-300 transition-colors hover:bg-slate-50 focus:ring dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600 dark:hover:bg-slate-700"
       >
-        <span className={selectedValue ? "text-slate-900" : "text-slate-400"}>
+        <span className={selectedValue ? "text-slate-900 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}>
           {selectedValue || placeholder}
         </span>
       </button>
 
       {isOpen ? (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
-          <div className="border-b border-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="absolute left-0 top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          <div className="border-b border-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:border-slate-800 dark:text-slate-500">
             Time
           </div>
           <div className="max-h-56 overflow-y-auto p-1">
@@ -165,8 +165,8 @@ export function TimePicker({
                   }}
                   className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
                     isSelected
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-700 hover:bg-slate-100"
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
                   <span>{option}</span>

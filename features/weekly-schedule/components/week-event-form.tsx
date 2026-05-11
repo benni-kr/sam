@@ -109,7 +109,7 @@ export function PlannerWeekEventForm({
           onCategoryChange(event.target.value as PlannerWeekEventCategory)
         }
         required
-        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
+        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600"
       >
         {plannerWeekEventCategories.map((option) => (
           <option key={option} value={option}>
@@ -122,7 +122,7 @@ export function PlannerWeekEventForm({
         value={day}
         onChange={(event) => onDayChange(event.target.value as PlannerWeekday)}
         required
-        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring"
+        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none ring-slate-300 focus:ring dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600"
       >
         {plannerWeekdays.map((option) => (
           <option key={option} value={option}>

@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* dark: activates when the browser prefers dark (unless .light overrides it)
+   OR when the html element carries the .dark class (explicit user override). */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    :where(html:not(.light)) & {
+      @slot;
+    }
+  }
+  :where(html.dark) & {
+    @slot;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -13,10 +26,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not(.light) {
+    color-scheme: dark;
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+html.dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {

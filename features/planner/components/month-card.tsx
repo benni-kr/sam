@@ -27,7 +27,7 @@ type MonthCardProps = {
 };
 
 const STRIPED_BACKGROUND =
-  "bg-[repeating-linear-gradient(135deg,_rgba(148,163,184,0.18)_0,_rgba(148,163,184,0.18)_8px,_rgba(248,250,252,0.72)_8px,_rgba(248,250,252,0.72)_16px)]";
+  "bg-[repeating-linear-gradient(135deg,_rgba(148,163,184,0.18)_0,_rgba(148,163,184,0.18)_8px,_rgba(248,250,252,0.72)_8px,_rgba(248,250,252,0.72)_16px)] dark:bg-[repeating-linear-gradient(135deg,_rgba(71,85,105,0.25)_0,_rgba(71,85,105,0.25)_8px,_rgba(15,23,42,0.5)_8px,_rgba(15,23,42,0.5)_16px)]";
 
 /**
  * Displays one month grid with a row-level multi-day event overlay.
@@ -43,23 +43,23 @@ export function MonthCard({ month }: MonthCardProps) {
   const rowCount = Math.ceil(cells.length / 7);
 
   return (
-    <article className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+    <article className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <div>
-          <p className="text-base font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-lg">
+          <p className="text-base font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-lg dark:text-slate-400">
             {month.label}
           </p>
         </div>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
+        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
           {month.year}
         </span>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500">
         {weekdayLabels.map((weekday: string, index: number) => (
           <div
             key={`${weekday}-${index}`}
-            className="border-r border-slate-200 py-1 last:border-r-0"
+            className="border-r border-slate-200 py-1 last:border-r-0 dark:border-slate-700"
           >
             {weekday}
           </div>

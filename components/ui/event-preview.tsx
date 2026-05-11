@@ -96,19 +96,19 @@ export function EventPreviewModal({
       aria-label={`${heading}: ${event.title}`}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header: Title and Top Right Actions */}
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
             {heading}
           </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-slate-200 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-slate-200 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               aria-label="Edit"
             >
               <svg
@@ -128,7 +128,7 @@ export function EventPreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-slate-200 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-slate-200 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               aria-label="Close"
             >
               <svg

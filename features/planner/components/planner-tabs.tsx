@@ -44,8 +44,8 @@ function PlannerViewLink({
       aria-label={label}
       className={`rounded-full border px-4 py-2 text-sm transition-colors ${
         isActive
-          ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          ? "border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900"
+          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200"
       }`}
     >
       <span className="sr-only">{label}</span>

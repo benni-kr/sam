@@ -259,7 +259,7 @@ function EventDetailsModal({
       aria-label={`Edit event: ${event.title}`}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         onClick={(event) => event.stopPropagation()}
       >
         <PlannerEventForm

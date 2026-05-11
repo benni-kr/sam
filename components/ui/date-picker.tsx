@@ -82,13 +82,13 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left text-xs text-slate-700 outline-none ring-slate-300 focus:ring"
+        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left text-xs text-slate-700 outline-none ring-slate-300 focus:ring dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600"
       >
         {selectedDate ? format(selectedDate, "MMM d, yyyy") : placeholder}
       </button>
 
       {isOpen ? (
-        <div className="absolute z-30 mt-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+        <div className="absolute z-30 mt-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
           <DayPicker
             mode="single"
             // We use the GB locale to ensure the calendar grid starts on
@@ -107,23 +107,23 @@ export function DatePicker({
               today: "sam-today",
             }}
             classNames={{
-              root: "text-slate-700",
+              root: "text-slate-700 dark:text-slate-300",
               month: "space-y-1",
               month_caption:
                 "flex items-center justify-between px-1 text-xs font-semibold",
               nav: "flex items-center gap-1",
               button_previous:
-                "h-7 w-7 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100",
+                "h-7 w-7 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800",
               button_next:
-                "h-7 w-7 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100",
-              caption_label: "text-xs font-semibold text-slate-700",
-              weekdays: "text-[10px] text-slate-500",
+                "h-7 w-7 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800",
+              caption_label: "text-xs font-semibold text-slate-700 dark:text-slate-300",
+              weekdays: "text-[10px] text-slate-500 dark:text-slate-400",
               weekday: "h-8 w-8 text-center",
               day: "h-8 w-8",
               day_button:
-                "h-8 w-8 inline-flex items-center justify-center rounded-md text-xs hover:bg-slate-100",
-              selected: "rounded-md bg-slate-900 text-white hover:bg-slate-900",
-              today: "text-slate-800",
+                "h-8 w-8 inline-flex items-center justify-center rounded-md text-xs hover:bg-slate-100 dark:hover:bg-slate-800",
+              selected: "rounded-md bg-slate-900 text-white hover:bg-slate-900 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200",
+              today: "text-slate-800 dark:text-slate-200",
             }}
           />
 
@@ -133,7 +133,7 @@ export function DatePicker({
               onChange("");
               setIsOpen(false);
             }}
-            className="mt-1 w-full rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-600"
+            className="mt-1 w-full rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
           >
             Clear date
           </button>
