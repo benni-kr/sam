@@ -175,9 +175,8 @@ export function formatBirthdayMessage(
     .map((person) => `${person.name} is turning ${person.age}`)
     .join(", ");
   const tail = people[people.length - 1];
-  const prefix = head ? `${head} and ${tail.name} is turning ${tail.age}` : "";
 
-  return `On ${dateLabel}, ${prefix}!`;
+  return `On ${dateLabel}, ${head} and ${tail.name} is turning ${tail.age}!`;
 }
 
 /**
@@ -209,5 +208,5 @@ export function formatBirthdayBannerMessage(
     )
     .join(" and ");
 
-  return `Hey, it's ${names} birthday!`;
+  return `Hey, it's ${names} birthdays!`;
 }

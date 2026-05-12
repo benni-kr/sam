@@ -54,11 +54,15 @@ function BirthdayCakeSvg({
       }
       
       /* DARK MODE ENHANCEMENTS */
-      /* Adds a warm golden glow behind the flames when the user's system is in dark mode */
+      /* Adds a warm golden glow behind the flames when the app is in dark mode,
+         whether dark mode comes from system preference or the app's html.dark class */
       @media (prefers-color-scheme: dark) {
         [class^="flame-"] {
           filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
         }
+      }
+      html.dark [class^="flame-"] {
+        filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
       }
     `}</style>
   );
