@@ -179,3 +179,35 @@ export function formatBirthdayMessage(
 
   return `On ${dateLabel}, ${prefix}!`;
 }
+
+/**
+ * Builds a fun birthday message for the month card banner.
+ * Format: "Hey, it's [Name] [age]th and [Name] [age]th birthday! 🎉"
+ */
+export function formatBirthdayBannerMessage(
+  dateStr: string,
+  birthdays: Friend[],
+): string {
+  if (birthdays.length === 0) {
+    return "";
+  }
+
+  const people = birthdays.map((friend) => ({
+    name: friend.name,
+    age: calculateAge(friend.birthday ?? "", dateStr),
+  }));
+
+  if (people.length === 1) {
+    const person = people[0];
+    return `Hey, it's ${person.name}'s ${person.age}${getOrdinalSuffix(person.age)} birthday!`;
+  }
+
+  const names = people
+    .map(
+      (person) =>
+        `${person.name}'s ${person.age}${getOrdinalSuffix(person.age)}`,
+    )
+    .join(" and ");
+
+  return `Hey, it's ${names} birthday!`;
+}

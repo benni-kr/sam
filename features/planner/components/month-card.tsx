@@ -8,6 +8,8 @@
  * it.
  */
 
+import { format } from "date-fns";
+
 import { CalendarDayCell } from "@/features/planner/components/calendar-day-cell";
 import {
   MonthWeekEventOverlay,
@@ -21,6 +23,11 @@ import {
 } from "@/features/planner/lib/planner-utils";
 import { type PlannerMonth } from "@/features/planner/lib/planner";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import {
+  getBirthdaysForDate,
+  formatBirthdayBannerMessage,
+} from "@/features/friends/lib/birthday-utils";
+import { useFriendsState } from "@/features/friends/state/friends-state";
 
 type MonthCardProps = {
   month: PlannerMonth;
@@ -34,6 +41,7 @@ const STRIPED_BACKGROUND =
  */
 export function MonthCard({ month }: MonthCardProps) {
   const { events } = usePlannerState();
+  const { friends } = useFriendsState();
   const cells = buildMonthDays(month.year, month.monthIndex);
   const rowLayouts = buildMonthWeekEventLayouts({
     month,
@@ -42,8 +50,33 @@ export function MonthCard({ month }: MonthCardProps) {
   });
   const rowCount = Math.ceil(cells.length / 7);
 
+  // Check if today is anyone's birthday in this month
+  const today = new Date();
+  const isCurrentMonth =
+    month.year === today.getFullYear() && month.monthIndex === today.getMonth();
+
+  const todayString = format(today, "yyyy-MM-dd");
+  const todaysBirthdays = isCurrentMonth
+    ? getBirthdaysForDate(todayString, friends)
+    : [];
+  const birthdayMessage =
+    todaysBirthdays.length > 0
+      ? formatBirthdayBannerMessage(todayString, todaysBirthdays)
+      : "";
+
   return (
-    <article className="overflow-hidden rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm">
+    <article
+      className="overflow-hidden rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm"
+      data-month-year={month.year}
+      data-month-index={month.monthIndex}
+    >
+      {birthdayMessage && (
+        <div className="border-b border-sam-border bg-gradient-to-r from-pink-50 to-rose-50 px-4 py-2 dark:from-pink-950/40 dark:to-rose-950/40">
+          <p className="text-sm font-semibold text-pink-700 dark:text-pink-300">
+            {birthdayMessage} 🥳
+          </p>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3 border-b border-sam-border px-4 py-3">
         <div>
           <p className="text-base font-semibold uppercase tracking-[0.22em] text-sam-text-3 sm:text-lg">
