@@ -85,22 +85,6 @@ function getTargetDateParts(targetDate: Date | string) {
   };
 }
 
-function joinWithAnd(values: string[]) {
-  if (values.length === 0) {
-    return "";
-  }
-
-  if (values.length === 1) {
-    return values[0];
-  }
-
-  if (values.length === 2) {
-    return `${values[0]} and ${values[1]}`;
-  }
-
-  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
-}
-
 /**
  * Calculates the age a person turns on the provided target date.
  *
@@ -164,25 +148,6 @@ export function getBirthdaysForDate(dateStr: string, friends: Friend[]) {
 }
 
 /**
- * Builds a compact birthday label for tooltips.
- */
-export function formatBirthdayTooltipMessage(
-  dateStr: string,
-  birthdays: Friend[],
-): string {
-  if (birthdays.length === 0) {
-    return "";
-  }
-
-  const people = birthdays.map((friend) => ({
-    name: friend.name,
-    age: calculateAge(friend.birthday ?? "", dateStr),
-  }));
-
-  return people.map((person) => `${person.name} (${person.age})`).join(", ");
-}
-
-/**
  * Builds a friendly birthday message for tooltips and banners.
  */
 export function formatBirthdayMessage(
@@ -205,10 +170,13 @@ export function formatBirthdayMessage(
     return `On ${dateLabel}, ${onlyPerson.name} is turning ${onlyPerson.age}!`;
   }
 
-  const names = joinWithAnd(people.map((person) => person.name));
-  const ages = joinWithAnd(people.map((person) => `${person.age}`));
+  const head = people
+    .slice(0, -1)
+    .map((person) => `${person.name} is turning ${person.age}`)
+    .join(", ");
+  const tail = people[people.length - 1];
 
-  return `On ${dateLabel}, ${names} are turning ${ages}!`;
+  return `On ${dateLabel}, ${head} and ${tail.name} is turning ${tail.age}!`;
 }
 
 /**
@@ -233,12 +201,12 @@ export function formatBirthdayBannerMessage(
     return `Hey, it's ${person.name}'s ${person.age}${getOrdinalSuffix(person.age)} birthday!`;
   }
 
-  const names = joinWithAnd(
-    people.map(
+  const names = people
+    .map(
       (person) =>
         `${person.name}'s ${person.age}${getOrdinalSuffix(person.age)}`,
-    ),
-  );
+    )
+    .join(" and ");
 
   return `Hey, it's ${names} birthdays!`;
 }
