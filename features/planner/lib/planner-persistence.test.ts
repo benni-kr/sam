@@ -58,6 +58,7 @@ describe("Planner Persistence Data Integrity", () => {
           semester_id: null, // Missing
           event_id: "orphan-1",
           title: "Orphan",
+          description: null,
           category: "Other",
           start_date: null,
           end_date: null,

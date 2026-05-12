@@ -57,6 +57,8 @@ export type PlannerWeekEvent = {
   id: string;
   /** User-facing title displayed inside the weekly timetable block. */
   title: string;
+  /** Optional freeform note shown in previews and detail views. */
+  description?: string;
   /** Weekly routine category used for theme lookup and filtering. */
   category: PlannerWeekEventCategory;
   /** Weekday key that determines the event's column in the weekly grid. */

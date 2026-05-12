@@ -10,6 +10,7 @@
 import { CalendarDays } from "lucide-react";
 import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { EventPreviewModal } from "@/components/ui/event-preview";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { BirthdayBanner } from "@/components/ui/birthday-banner";
 
@@ -88,8 +89,13 @@ function getEventStatus(
 export function ListView() {
   const { events, updateEvent, deleteEvent } = usePlannerState();
   const { friends, friendNames } = useFriendsState();
+  const [previewEventId, setPreviewEventId] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
+  const previewEvent = useMemo(
+    () => events.find((ev) => ev.id === previewEventId) ?? null,
+    [events, previewEventId],
+  );
   const editingEvent = useMemo(
     () => events.find((ev) => ev.id === editingEventId) ?? null,
     [events, editingEventId],
@@ -235,7 +241,7 @@ export function ListView() {
                             <div className="min-w-0">
                               <button
                                 type="button"
-                                onClick={() => setEditingEventId(event.id)}
+                                onClick={() => setPreviewEventId(event.id)}
                                 className="truncate text-sm font-semibold text-sam-text-1 text-left hover:underline"
                               >
                                 {event.title}
@@ -275,13 +281,32 @@ export function ListView() {
         </div>
       </div>
 
+      {previewEvent ? (
+        <EventPreviewModal
+          heading="Event details"
+          event={previewEvent}
+          onEdit={() => {
+            setEditingEventId(previewEvent.id);
+            setPreviewEventId(null);
+          }}
+          onDelete={() => {
+            deleteEvent(previewEvent.id);
+            setPreviewEventId(null);
+          }}
+          onClose={() => setPreviewEventId(null)}
+        />
+      ) : null}
+
       {editingEvent ? (
         <EventEditModal
           event={editingEvent}
           availableParticipants={friendNames}
           onSave={updateEvent}
-          onDelete={deleteEvent}
           onClose={() => setEditingEventId(null)}
+          onSaveComplete={() => {
+            setPreviewEventId(editingEvent.id);
+            setEditingEventId(null);
+          }}
         />
       ) : null}
     </section>
@@ -292,8 +317,8 @@ function EventEditModal({
   event,
   availableParticipants,
   onSave,
-  onDelete,
   onClose,
+  onSaveComplete,
 }: {
   event: PlannerEvent;
   availableParticipants: string[];
@@ -301,16 +326,18 @@ function EventEditModal({
     eventId: string,
     input: {
       title: string;
+      description?: string;
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
       participants: string[];
     },
   ) => void;
-  onDelete: (eventId: string) => void;
   onClose: () => void;
+  onSaveComplete: () => void;
 }) {
   const [title, setTitle] = useState(event.title);
+  const [description, setDescription] = useState(event.description ?? "");
   const [category, setCategory] = useState<PlannerEventCategory>(
     event.category,
   );
@@ -333,18 +360,14 @@ function EventEditModal({
 
     onSave(event.id, {
       title,
+      description,
       category,
       startDate: startDate || null,
       endDate: endDate || null,
       participants,
     });
 
-    onClose();
-  }
-
-  function handleDeleteConfirm() {
-    onDelete(event.id);
-    onClose();
+    onSaveComplete();
   }
 
   return (
@@ -363,24 +386,20 @@ function EventEditModal({
           heading="Edit event"
           submitLabel="Save changes"
           title={title}
+          description={description}
           category={category}
           startDate={startDate}
           endDate={endDate}
           participants={participants}
           availableParticipants={availableParticipants}
           onTitleChange={setTitle}
+          onDescriptionChange={setDescription}
           onCategoryChange={setCategory}
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
           onParticipantsChange={setParticipants}
           onSubmit={handleSubmit}
           onCancel={onClose}
-          deleteAction={{
-            label: "Delete event",
-            prompt: "Are you sure you want to delete this event?",
-            confirmLabel: "Yes, delete",
-            onDelete: handleDeleteConfirm,
-          }}
         />
       </section>
     </div>

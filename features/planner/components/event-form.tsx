@@ -2,10 +2,7 @@
 
 import type { FormEvent } from "react";
 
-import {
-  BaseEventForm,
-  type DeleteAction,
-} from "@/components/ui/base-event-form";
+import { BaseEventForm } from "@/components/ui/base-event-form";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   plannerEventCategories,
@@ -16,19 +13,20 @@ type PlannerEventFormProps = {
   heading: string;
   submitLabel: string;
   title: string;
+  description: string;
   category: PlannerEventCategory;
   startDate: string;
   endDate: string;
   participants: string[];
   availableParticipants: string[];
   onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: PlannerEventCategory) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
   onParticipantsChange: (value: string[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
-  deleteAction?: DeleteAction;
 };
 
 /**
@@ -42,19 +40,20 @@ export function PlannerEventForm({
   heading,
   submitLabel,
   title,
+  description,
   category,
   startDate,
   endDate,
   participants,
   availableParticipants,
   onTitleChange,
+  onDescriptionChange,
   onCategoryChange,
   onStartDateChange,
   onEndDateChange,
   onParticipantsChange,
   onSubmit,
   onCancel,
-  deleteAction,
 }: PlannerEventFormProps) {
   return (
     <BaseEventForm
@@ -62,13 +61,14 @@ export function PlannerEventForm({
       submitLabel={submitLabel}
       title={title}
       titlePlaceholder="Event name"
+      description={description}
+      onDescriptionChange={onDescriptionChange}
       participants={participants}
       availableParticipants={availableParticipants}
       onTitleChange={onTitleChange}
       onParticipantsChange={onParticipantsChange}
       onSubmit={onSubmit}
       onCancel={onCancel}
-      deleteAction={deleteAction}
       panelClassName="rounded-xl p-4"
     >
       <select

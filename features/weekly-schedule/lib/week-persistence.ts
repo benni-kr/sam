@@ -48,6 +48,7 @@ type SupabaseWeekEventRow = {
   semester_id: PlannerSemesterId;
   event_id: string;
   title: string;
+  description: string | null;
   category: string;
   day: string;
   start_time: string | null;
@@ -128,6 +129,7 @@ function weekEventsBySemesterToRows(
         semester_id: semesterId,
         event_id: event.id,
         title: event.title,
+        description: event.description ?? null,
         category: event.category,
         day: event.day,
         start_time: event.startTime,
@@ -163,6 +165,7 @@ function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
     weekEventsBySemester[targetSemesterId]?.push({
       id: row.event_id,
       title: row.title,
+      description: row.description ?? undefined,
       category: row.category,
       day: row.day,
       startTime: row.start_time,

@@ -13,7 +13,7 @@ import { Plus } from "lucide-react";
 import { BirthdayCakeIcon } from "@/components/ui/birthday-cake-icon";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
-  formatBirthdayMessage,
+  formatBirthdayTooltipMessage,
   getBirthdaysForDate,
 } from "@/features/friends/lib/birthday-utils";
 import { useFriendsState } from "@/features/friends/state/friends-state";
@@ -40,7 +40,7 @@ export function CalendarDayCell({
   const { openCreateEvent } = useCreateEvent();
   const { friends } = useFriendsState();
   const birthdays = getBirthdaysForDate(dateKey, friends);
-  const birthdayTooltip = formatBirthdayMessage(dateKey, birthdays);
+  const birthdayTooltip = formatBirthdayTooltipMessage(dateKey, birthdays);
   const { isOver, setNodeRef } = useDroppable({
     // Domain Protocol: this ID format is used by the AppShell drag sensors to
     // distinguish date cells from other drop targets like the inbox.

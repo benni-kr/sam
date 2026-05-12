@@ -3,6 +3,7 @@ create table if not exists public.planner_week_events (
   semester_id text not null,
   event_id text not null,
   title text not null,
+  description text,
   category text not null,
   day text not null,
   start_time text,

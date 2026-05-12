@@ -196,6 +196,7 @@ function EventDetailsModal({
     eventId: string,
     input: {
       title: string;
+      description?: string;
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
@@ -207,6 +208,7 @@ function EventDetailsModal({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(event.title);
+  const [description, setDescription] = useState(event.description ?? "");
   const [category, setCategory] = useState<PlannerEventCategory>(
     event.category,
   );
@@ -219,13 +221,14 @@ function EventDetailsModal({
 
     onSave(event.id, {
       title,
+      description,
       category,
       startDate: startDate || null,
       endDate: endDate || null,
       participants,
     });
 
-    onClose();
+    setIsEditing(false);
   }
 
   function handleDeleteConfirm() {
@@ -239,12 +242,14 @@ function EventDetailsModal({
         heading="Event details"
         event={{
           title: event.title,
+          description: event.description,
           category: event.category,
           participants: event.participants,
           startDate: event.startDate,
           endDate: event.endDate,
         }}
         onEdit={() => setIsEditing(true)}
+        onDelete={handleDeleteConfirm}
         onClose={onClose}
       />
     );
@@ -266,24 +271,20 @@ function EventDetailsModal({
           heading="Edit event"
           submitLabel="Save changes"
           title={title}
+          description={description}
           category={category}
           startDate={startDate}
           endDate={endDate}
           participants={participants}
           availableParticipants={availableParticipants}
           onTitleChange={setTitle}
+          onDescriptionChange={setDescription}
           onCategoryChange={setCategory}
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
           onParticipantsChange={setParticipants}
           onSubmit={handleSubmit}
           onCancel={() => setIsEditing(false)}
-          deleteAction={{
-            label: "Delete event",
-            prompt: "Are you sure you want to delete this event?",
-            confirmLabel: "Yes, delete",
-            onDelete: handleDeleteConfirm,
-          }}
         />
       </div>
     </div>

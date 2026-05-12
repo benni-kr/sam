@@ -66,6 +66,7 @@ type PlannerStateContextValue = {
   moveEventToInbox: (eventId: string) => void;
   createEvent: (input: {
     title: string;
+    description?: string;
     category: PlannerEventCategory;
     startDate: string | null;
     endDate: string | null;
@@ -75,6 +76,7 @@ type PlannerStateContextValue = {
     eventId: string,
     input: {
       title: string;
+      description?: string;
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
@@ -84,6 +86,7 @@ type PlannerStateContextValue = {
   deleteEvent: (eventId: string) => void;
   createWeekEvent: (input: {
     title: string;
+    description?: string;
     category: PlannerWeekEventCategory;
     day: PlannerWeekday;
     startTime: string;
@@ -94,6 +97,7 @@ type PlannerStateContextValue = {
     eventId: string,
     input: {
       title: string;
+      description?: string;
       category: PlannerWeekEventCategory;
       day: PlannerWeekday;
       startTime: string;
@@ -157,6 +161,8 @@ type PlannerAction =
         eventId: string;
         /** Updated display title. */
         title: string;
+        /** Updated optional description shown in previews and details. */
+        description?: string;
         /** Updated planner category used for theming and filtering. */
         category: PlannerEventCategory;
         /** Updated inclusive start date in YYYY-MM-DD format, or null for inbox items. */
@@ -513,6 +519,7 @@ export function plannerStateReducer(
           return {
             ...event,
             title: action.payload.title,
+            description: action.payload.description,
             category: action.payload.category,
             startDate: action.payload.startDate,
             endDate: action.payload.endDate,
@@ -881,6 +888,7 @@ export function PlannerStateProvider({
       },
       createEvent: (input) => {
         const title = input.title.trim();
+        const description = input.description?.trim() ?? "";
 
         if (!title || !plannerEventCategories.includes(input.category)) {
           return;
@@ -898,6 +906,7 @@ export function PlannerStateProvider({
             event: {
               id: `evt-${crypto.randomUUID()}`,
               title,
+              description: description || undefined,
               category: input.category,
               startDate: normalizedDates.startDate,
               endDate: normalizedDates.endDate,
@@ -914,6 +923,7 @@ export function PlannerStateProvider({
       },
       updateEvent: (eventId, input) => {
         const title = input.title.trim();
+        const description = input.description?.trim() ?? "";
 
         if (!title || !plannerEventCategories.includes(input.category)) {
           return;
@@ -929,6 +939,7 @@ export function PlannerStateProvider({
           payload: {
             eventId,
             title,
+            description: description || undefined,
             category: input.category,
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
@@ -950,6 +961,7 @@ export function PlannerStateProvider({
       },
       createWeekEvent: (input) => {
         const title = input.title.trim();
+        const description = input.description?.trim() ?? "";
 
         if (!title || !plannerWeekEventCategories.includes(input.category)) {
           return;
@@ -962,6 +974,7 @@ export function PlannerStateProvider({
             event: {
               id: `wevt-${crypto.randomUUID()}`,
               title,
+              description: description || undefined,
               category: input.category,
               day: input.day,
               startTime: input.startTime,
@@ -976,6 +989,7 @@ export function PlannerStateProvider({
       },
       updateWeekEvent: (eventId, input) => {
         const title = input.title.trim();
+        const description = input.description?.trim() ?? "";
 
         if (!title || !plannerWeekEventCategories.includes(input.category)) {
           return;
@@ -986,6 +1000,7 @@ export function PlannerStateProvider({
           payload: {
             eventId,
             title,
+            description: description || undefined,
             category: input.category,
             day: input.day,
             startTime: input.startTime,
