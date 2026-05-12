@@ -22,16 +22,17 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { CreateEventProvider } from "@/features/planner/components/create-event-context";
-import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
-import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import { CreateEventModal } from "@/components/layout/create-event-modal";
+import { CreateWeekEventModal } from "@/components/layout/create-week-event-modal";
+import { ManageFriendsModal } from "@/components/layout/manage-friends-modal";
 import {
   FriendsProvider,
   useFriendsState,
@@ -228,7 +229,7 @@ function AppShellFrame({
     createEvent,
     createWeekEvent,
   } = usePlannerState();
-  const { friends, addFriend, renameFriend, removeFriend } = useFriendsState();
+  const { friendNames } = useFriendsState();
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -245,13 +246,7 @@ function AppShellFrame({
   const [weekStartTime, setWeekStartTime] = useState("");
   const [weekEndTime, setWeekEndTime] = useState("");
   const [weekParticipants, setWeekParticipants] = useState<string[]>([]);
-  const [newFriendName, setNewFriendName] = useState("");
-  const [editingFriendName, setEditingFriendName] = useState<string | null>(
-    null,
-  );
-  const [editingFriendValue, setEditingFriendValue] = useState("");
   const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
-  const [friendToDelete, setFriendToDelete] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -361,7 +356,7 @@ function AppShellFrame({
     setWeekParticipants([]);
   }
 
-  function handleCreateWeekEvent(event: FormEvent<HTMLFormElement>) {
+  function handleCreateWeekEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const normalizedRange = getDefaultWeekAppointmentTimeRange(
@@ -381,7 +376,7 @@ function AppShellFrame({
     closeCreateWeekEvent();
   }
 
-  function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
+  function handleCreateEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     createEvent({
@@ -397,32 +392,6 @@ function AppShellFrame({
     setEndDate("");
     setParticipants([]);
     setIsCreateModalOpen(false);
-  }
-
-  function handleAddFriend(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    addFriend(newFriendName);
-    setNewFriendName("");
-  }
-
-  function startEditingFriend(friendName: string) {
-    setEditingFriendName(friendName);
-    setEditingFriendValue(friendName);
-  }
-
-  function cancelEditingFriend() {
-    setEditingFriendName(null);
-    setEditingFriendValue("");
-  }
-
-  function saveEditedFriend() {
-    if (!editingFriendName) {
-      return;
-    }
-
-    renameFriend(editingFriendName, editingFriendValue);
-    cancelEditingFriend();
   }
 
   return (
@@ -508,199 +477,52 @@ function AppShellFrame({
           ) : null}
         </DragOverlay>
 
-        {isCreateModalOpen ? (
-          <PlannerEventForm
-            heading="Add event"
-            submitLabel="Add event"
-            title={title}
-            category={category}
-            startDate={startDate}
-            endDate={endDate}
-            participants={participants}
-            availableParticipants={friends}
-            onTitleChange={setTitle}
-            onCategoryChange={(nextCategory: PlannerEventCategory) =>
-              setCategory(nextCategory)
-            }
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            onParticipantsChange={setParticipants}
-            onSubmit={handleCreateEvent}
-            onCancel={closeCreateEvent}
-          />
-        ) : null}
+        <CreateEventModal
+          isOpen={isCreateModalOpen}
+          heading="Add event"
+          submitLabel="Add event"
+          title={title}
+          category={category}
+          startDate={startDate}
+          endDate={endDate}
+          participants={participants}
+          availableParticipants={friendNames}
+          onTitleChange={setTitle}
+          onCategoryChange={(nextCategory: PlannerEventCategory) =>
+            setCategory(nextCategory)
+          }
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onParticipantsChange={setParticipants}
+          onSubmit={handleCreateEvent}
+          onCancel={closeCreateEvent}
+        />
 
-        {isCreateWeekModalOpen ? (
-          <PlannerWeekEventForm
-            heading="Add weekly appointment"
-            submitLabel="Add weekly appointment"
-            title={weekTitle}
-            category={weekCategory}
-            day={weekDay}
-            startTime={weekStartTime}
-            endTime={weekEndTime}
-            participants={weekParticipants}
-            availableParticipants={friends}
-            onTitleChange={setWeekTitle}
-            onCategoryChange={setWeekCategory}
-            onDayChange={setWeekDay}
-            onStartTimeChange={setWeekStartTime}
-            onEndTimeChange={setWeekEndTime}
-            onParticipantsChange={setWeekParticipants}
-            onSubmit={handleCreateWeekEvent}
-            onCancel={closeCreateWeekEvent}
-          />
-        ) : null}
+        <CreateWeekEventModal
+          isOpen={isCreateWeekModalOpen}
+          heading="Add weekly appointment"
+          submitLabel="Add weekly appointment"
+          title={weekTitle}
+          category={weekCategory}
+          day={weekDay}
+          startTime={weekStartTime}
+          endTime={weekEndTime}
+          participants={weekParticipants}
+          availableParticipants={friendNames}
+          onTitleChange={setWeekTitle}
+          onCategoryChange={setWeekCategory}
+          onDayChange={setWeekDay}
+          onStartTimeChange={setWeekStartTime}
+          onEndTimeChange={setWeekEndTime}
+          onParticipantsChange={setWeekParticipants}
+          onSubmit={handleCreateWeekEvent}
+          onCancel={closeCreateWeekEvent}
+        />
 
-        {isManageFriendsOpen ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-            onClick={() => setIsManageFriendsOpen(false)}
-          >
-            <section
-              className="w-full max-w-md rounded-2xl border border-sam-border bg-sam-surface p-5 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sam-text-3">
-                Friends
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-sam-text-1">
-                Manage your friends
-              </h3>
-              <p className="mt-1 text-xs text-sam-text-3">
-                Add, rename, or remove friends used in event participants.
-              </p>
-
-              <form onSubmit={handleAddFriend} className="mt-3 flex gap-2">
-                <input
-                  value={newFriendName}
-                  onChange={(event) => setNewFriendName(event.target.value)}
-                  placeholder="Add friend"
-                  maxLength={15}
-                  className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
-                />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-sam-solid px-3 py-2 text-sm font-medium text-sam-solid-fg hover:bg-slate-700 dark:hover:bg-slate-200"
-                >
-                  Add
-                </button>
-              </form>
-
-              <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
-                {friends.map((friend: string) => (
-                  <div
-                    key={friend}
-                    className="rounded-xl border border-sam-border bg-sam-surface-2/80 p-2"
-                  >
-                    {friendToDelete === friend ? (
-                      <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2">
-                        <p className="text-xs font-medium text-red-800 dark:text-red-700 text-center">
-                          Remove {friend} from all events?
-                          <br />
-                          <span className="mt-1 block font-normal opacity-80 dark:opacity-100 dark:text-red-500">
-                            (Be careful, it&apos;s always easier to lose friends
-                            than to make new ones!)
-                          </span>
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setFriendToDelete(null)}
-                            className="flex-1 rounded-md border border-sam-border bg-sam-surface px-2 py-1.5 text-xs text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
-                          >
-                            Keep
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              removeFriend(friend);
-                              setFriendToDelete(null);
-                            }}
-                            className="flex-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-red-700"
-                          >
-                            Yes, remove
-                          </button>
-                        </div>
-                      </div>
-                    ) : editingFriendName === friend ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={editingFriendValue}
-                          onChange={(event) =>
-                            setEditingFriendValue(event.target.value)
-                          }
-                          maxLength={15}
-                          className="min-w-0 flex-1 rounded-lg border border-sam-border bg-sam-surface px-3 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:ring-slate-600"
-                          aria-label={`Edit ${friend}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={saveEditedFriend}
-                          className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditingFriend}
-                          className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-3 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-sam-text-2">
-                          {friend}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => startEditingFriend(friend)}
-                            className="rounded-md border border-sam-border bg-sam-surface px-2 py-1 text-xs text-sam-text-3 hover:bg-sam-surface-3 dark:hover:bg-slate-600"
-                            aria-label={`Edit ${friend}`}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (editingFriendName === friend) {
-                                cancelEditingFriend();
-                              }
-                              setFriendToDelete(friend);
-                            }}
-                            className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-600 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-400 dark:hover:bg-rose-900"
-                            aria-label={`Remove ${friend}`}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {friends.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-sam-border bg-sam-surface-2 px-3 py-5 text-center text-xs text-sam-text-3">
-                    No friends yet. Add someone to start assigning participants.
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsManageFriendsOpen(false)}
-                  className="rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-sm text-sam-text-2"
-                >
-                  Close
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
+        <ManageFriendsModal
+          isOpen={isManageFriendsOpen}
+          onClose={() => setIsManageFriendsOpen(false)}
+        />
       </DndContext>
     </CreateEventProvider>
   );

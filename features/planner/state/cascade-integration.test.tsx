@@ -86,7 +86,11 @@ describe("Domain Cascade Integration", () => {
       result.current.friends.addFriend("Old Name");
     });
     await waitFor(() =>
-      expect(result.current.friends.friends).toContain("Old Name"),
+      expect(
+        result.current.friends.friends.some(
+          (friend) => friend.name === "Old Name",
+        ),
+      ).toBe(true),
     );
 
     // 3. SETUP: Create the event and wait for it to be stored in state
@@ -142,7 +146,11 @@ describe("Domain Cascade Integration", () => {
       result.current.friends.addFriend("Keep Me");
     });
     await waitFor(() =>
-      expect(result.current.friends.friends).toContain("Ghost Friend"),
+      expect(
+        result.current.friends.friends.some(
+          (friend) => friend.name === "Ghost Friend",
+        ),
+      ).toBe(true),
     );
 
     // Setup Event

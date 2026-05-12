@@ -1,4 +1,5 @@
 import { SEMESTER_FRIENDS } from "@/features/planner/lib/planner";
+import type { Friend } from "@/features/friends/lib/friend";
 
 /**
  * Friends Persistence
@@ -18,7 +19,16 @@ const DEFAULT_PLANNER_SCOPE = "default";
 type SupabaseFriendRow = {
   planner_scope: string;
   friend_name: string;
+  birthday: string | null;
 };
+
+function normalizeBirthday(birthday: string | undefined) {
+  if (!birthday) {
+    return undefined;
+  }
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : undefined;
+}
 
 function normalizePlannerScope(rawScope: string | undefined) {
   const normalized = (rawScope ?? "")
@@ -35,23 +45,26 @@ function getPlannerScope() {
   return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
 }
 
-function dedupeNames(names: string[]) {
-  const uniqueByLowerCase = new Map<string, string>();
+function dedupeFriends(friends: Friend[]) {
+  const uniqueByLowerCase = new Map<string, Friend>();
 
-  for (const name of names) {
-    const normalized = name.trim();
+  for (const friend of friends) {
+    const normalizedName = friend.name.trim();
 
-    if (!normalized) {
+    if (!normalizedName) {
       continue;
     }
 
     // Use the lower-cased string as the Map key to enforce case-insensitive
     // uniqueness. This ensures "Alex" and "alex" are treated as the same
     // participant rather than two separate entries.
-    const key = normalized.toLocaleLowerCase();
+    const key = normalizedName.toLocaleLowerCase();
 
     if (!uniqueByLowerCase.has(key)) {
-      uniqueByLowerCase.set(key, normalized);
+      uniqueByLowerCase.set(key, {
+        name: normalizedName,
+        birthday: normalizeBirthday(friend.birthday),
+      });
     }
   }
 
@@ -59,19 +72,23 @@ function dedupeNames(names: string[]) {
 }
 
 function friendsToRows(
-  friends: string[],
+  friends: Friend[],
   plannerScope: string,
 ): SupabaseFriendRow[] {
-  return dedupeNames(friends).map((friendName) => ({
+  return dedupeFriends(friends).map((friend) => ({
     planner_scope: plannerScope,
-    friend_name: friendName,
+    friend_name: friend.name,
+    birthday: friend.birthday ?? null,
   }));
 }
 
 function rowsToFriends(rows: SupabaseFriendRow[]) {
-  return dedupeNames(rows.map((row) => row.friend_name)).sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return dedupeFriends(
+    rows.map((row) => ({
+      name: row.friend_name,
+      birthday: row.birthday ?? undefined,
+    })),
+  ).sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function buildNotInFilter(values: string[]) {
@@ -114,7 +131,7 @@ export async function loadFriends() {
     );
   }
 
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?select=planner_scope,friend_name&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?select=planner_scope,friend_name,birthday&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();
@@ -143,7 +160,8 @@ export async function loadFriends() {
         return null;
       }
 
-      throw new Error("Failed to load planner friends from Supabase.");
+      console.error("Failed to load planner friends from Supabase.");
+      return null;
     }
 
     const rows = (await response.json()) as SupabaseFriendRow[];
@@ -159,7 +177,8 @@ export async function loadFriends() {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to load planner friends from Supabase.");
+    console.error("Failed to load planner friends from Supabase.");
+    return null;
   }
 
   const rows = (await response.json()) as SupabaseFriendRow[];
@@ -169,7 +188,7 @@ export async function loadFriends() {
 /**
  * Persists the current friend list for the active planner scope.
  */
-export async function saveFriends(friends: string[]) {
+export async function saveFriends(friends: Friend[]) {
   const config = getSupabaseConfig();
 
   if (!config) {
@@ -301,7 +320,7 @@ export async function saveFriends(friends: string[]) {
  * Returns the built-in starter list for the friends domain.
  */
 export function getDefaultFriends() {
-  return dedupeNames([...SEMESTER_FRIENDS]).sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return dedupeFriends(
+    SEMESTER_FRIENDS.map((name) => ({ name, birthday: undefined })),
+  ).sort((left, right) => left.name.localeCompare(right.name));
 }

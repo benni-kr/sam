@@ -11,8 +11,10 @@ import { CalendarDays } from "lucide-react";
 import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
+import { BirthdayBanner } from "@/components/ui/birthday-banner";
 
 import { useFriendsState } from "@/features/friends/state/friends-state";
+import { getBirthdaysForDate } from "@/features/friends/lib/birthday-utils";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { getCalendarTheme } from "@/features/planner/lib/category-config";
 import type {
@@ -85,7 +87,7 @@ function getEventStatus(
  */
 export function ListView() {
   const { events, updateEvent, deleteEvent } = usePlannerState();
-  const { friends } = useFriendsState();
+  const { friends, friendNames } = useFriendsState();
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const editingEvent = useMemo(
@@ -156,13 +158,19 @@ export function ListView() {
                 const badgeDate = event.startDate
                   ? formatDateBadge(event.startDate)
                   : null;
+                const birthdays = event.startDate
+                  ? getBirthdaysForDate(event.startDate, friends)
+                  : [];
 
                 const prev = sortedEvents[idx - 1];
+                const prevDateKey = prev?.startDate ?? null;
                 // On-the-fly Grouping: this month comparison lets us insert
                 // separators into a flat list without pre-processing the data
                 // into nested arrays.
                 const prevMonth = prev?.startDate?.slice(0, 7) ?? null; // YYYY-MM
                 const thisMonth = event.startDate?.slice(0, 7) ?? null;
+                const showBirthdayBanner =
+                  birthdays.length > 0 && event.startDate !== prevDateKey;
 
                 const isActive =
                   getEventStatus(event, todayDateKey) === "Active";
@@ -181,6 +189,15 @@ export function ListView() {
                             year: "numeric",
                           })}
                         </span>
+                      </div>
+                    ) : null}
+
+                    {showBirthdayBanner ? (
+                      <div className="px-2 pb-2">
+                        <BirthdayBanner
+                          dateStr={event.startDate ?? todayDateKey}
+                          birthdays={birthdays}
+                        />
                       </div>
                     ) : null}
 
@@ -261,7 +278,7 @@ export function ListView() {
       {editingEvent ? (
         <EventEditModal
           event={editingEvent}
-          availableParticipants={friends}
+          availableParticipants={friendNames}
           onSave={updateEvent}
           onDelete={deleteEvent}
           onClose={() => setEditingEventId(null)}

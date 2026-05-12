@@ -715,7 +715,7 @@ export function PlannerStateProvider({
   const weekEventStore = useRef(resolveWeekEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
   const {
-    friends,
+    friendNames,
     isHydrated: friendsHydrated,
     lastMutation,
   } = useFriendsState();
@@ -906,7 +906,7 @@ export function PlannerStateProvider({
               // that no longer exist in the friends domain.
               participants: filterParticipantsByFriends(
                 input.participants,
-                friends,
+                friendNames,
               ),
             },
           },
@@ -937,7 +937,7 @@ export function PlannerStateProvider({
             // that no longer exist in the friends domain.
             participants: filterParticipantsByFriends(
               input.participants,
-              friends,
+              friendNames,
             ),
           },
         });
@@ -968,7 +968,7 @@ export function PlannerStateProvider({
               endTime: input.endTime,
               participants: filterParticipantsByFriends(
                 input.participants,
-                friends,
+                friendNames,
               ),
             },
           },
@@ -992,7 +992,7 @@ export function PlannerStateProvider({
             endTime: input.endTime,
             participants: filterParticipantsByFriends(
               input.participants,
-              friends,
+              friendNames,
             ),
           },
         });
@@ -1008,7 +1008,7 @@ export function PlannerStateProvider({
 
         if (
           !normalizedName ||
-          !friends.some(
+          !friendNames.some(
             (friend) =>
               friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
           )
@@ -1025,7 +1025,7 @@ export function PlannerStateProvider({
   }, [
     activeSemester,
     events,
-    friends,
+    friendNames,
     inboxEvents,
     normalizedSemesterId,
     weekEvents,

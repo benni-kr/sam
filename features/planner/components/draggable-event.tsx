@@ -63,7 +63,7 @@ export function DraggableEvent({
 }: DraggableEventProps) {
   const theme = getCalendarTheme(event.category);
   const { updateEvent, deleteEvent } = usePlannerState();
-  const { friends } = useFriendsState();
+  const { friendNames } = useFriendsState();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   /**
@@ -140,7 +140,7 @@ export function DraggableEvent({
           ? createPortal(
               <EventDetailsModal
                 event={event}
-                availableParticipants={friends}
+                availableParticipants={friendNames}
                 onSave={updateEvent}
                 onDelete={deleteEvent}
                 onClose={() => setIsPreviewOpen(false)}
@@ -171,7 +171,7 @@ export function DraggableEvent({
         ? createPortal(
             <EventDetailsModal
               event={event}
-              availableParticipants={friends}
+              availableParticipants={friendNames}
               onSave={updateEvent}
               onDelete={deleteEvent}
               onClose={() => setIsPreviewOpen(false)}
