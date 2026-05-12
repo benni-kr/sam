@@ -2,10 +2,7 @@
 
 import type { FormEvent } from "react";
 
-import {
-  BaseEventForm,
-  type DeleteAction,
-} from "@/components/ui/base-event-form";
+import { BaseEventForm } from "@/components/ui/base-event-form";
 import {
   getDefaultWeekAppointmentTimeRange,
   TimePicker,
@@ -21,6 +18,7 @@ type PlannerWeekEventFormProps = {
   heading: string;
   submitLabel: string;
   title: string;
+  description: string;
   category: PlannerWeekEventCategory;
   day: PlannerWeekday;
   startTime: string;
@@ -28,6 +26,7 @@ type PlannerWeekEventFormProps = {
   participants: string[];
   availableParticipants: string[];
   onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: PlannerWeekEventCategory) => void;
   onDayChange: (value: PlannerWeekday) => void;
   onStartTimeChange: (value: string) => void;
@@ -35,7 +34,6 @@ type PlannerWeekEventFormProps = {
   onParticipantsChange: (value: string[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
-  deleteAction?: DeleteAction;
 };
 
 /**
@@ -49,6 +47,7 @@ export function PlannerWeekEventForm({
   heading,
   submitLabel,
   title,
+  description,
   category,
   day,
   startTime,
@@ -56,6 +55,7 @@ export function PlannerWeekEventForm({
   participants,
   availableParticipants,
   onTitleChange,
+  onDescriptionChange,
   onCategoryChange,
   onDayChange,
   onStartTimeChange,
@@ -63,7 +63,6 @@ export function PlannerWeekEventForm({
   onParticipantsChange,
   onSubmit,
   onCancel,
-  deleteAction,
 }: PlannerWeekEventFormProps) {
   const normalizedTimeRange = getDefaultWeekAppointmentTimeRange(
     startTime,
@@ -94,13 +93,14 @@ export function PlannerWeekEventForm({
       submitLabel={submitLabel}
       title={title}
       titlePlaceholder="Weekly appointment"
+      description={description}
+      onDescriptionChange={onDescriptionChange}
       participants={participants}
       availableParticipants={availableParticipants}
       onTitleChange={onTitleChange}
       onParticipantsChange={onParticipantsChange}
       onSubmit={onSubmit}
       onCancel={onCancel}
-      deleteAction={deleteAction}
       panelClassName="rounded-2xl p-5"
     >
       <select

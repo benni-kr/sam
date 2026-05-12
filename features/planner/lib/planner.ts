@@ -37,6 +37,8 @@ export type PlannerEvent = {
   id: string;
   /** User-facing title shown in every planner view. */
   title: string;
+  /** Optional freeform note shown in previews and detail views. */
+  description?: string;
   /** Domain category used for filtering, theme lookup, and summaries. */
   category: PlannerEventCategory;
   /** Inclusive start date in YYYY-MM-DD format, or null when the event is in the inbox. */

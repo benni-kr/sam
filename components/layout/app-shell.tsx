@@ -235,11 +235,13 @@ function AppShellFrame({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateWeekModalOpen, setIsCreateWeekModalOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [category, setCategory] = useState<PlannerEventCategory>("Exam");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [weekTitle, setWeekTitle] = useState("");
+  const [weekDescription, setWeekDescription] = useState("");
   const [weekCategory, setWeekCategory] =
     useState<PlannerWeekEventCategory>("University");
   const [weekDay, setWeekDay] = useState<PlannerWeekday>("Mon");
@@ -320,6 +322,7 @@ function AppShellFrame({
 
   function openCreateEvent(dateKey?: string) {
     setTitle("");
+    setDescription("");
     setCategory("Exam");
     setStartDate(dateKey ?? "");
     setEndDate(dateKey ?? "");
@@ -330,6 +333,7 @@ function AppShellFrame({
   function closeCreateEvent() {
     setIsCreateModalOpen(false);
     setTitle("");
+    setDescription("");
     setCategory("Exam");
     setStartDate("");
     setEndDate("");
@@ -338,6 +342,7 @@ function AppShellFrame({
 
   function openCreateWeekEvent(day: PlannerWeekday = "Mon") {
     setWeekTitle("");
+    setWeekDescription("");
     setWeekCategory("University");
     setWeekDay(day);
     setWeekStartTime("");
@@ -349,6 +354,7 @@ function AppShellFrame({
   function closeCreateWeekEvent() {
     setIsCreateWeekModalOpen(false);
     setWeekTitle("");
+    setWeekDescription("");
     setWeekCategory("University");
     setWeekDay("Mon");
     setWeekStartTime("");
@@ -366,6 +372,7 @@ function AppShellFrame({
 
     createWeekEvent({
       title: weekTitle,
+      description: weekDescription,
       category: weekCategory,
       day: weekDay,
       startTime: normalizedRange.startTime,
@@ -381,6 +388,7 @@ function AppShellFrame({
 
     createEvent({
       title,
+      description,
       category,
       startDate: startDate || null,
       endDate: endDate || null,
@@ -482,12 +490,14 @@ function AppShellFrame({
           heading="Add event"
           submitLabel="Add event"
           title={title}
+          description={description}
           category={category}
           startDate={startDate}
           endDate={endDate}
           participants={participants}
           availableParticipants={friendNames}
           onTitleChange={setTitle}
+          onDescriptionChange={setDescription}
           onCategoryChange={(nextCategory: PlannerEventCategory) =>
             setCategory(nextCategory)
           }
@@ -503,6 +513,7 @@ function AppShellFrame({
           heading="Add weekly appointment"
           submitLabel="Add weekly appointment"
           title={weekTitle}
+          description={weekDescription}
           category={weekCategory}
           day={weekDay}
           startTime={weekStartTime}
@@ -510,6 +521,7 @@ function AppShellFrame({
           participants={weekParticipants}
           availableParticipants={friendNames}
           onTitleChange={setWeekTitle}
+          onDescriptionChange={setWeekDescription}
           onCategoryChange={setWeekCategory}
           onDayChange={setWeekDay}
           onStartTimeChange={setWeekStartTime}

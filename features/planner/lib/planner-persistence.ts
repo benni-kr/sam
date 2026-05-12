@@ -45,6 +45,7 @@ type SupabaseEventRow = {
   semester_id: PlannerSemesterId | null;
   event_id: string;
   title: string;
+  description: string | null;
   category: string;
   start_date: string | null;
   end_date: string | null;
@@ -116,6 +117,7 @@ function eventsBySemesterToRows(
         semester_id: event.startDate ? semesterId : null,
         event_id: event.id,
         title: event.title,
+        description: event.description ?? null,
         category: event.category,
         start_date: event.startDate,
         end_date: event.endDate,
@@ -147,6 +149,7 @@ export function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
     eventsBySemester[targetSemesterId]?.push({
       id: row.event_id,
       title: row.title,
+      description: row.description ?? undefined,
       category: row.category as PlannerEvent["category"],
       startDate: row.start_date,
       endDate: row.end_date,
@@ -283,7 +286,12 @@ async function upsertSupabaseEventsBySemester(
     });
 
     if (!response.ok) {
-      throw new Error("Failed to save planner events to Supabase.");
+      const errorDetails = await response
+        .text()
+        .catch(() => "No details available");
+      throw new Error(
+        `Failed to save planner events to Supabase: ${response.status} ${errorDetails}`,
+      );
     }
   }
 
@@ -304,7 +312,12 @@ async function upsertSupabaseEventsBySemester(
   });
 
   if (!deleteResponse.ok) {
-    throw new Error("Failed to prune planner events in Supabase.");
+    const errorDetails = await deleteResponse
+      .text()
+      .catch(() => "No details available");
+    throw new Error(
+      `Failed to prune planner events in Supabase: ${deleteResponse.status} ${errorDetails}`,
+    );
   }
 }
 

@@ -42,6 +42,8 @@ export type PlannerWeekAction =
         eventId: string;
         /** Updated display title. */
         title: string;
+        /** Updated optional description shown in previews and details. */
+        description?: string;
         /** Updated weekly category used for theming and filtering. */
         category: PlannerWeekEvent["category"];
         /** Updated weekday that determines the grid column. */
@@ -147,6 +149,7 @@ export function plannerWeekStateReducer(
           return {
             ...event,
             title: action.payload.title,
+            description: action.payload.description,
             category: action.payload.category,
             day: action.payload.day,
             startTime: action.payload.startTime,

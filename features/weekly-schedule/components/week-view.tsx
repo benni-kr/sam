@@ -394,12 +394,15 @@ export function WeekView() {
 
     updateWeekEvent(editingEvent.id, {
       title: editingEvent.title,
+      description: editingEvent.description,
       category: editingEvent.category,
       day: editingEvent.day,
       startTime: normalizedRange.startTime,
       endTime: normalizedRange.endTime,
       participants: editingEvent.participants,
     });
+
+    setPreviewEvent(editingEvent);
     setEditingEvent(null);
   }
 
@@ -475,6 +478,10 @@ export function WeekView() {
                 setEditingEvent(previewEvent);
                 setPreviewEvent(null);
               }}
+              onDelete={() => {
+                deleteWeekEvent(previewEvent.id);
+                setPreviewEvent(null);
+              }}
               onClose={() => setPreviewEvent(null)}
             />,
             document.body,
@@ -487,6 +494,7 @@ export function WeekView() {
               heading="Edit weekly appointment"
               submitLabel="Save changes"
               title={editingEvent.title}
+              description={editingEvent.description ?? ""}
               category={editingEvent.category}
               day={editingEvent.day}
               startTime={editingEvent.startTime}
@@ -496,6 +504,11 @@ export function WeekView() {
               onTitleChange={(value) =>
                 setEditingEvent((current) =>
                   current ? { ...current, title: value } : current,
+                )
+              }
+              onDescriptionChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, description: value } : current,
                 )
               }
               onCategoryChange={(value) =>
@@ -525,15 +538,6 @@ export function WeekView() {
               }
               onSubmit={handleSubmitEdit}
               onCancel={() => setEditingEvent(null)}
-              deleteAction={{
-                label: "Delete appointment",
-                prompt: "Delete this weekly appointment?",
-                confirmLabel: "Delete",
-                onDelete: () => {
-                  deleteWeekEvent(editingEvent.id);
-                  setEditingEvent(null);
-                },
-              }}
             />,
             document.body,
           )

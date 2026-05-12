@@ -13,6 +13,7 @@ type CreateWeekEventModalProps = {
   heading: string;
   submitLabel: string;
   title: string;
+  description: string;
   category: PlannerWeekEventCategory;
   day: PlannerWeekday;
   startTime: string;
@@ -20,6 +21,7 @@ type CreateWeekEventModalProps = {
   participants: string[];
   availableParticipants: string[];
   onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: PlannerWeekEventCategory) => void;
   onDayChange: (value: PlannerWeekday) => void;
   onStartTimeChange: (value: string) => void;
@@ -34,6 +36,7 @@ export function CreateWeekEventModal({
   heading,
   submitLabel,
   title,
+  description,
   category,
   day,
   startTime,
@@ -41,6 +44,7 @@ export function CreateWeekEventModal({
   participants,
   availableParticipants,
   onTitleChange,
+  onDescriptionChange,
   onCategoryChange,
   onDayChange,
   onStartTimeChange,
@@ -58,6 +62,7 @@ export function CreateWeekEventModal({
       heading={heading}
       submitLabel={submitLabel}
       title={title}
+      description={description}
       category={category}
       day={day}
       startTime={startTime}
@@ -65,6 +70,7 @@ export function CreateWeekEventModal({
       participants={participants}
       availableParticipants={availableParticipants}
       onTitleChange={onTitleChange}
+      onDescriptionChange={onDescriptionChange}
       onCategoryChange={onCategoryChange}
       onDayChange={onDayChange}
       onStartTimeChange={onStartTimeChange}

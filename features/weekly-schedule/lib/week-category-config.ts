@@ -15,6 +15,8 @@ export type WeekCategoryTheme = {
   card: string;
   /** Used for solid color indicators, such as legend dots or sidebar highlights. */
   accent: string;
+  /** Used for section headers or text labels (like descriptions). */
+  heading: string;
 };
 
 /**
@@ -27,18 +29,22 @@ export const WEEK_CATEGORY_THEMES: Record<
   University: {
     card: "border-slate-300 bg-slate-100 text-slate-950 dark:border-slate-400 dark:bg-slate-700 dark:text-slate-100",
     accent: "bg-slate-500",
+    heading: "text-slate-700 dark:text-slate-300",
   },
   "Language courses": {
     card: "border-emerald-500 bg-emerald-100 text-emerald-950 dark:border-emerald-400 dark:bg-emerald-800 dark:text-emerald-100",
     accent: "bg-emerald-500",
+    heading: "text-emerald-700 dark:text-emerald-300",
   },
   Sports: {
     card: "border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-400 dark:bg-orange-800 dark:text-orange-100",
     accent: "bg-orange-500",
+    heading: "text-orange-700 dark:text-orange-300",
   },
   Other: {
     card: "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400 dark:bg-sky-800 dark:text-sky-100",
     accent: "bg-sky-500",
+    heading: "text-sky-700 dark:text-sky-300",
   },
 };
 

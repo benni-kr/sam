@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 
+import { EventPreviewModal } from "@/components/ui/event-preview";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
@@ -34,6 +35,7 @@ export function CrosstablesView() {
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
   const todayDateKey = getTodayDateKey();
+  const [previewEventId, setPreviewEventId] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const crosstableEvents = useMemo(
@@ -54,19 +56,27 @@ export function CrosstablesView() {
     return endDate >= todayDateKey;
   });
 
+  const previewEvent = useMemo(
+    () => crosstableEvents.find((event) => event.id === previewEventId) ?? null,
+    [crosstableEvents, previewEventId],
+  );
+
   const editingEvent = useMemo(
     () => crosstableEvents.find((event) => event.id === editingEventId) ?? null,
     [crosstableEvents, editingEventId],
   );
 
   useEffect(() => {
-    if (!editingEvent) return;
+    if (!previewEvent && !editingEvent) return;
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setEditingEventId(null);
+      if (event.key === "Escape") {
+        setPreviewEventId(null);
+        setEditingEventId(null);
+      }
     }
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [editingEvent]);
+  }, [previewEvent, editingEvent]);
 
   const participantNames = useMemo(() => {
     return Array.from(
@@ -193,7 +203,7 @@ export function CrosstablesView() {
                           <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface px-3 py-2">
                             <button
                               type="button"
-                              onClick={() => setEditingEventId(event.id)}
+                              onClick={() => setPreviewEventId(event.id)}
                               className="font-medium text-sam-text-1 underline-offset-2 hover:underline"
                             >
                               {event.title}
@@ -247,13 +257,32 @@ export function CrosstablesView() {
         })}
       </div>
 
+      {previewEvent ? (
+        <EventPreviewModal
+          heading="Event details"
+          event={previewEvent}
+          onEdit={() => {
+            setEditingEventId(previewEvent.id);
+            setPreviewEventId(null);
+          }}
+          onDelete={() => {
+            deleteEvent(previewEvent.id);
+            setPreviewEventId(null);
+          }}
+          onClose={() => setPreviewEventId(null)}
+        />
+      ) : null}
+
       {editingEvent && (
         <EventEditModal
           event={editingEvent}
           availableParticipants={friendNames}
           onSave={updateEvent}
-          onDelete={deleteEvent}
           onClose={() => setEditingEventId(null)}
+          onSaveComplete={() => {
+            setPreviewEventId(editingEvent.id);
+            setEditingEventId(null);
+          }}
         />
       )}
     </section>
@@ -317,8 +346,8 @@ function EventEditModal({
   event,
   availableParticipants,
   onSave,
-  onDelete,
   onClose,
+  onSaveComplete,
 }: {
   event: PlannerEvent;
   availableParticipants: string[];
@@ -326,16 +355,18 @@ function EventEditModal({
     eventId: string,
     input: {
       title: string;
+      description?: string;
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
       participants: string[];
     },
   ) => void;
-  onDelete: (eventId: string) => void;
   onClose: () => void;
+  onSaveComplete: () => void;
 }) {
   const [title, setTitle] = useState(event.title);
+  const [description, setDescription] = useState(event.description ?? "");
   const [category, setCategory] = useState<PlannerEventCategory>(
     event.category,
   );
@@ -348,18 +379,14 @@ function EventEditModal({
 
     onSave(event.id, {
       title,
+      description,
       category,
       startDate: startDate || null,
       endDate: endDate || null,
       participants,
     });
 
-    onClose();
-  }
-
-  function handleDeleteConfirm() {
-    onDelete(event.id);
-    onClose();
+    onSaveComplete();
   }
 
   return (
@@ -378,24 +405,20 @@ function EventEditModal({
           heading="Edit event"
           submitLabel="Save changes"
           title={title}
+          description={description}
           category={category}
           startDate={startDate}
           endDate={endDate}
           participants={participants}
           availableParticipants={availableParticipants}
           onTitleChange={setTitle}
+          onDescriptionChange={setDescription}
           onCategoryChange={setCategory}
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
           onParticipantsChange={setParticipants}
           onSubmit={handleSubmit}
           onCancel={onClose}
-          deleteAction={{
-            label: "Delete event",
-            prompt: "Are you sure you want to delete this event?",
-            confirmLabel: "Yes, delete",
-            onDelete: handleDeleteConfirm,
-          }}
         />
       </section>
     </div>

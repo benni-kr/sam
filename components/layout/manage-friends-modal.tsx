@@ -115,11 +115,11 @@ export function ManageFriendsModal({
               className="rounded-xl border border-sam-border bg-sam-surface-2/80 p-2"
             >
               {friendToDelete === friend.name ? (
-                <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2">
-                  <p className="text-xs font-medium text-red-800 dark:text-red-700 text-center">
+                <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-2 dark:border-red-900/60 dark:bg-red-950/40">
+                  <p className="text-xs font-medium text-red-800 text-center dark:text-red-200">
                     Remove {friend.name} from all events?
                     <br />
-                    <span className="mt-1 block font-normal opacity-80 dark:opacity-100 dark:text-red-500">
+                    <span className="mt-1 block font-normal opacity-80 dark:opacity-100 dark:text-red-100">
                       (Be careful, it&apos;s always easier to lose friends than
                       to make new ones!)
                     </span>

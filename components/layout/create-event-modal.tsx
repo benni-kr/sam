@@ -10,12 +10,14 @@ type CreateEventModalProps = {
   heading: string;
   submitLabel: string;
   title: string;
+  description: string;
   category: PlannerEventCategory;
   startDate: string;
   endDate: string;
   participants: string[];
   availableParticipants: string[];
   onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: PlannerEventCategory) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
@@ -29,12 +31,14 @@ export function CreateEventModal({
   heading,
   submitLabel,
   title,
+  description,
   category,
   startDate,
   endDate,
   participants,
   availableParticipants,
   onTitleChange,
+  onDescriptionChange,
   onCategoryChange,
   onStartDateChange,
   onEndDateChange,
@@ -51,12 +55,14 @@ export function CreateEventModal({
       heading={heading}
       submitLabel={submitLabel}
       title={title}
+      description={description}
       category={category}
       startDate={startDate}
       endDate={endDate}
       participants={participants}
       availableParticipants={availableParticipants}
       onTitleChange={onTitleChange}
+      onDescriptionChange={onDescriptionChange}
       onCategoryChange={onCategoryChange}
       onStartDateChange={onStartDateChange}
       onEndDateChange={onEndDateChange}
