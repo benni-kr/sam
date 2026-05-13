@@ -82,15 +82,6 @@ export function CrosstablesView() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [previewEvent, editingEvent]);
 
-  const participantNames = useMemo(() => {
-    return Array.from(
-      new Set([
-        ...(hideInactiveParticipants ? [] : friendNames),
-        ...filteredCrosstableEvents.flatMap((event) => event.participants),
-      ]),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [friendNames, filteredCrosstableEvents, hideInactiveParticipants]);
-
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
       acc[category] = sortCategoryEvents(
@@ -100,40 +91,6 @@ export function CrosstablesView() {
     },
     {} as Record<PlannerEventCategory, PlannerEvent[]>,
   );
-
-  /**
-   * Density logic calibrated for standard 1440px laptop screens.
-   *
-   * The 7- and 14-participant thresholds prevent horizontal layout breaks
-   * while keeping the checkbox targets large enough for accessible touch and
-   * pointer interaction.
-   */
-  // --- DENSITY LOGIC ---
-  const count = participantNames.length;
-  // Stage 1: Relaxed
-  let colWidthClass = "w-16 min-w-16";
-  let cellPaddingClass = "px-2";
-  let checkContainerClass = "h-9 w-9";
-  let checkIconSize = 22;
-  let labelSize = "text-[12px]";
-
-  if (count > 7) {
-    // Stage 2: Standard
-    colWidthClass = "w-12 min-w-12";
-    cellPaddingClass = "px-1";
-    checkContainerClass = "h-8 w-8";
-    checkIconSize = 18;
-    labelSize = "text-[11px]";
-  }
-
-  if (count > 14) {
-    // Stage 3: Compact
-    colWidthClass = "w-9 min-w-9";
-    cellPaddingClass = "px-0.5";
-    checkContainerClass = "h-7 w-7";
-    checkIconSize = 16;
-    labelSize = "text-[10px]";
-  }
 
   const visibleCategories = plannerEventCategories.filter(
     (category) =>
@@ -157,6 +114,41 @@ export function CrosstablesView() {
         {visibleCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
           const theme = getCalendarTheme(category);
+
+          const participantNames = Array.from(
+            new Set([
+              ...(hideInactiveParticipants ? [] : friendNames),
+              ...categoryEvents.flatMap((event) => event.participants),
+            ]),
+          ).sort((a, b) => a.localeCompare(b));
+
+          /**
+           * Density logic calibrated for standard 1440px laptop screens.
+           *
+           * The 7- and 14-participant thresholds prevent horizontal layout breaks
+           * while keeping the checkbox targets large enough for accessible touch and
+           * pointer interaction.
+           */
+          const count = participantNames.length;
+          let colWidthClass = "w-16 min-w-16";
+          let cellPaddingClass = "px-2";
+          let checkContainerClass = "h-9 w-9";
+          let checkIconSize = 22;
+          let labelSize = "text-[12px]";
+          if (count > 7) {
+            colWidthClass = "w-12 min-w-12";
+            cellPaddingClass = "px-1";
+            checkContainerClass = "h-8 w-8";
+            checkIconSize = 18;
+            labelSize = "text-[11px]";
+          }
+          if (count > 14) {
+            colWidthClass = "w-9 min-w-9";
+            cellPaddingClass = "px-0.5";
+            checkContainerClass = "h-7 w-7";
+            checkIconSize = 16;
+            labelSize = "text-[10px]";
+          }
 
           return (
             <article
