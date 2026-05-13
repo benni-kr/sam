@@ -120,40 +120,27 @@ export function FilterStateProvider({
 }) {
   const [hiddenCategories, setHiddenCategories] = useState<
     Set<PlannerEventCategory>
-  >(() => new Set());
+  >(() => new Set(loadPersistedFilters().hiddenCategories));
   const [hiddenWeekCategories, setHiddenWeekCategories] = useState<
     Set<PlannerWeekEventCategory>
-  >(() => new Set());
+  >(() => new Set(loadPersistedFilters().hiddenWeekCategories));
   const [searchText, setSearchTextState] = useState("");
   const [activePanel, setActivePanelState] = useState<ActivePanel>(null);
   const [requiredParticipants, setRequiredParticipants] = useState<string[]>(
-    [],
+    () => loadPersistedFilters().requiredParticipants,
   );
   const [filterStartDate, setFilterStartDateState] = useState("");
   const [filterEndDate, setFilterEndDateState] = useState("");
   const [filterStartTime, setFilterStartTimeState] = useState("");
   const [filterEndTime, setFilterEndTimeState] = useState("");
-  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    const stored = loadPersistedFilters();
-    setHiddenCategories(new Set(stored.hiddenCategories));
-    setHiddenWeekCategories(new Set(stored.hiddenWeekCategories));
-    setRequiredParticipants(stored.requiredParticipants);
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
     savePersistedFilters({
       hiddenCategories: Array.from(hiddenCategories),
       hiddenWeekCategories: Array.from(hiddenWeekCategories),
       requiredParticipants,
     });
-  }, [isHydrated, hiddenCategories, hiddenWeekCategories, requiredParticipants]);
+  }, [hiddenCategories, hiddenWeekCategories, requiredParticipants]);
 
   const toggleCategory = useCallback((category: PlannerEventCategory) => {
     setHiddenCategories((prev) => {

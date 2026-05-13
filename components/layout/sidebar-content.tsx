@@ -44,7 +44,6 @@ export function SidebarContent() {
   const {
     hiddenCategories,
     hiddenWeekCategories,
-    activePanel,
     toggleCategory,
     toggleWeekCategory,
     syncParticipantFiltersToFriends,
