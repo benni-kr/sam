@@ -8,6 +8,7 @@ import { EventPreviewModal } from "@/components/ui/event-preview";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { useFilterState } from "@/features/planner/state/filter-state";
 import {
   plannerEventCategories,
   type PlannerEvent,
@@ -30,6 +31,7 @@ export function CrosstablesView() {
   const searchParams = useSearchParams();
   const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
     usePlannerState();
+  const { applyFilters, hiddenCategories } = useFilterState();
   const { friendNames } = useFriendsState();
   const hideFinished = searchParams.get("hideFinished") === "1";
   const hideUndated = searchParams.get("hideUndated") === "1";
@@ -42,11 +44,13 @@ export function CrosstablesView() {
     // Deduplicate here to avoid rendering bugs if an event briefly appears in
     // both the "Chronological" and "Inbox" arrays during a state transition.
     () =>
-      dedupeEventsById([
-        ...events.filter((event) => Boolean(event.startDate)),
-        ...inboxEvents,
-      ]),
-    [events, inboxEvents],
+      applyFilters(
+        dedupeEventsById([
+          ...events.filter((event) => Boolean(event.startDate)),
+          ...inboxEvents,
+        ]),
+      ),
+    [events, inboxEvents, applyFilters],
   );
 
   const filteredCrosstableEvents = crosstableEvents.filter((event) => {
@@ -131,10 +135,26 @@ export function CrosstablesView() {
     labelSize = "text-[10px]";
   }
 
+  const visibleCategories = plannerEventCategories.filter(
+    (category) =>
+      !hiddenCategories.has(category) &&
+      (eventsByCategory[category]?.length ?? 0) > 0,
+  );
+
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4">
+    <section className="flex h-full flex-col gap-4 overflow-y-auto pb-4">
+      {visibleCategories.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
+          <p className="text-sm font-semibold text-sam-text-1">
+            No events match your filters
+          </p>
+          <p className="mt-1 text-xs text-sam-text-3">
+            Try adjusting your search or participant filters.
+          </p>
+        </div>
+      )}
       <div className="grid gap-4">
-        {plannerEventCategories.map((category) => {
+        {visibleCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
           const theme = getCalendarTheme(category);
 

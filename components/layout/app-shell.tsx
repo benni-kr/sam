@@ -28,6 +28,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { CreateEventProvider } from "@/features/planner/components/create-event-context";
+import { FilterStateProvider } from "@/features/planner/state/filter-state";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { CreateEventModal } from "@/components/layout/create-event-modal";
@@ -186,19 +187,21 @@ export function AppShell({ children, sidebarContent }: AppShellProps) {
 
   return (
     <FriendsProvider>
-      <PlannerStateProvider activeSemesterId={semesterId}>
-        <AppShellFrame
-          semesterId={semesterId}
-          activeSemester={activeSemester}
-          semesterMenuOpen={semesterMenuOpen}
-          semesterMenuRef={semesterMenuRef}
-          setSemesterMenuOpen={setSemesterMenuOpen}
-          buildSemesterHref={buildSemesterHref}
-          sidebarContent={sidebarContent}
-        >
-          {children}
-        </AppShellFrame>
-      </PlannerStateProvider>
+      <FilterStateProvider>
+        <PlannerStateProvider activeSemesterId={semesterId}>
+            <AppShellFrame
+            semesterId={semesterId}
+            activeSemester={activeSemester}
+            semesterMenuOpen={semesterMenuOpen}
+            semesterMenuRef={semesterMenuRef}
+            setSemesterMenuOpen={setSemesterMenuOpen}
+            buildSemesterHref={buildSemesterHref}
+            sidebarContent={sidebarContent}
+          >
+            {children}
+          </AppShellFrame>
+        </PlannerStateProvider>
+      </FilterStateProvider>
     </FriendsProvider>
   );
 }
@@ -429,7 +432,8 @@ function AppShellFrame({
                   <ThemeToggle />
                 </div>
 
-                <div ref={semesterMenuRef} className="relative">
+                <div className="flex items-center gap-2">
+                <div ref={semesterMenuRef} className="relative min-w-0 flex-1">
                   <button
                     type="button"
                     onClick={() => setSemesterMenuOpen((current) => !current)}
@@ -468,12 +472,15 @@ function AppShellFrame({
                     </div>
                   ) : null}
                 </div>
+                </div>
 
                 {sidebarContent ? sidebarContent : null}
               </div>
             </aside>
 
-            <section className="min-h-0">{children}</section>
+            <section className="min-h-0 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
+              {children}
+            </section>
           </div>
         </main>
 
@@ -535,7 +542,9 @@ function AppShellFrame({
           isOpen={isManageFriendsOpen}
           onClose={() => setIsManageFriendsOpen(false)}
         />
+
       </DndContext>
     </CreateEventProvider>
   );
 }
+

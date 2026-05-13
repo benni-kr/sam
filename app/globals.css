@@ -27,6 +27,7 @@
   --sam-solid: #0f172a; /* slate-900 */
   --sam-solid-fg: #ffffff;
   --sam-page-bg: radial-gradient(circle at top, #f8f7f3, #efede6 55%, #e7e2d7);
+  --sam-page-solid: #efede6; /* mid-stop of --sam-page-bg */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,6 +50,7 @@
       #141419 55%,
       #0d0d11
     );
+    --sam-page-solid: #141419; /* mid-stop of dark --sam-page-bg */
   }
 }
 
@@ -70,6 +72,7 @@ html.dark {
   --sam-solid: #ffffff;
   --sam-solid-fg: #0f172a;
   --sam-page-bg: radial-gradient(circle at top, #1c1c24, #141419 55%, #0d0d11);
+  --sam-page-solid: #141419;
 }
 
 /* ── Tailwind color utilities from chrome tokens ───────────────────────── */
@@ -85,6 +88,7 @@ html.dark {
   --color-sam-text-4: var(--sam-text-4);
   --color-sam-solid: var(--sam-solid);
   --color-sam-solid-fg: var(--sam-solid-fg);
+  --color-sam-page-solid: var(--sam-page-solid);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

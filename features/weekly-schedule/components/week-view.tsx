@@ -30,6 +30,7 @@ import {
 import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { useFilterState } from "@/features/planner/state/filter-state";
 
 type DayLayout = {
   groups: EventGroup[];
@@ -308,7 +309,9 @@ function WeekDayColumn({
 
 export function WeekView() {
   const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
+  const { applyWeekFilters } = useFilterState();
   const { friendNames } = useFriendsState();
+  const visibleWeekEvents = applyWeekFilters(weekEvents);
   const { ref: bodyRef, height: bodyHeight } =
     useMeasuredHeight<HTMLDivElement>();
   const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(
@@ -345,7 +348,9 @@ export function WeekView() {
   const eventsByDay = useMemo(() => {
     return plannerWeekdays.reduce<Record<PlannerWeekday, PlannerWeekEvent[]>>(
       (accumulator, day) => {
-        accumulator[day] = weekEvents.filter((event) => event.day === day);
+        accumulator[day] = visibleWeekEvents.filter(
+          (event) => event.day === day,
+        );
         return accumulator;
       },
       {
@@ -358,7 +363,7 @@ export function WeekView() {
         Sun: [],
       },
     );
-  }, [weekEvents]);
+  }, [visibleWeekEvents]);
 
   const layouts = useMemo(() => {
     return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(

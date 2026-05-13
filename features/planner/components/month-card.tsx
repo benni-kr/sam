@@ -23,6 +23,7 @@ import {
 } from "@/features/planner/lib/planner-utils";
 import { type PlannerMonth } from "@/features/planner/lib/planner";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { useFilterState } from "@/features/planner/state/filter-state";
 import {
   getBirthdaysForDate,
   formatBirthdayBannerMessage,
@@ -41,12 +42,13 @@ const STRIPED_BACKGROUND =
  */
 export function MonthCard({ month }: MonthCardProps) {
   const { events } = usePlannerState();
+  const { applyFilters } = useFilterState();
   const { friends } = useFriendsState();
   const cells = buildMonthDays(month.year, month.monthIndex);
   const rowLayouts = buildMonthWeekEventLayouts({
     month,
     cells,
-    events,
+    events: applyFilters(events),
   });
   const rowCount = Math.ceil(cells.length / 7);
 
