@@ -33,7 +33,7 @@ export function CrosstablesView() {
     usePlannerState();
   const { applyFilters, hiddenCategories } = useFilterState();
   const { friendNames } = useFriendsState();
-  const hideFinished = searchParams.get("hideFinished") === "1";
+  const hideFinished = searchParams.get("hideFinished") !== "0";
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
   const todayDateKey = getTodayDateKey();
