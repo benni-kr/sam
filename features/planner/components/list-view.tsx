@@ -134,7 +134,7 @@ export function ListView() {
   }, [scheduledEvents, hideFinished, todayDateKey]);
 
   return (
-    <section className="h-full overflow-y-auto pb-4">
+    <section className="h-full overflow-y-auto pb-4 pr-1">
       <div className="rounded-[2rem] border border-sam-border bg-sam-surface/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="mt-4 space-y-4">
           {sortedEvents.length === 0 ? (
