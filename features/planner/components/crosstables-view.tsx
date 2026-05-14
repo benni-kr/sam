@@ -99,7 +99,7 @@ export function CrosstablesView() {
   );
 
   return (
-    <section className="flex h-full flex-col gap-4 overflow-y-auto pb-4">
+    <section className="flex flex-col gap-4 pb-4">
       {visibleCategories.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
           <p className="text-sm font-semibold text-sam-text-1">
@@ -110,7 +110,7 @@ export function CrosstablesView() {
           </p>
         </div>
       )}
-      <div className="grid gap-4">
+      <div className="flex flex-col gap-4 min-w-max">
         {visibleCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
           const theme = getCalendarTheme(category);
@@ -153,7 +153,7 @@ export function CrosstablesView() {
           return (
             <article
               key={category}
-              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${theme.section}`}
+              className={`overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${theme.section}`}
             >
               <div className="mb-3 flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${theme.accent}`} />
@@ -168,9 +168,8 @@ export function CrosstablesView() {
                 </span>
               </div>
 
-              <div className="max-w-full overflow-x-auto">
-                <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-sam-border bg-sam-surface/90 text-sm">
-                  <thead>
+              <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-sam-border bg-sam-surface/90 text-sm">
+                <thead>
                     <tr>
                       <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-sam-border bg-sam-surface-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-sam-text-3">
                         Event
@@ -262,8 +261,7 @@ export function CrosstablesView() {
                       ))
                     )}
                   </tbody>
-                </table>
-              </div>
+              </table>
             </article>
           );
         })}
