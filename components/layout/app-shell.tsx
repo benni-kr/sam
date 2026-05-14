@@ -28,6 +28,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { CreateEventProvider } from "@/features/planner/components/create-event-context";
+import { FilterStateProvider } from "@/features/planner/state/filter-state";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { CreateEventModal } from "@/components/layout/create-event-modal";
@@ -186,19 +187,21 @@ export function AppShell({ children, sidebarContent }: AppShellProps) {
 
   return (
     <FriendsProvider>
-      <PlannerStateProvider activeSemesterId={semesterId}>
-        <AppShellFrame
-          semesterId={semesterId}
-          activeSemester={activeSemester}
-          semesterMenuOpen={semesterMenuOpen}
-          semesterMenuRef={semesterMenuRef}
-          setSemesterMenuOpen={setSemesterMenuOpen}
-          buildSemesterHref={buildSemesterHref}
-          sidebarContent={sidebarContent}
-        >
-          {children}
-        </AppShellFrame>
-      </PlannerStateProvider>
+      <FilterStateProvider>
+        <PlannerStateProvider activeSemesterId={semesterId}>
+            <AppShellFrame
+            semesterId={semesterId}
+            activeSemester={activeSemester}
+            semesterMenuOpen={semesterMenuOpen}
+            semesterMenuRef={semesterMenuRef}
+            setSemesterMenuOpen={setSemesterMenuOpen}
+            buildSemesterHref={buildSemesterHref}
+            sidebarContent={sidebarContent}
+          >
+            {children}
+          </AppShellFrame>
+        </PlannerStateProvider>
+      </FilterStateProvider>
     </FriendsProvider>
   );
 }
@@ -421,7 +424,7 @@ function AppShellFrame({
         <main className="min-h-screen bg-page text-sam-text-1">
           <div className="mx-auto grid min-h-screen w-full max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
             <aside className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/80 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_20px_60px_rgba(0,0,0,0.3)] lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-              <div className="min-w-0 flex flex-col gap-4 lg:h-full lg:overflow-y-auto">
+              <div className="min-w-0 space-y-4 lg:h-full lg:overflow-y-auto lg:pr-1">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sam-text-3">
                     Semester Activity Manager
@@ -429,7 +432,8 @@ function AppShellFrame({
                   <ThemeToggle />
                 </div>
 
-                <div ref={semesterMenuRef} className="relative">
+                <div className="flex items-center gap-2">
+                <div ref={semesterMenuRef} className="relative min-w-0 flex-1">
                   <button
                     type="button"
                     onClick={() => setSemesterMenuOpen((current) => !current)}
@@ -468,12 +472,15 @@ function AppShellFrame({
                     </div>
                   ) : null}
                 </div>
+                </div>
 
                 {sidebarContent ? sidebarContent : null}
               </div>
             </aside>
 
-            <section className="min-h-0">{children}</section>
+            <section className="min-h-0 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:pr-1">
+              {children}
+            </section>
           </div>
         </main>
 
@@ -535,7 +542,9 @@ function AppShellFrame({
           isOpen={isManageFriendsOpen}
           onClose={() => setIsManageFriendsOpen(false)}
         />
+
       </DndContext>
     </CreateEventProvider>
   );
 }
+

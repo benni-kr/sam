@@ -175,23 +175,21 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         </div>
       </form>
 
-      {/* Fun Birthday Announcement Box */}
-      <div className="w-full max-w-sm mt-6 p-6 rounded-[1.5rem] bg-gradient-to-br from-indigo-50 to-fuchsia-50 dark:from-indigo-950/40 dark:to-fuchsia-950/40 border border-indigo-100 dark:border-indigo-900/50 shadow-md text-center">
-        <div className="text-4xl mb-3">🎂🎉</div>
-        <h2 className="text-lg font-bold text-indigo-900 dark:text-indigo-300 mb-3 tracking-tight">
-          SAM now supports Birthdays!
+      {/* New Feature Announcement Box */}
+      <div className="w-full max-w-sm mt-6 p-6 rounded-[1.5rem] bg-gradient-to-br from-sky-50 to-violet-50 dark:from-sky-950/40 dark:to-violet-950/40 border border-sky-100 dark:border-sky-900/50 shadow-md text-center">
+        <div className="text-4xl mb-3">🔍✨</div>
+        <h2 className="text-lg font-bold text-sky-900 dark:text-sky-300 mb-3 tracking-tight">
+          SAM now has Search &amp; Filters!
         </h2>
-        <div className="text-sm text-indigo-800/80 dark:text-indigo-200/80 space-y-3 leading-relaxed">
+        <div className="text-sm text-sky-800/80 dark:text-sky-200/80 space-y-3 leading-relaxed">
           <p>
-            So go to the <strong>manage friends</strong> section and enter your
-            birthday, so your friends don&apos;t forget to buy you a present!
+            Use the new <strong>filter panel</strong> in the sidebar to search
+            events by name, filter by participant, or narrow down by date range.
           </p>
           <p>
-            You know the birthday of your best friend as well? Nice, show them
-            how much they mean to you and enter their birthday as well!
-          </p>
-          <p className="text-xs italic opacity-80 mt-1">
-            (Be careful, would be embarrassing if it&apos;s wrong...)
+            For example, pick a participant — say, &quot;Paul&quot; — and see
+            exactly which events they&apos;re attending. Useful if you&apos;re
+            still on the fence about attending.
           </p>
         </div>
       </div>

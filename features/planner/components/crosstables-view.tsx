@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check } from "lucide-react";
+import { CalendarDays, Check } from "lucide-react";
 
 import { EventPreviewModal } from "@/components/ui/event-preview";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { useFilterState } from "@/features/planner/state/filter-state";
 import {
   plannerEventCategories,
   type PlannerEvent,
@@ -30,8 +31,9 @@ export function CrosstablesView() {
   const searchParams = useSearchParams();
   const { events, inboxEvents, toggleParticipant, updateEvent, deleteEvent } =
     usePlannerState();
+  const { applyFilters, hiddenCategories } = useFilterState();
   const { friendNames } = useFriendsState();
-  const hideFinished = searchParams.get("hideFinished") === "1";
+  const hideFinished = searchParams.get("hideFinished") !== "0";
   const hideUndated = searchParams.get("hideUndated") === "1";
   const hideInactiveParticipants = searchParams.get("hideInactive") !== "0";
   const todayDateKey = getTodayDateKey();
@@ -42,11 +44,13 @@ export function CrosstablesView() {
     // Deduplicate here to avoid rendering bugs if an event briefly appears in
     // both the "Chronological" and "Inbox" arrays during a state transition.
     () =>
-      dedupeEventsById([
-        ...events.filter((event) => Boolean(event.startDate)),
-        ...inboxEvents,
-      ]),
-    [events, inboxEvents],
+      applyFilters(
+        dedupeEventsById([
+          ...events.filter((event) => Boolean(event.startDate)),
+          ...inboxEvents,
+        ]),
+      ),
+    [events, inboxEvents, applyFilters],
   );
 
   const filteredCrosstableEvents = crosstableEvents.filter((event) => {
@@ -78,15 +82,6 @@ export function CrosstablesView() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [previewEvent, editingEvent]);
 
-  const participantNames = useMemo(() => {
-    return Array.from(
-      new Set([
-        ...(hideInactiveParticipants ? [] : friendNames),
-        ...filteredCrosstableEvents.flatMap((event) => event.participants),
-      ]),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [friendNames, filteredCrosstableEvents, hideInactiveParticipants]);
-
   const eventsByCategory = plannerEventCategories.reduce(
     (acc, category) => {
       acc[category] = sortCategoryEvents(
@@ -97,51 +92,73 @@ export function CrosstablesView() {
     {} as Record<PlannerEventCategory, PlannerEvent[]>,
   );
 
-  /**
-   * Density logic calibrated for standard 1440px laptop screens.
-   *
-   * The 7- and 14-participant thresholds prevent horizontal layout breaks
-   * while keeping the checkbox targets large enough for accessible touch and
-   * pointer interaction.
-   */
-  // --- DENSITY LOGIC ---
-  const count = participantNames.length;
-  // Stage 1: Relaxed
-  let colWidthClass = "w-16 min-w-16";
-  let cellPaddingClass = "px-2";
-  let checkContainerClass = "h-9 w-9";
-  let checkIconSize = 22;
-  let labelSize = "text-[12px]";
-
-  if (count > 7) {
-    // Stage 2: Standard
-    colWidthClass = "w-12 min-w-12";
-    cellPaddingClass = "px-1";
-    checkContainerClass = "h-8 w-8";
-    checkIconSize = 18;
-    labelSize = "text-[11px]";
-  }
-
-  if (count > 14) {
-    // Stage 3: Compact
-    colWidthClass = "w-9 min-w-9";
-    cellPaddingClass = "px-0.5";
-    checkContainerClass = "h-7 w-7";
-    checkIconSize = 16;
-    labelSize = "text-[10px]";
-  }
+  const visibleCategories = plannerEventCategories.filter(
+    (category) =>
+      !hiddenCategories.has(category) &&
+      (eventsByCategory[category]?.length ?? 0) > 0,
+  );
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="grid gap-4">
-        {plannerEventCategories.map((category) => {
+    <section className="flex flex-col gap-4 pb-4">
+      {visibleCategories.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
+          <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm dark:bg-sam-surface-2">
+            <CalendarDays className="h-7 w-7 text-sam-text-4" aria-hidden="true" />
+            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-sam-text-1">
+            No events found
+          </h3>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-sam-text-3">
+            Add a new event from the sidebar, or adjust your filters to see
+            more events.
+          </p>
+        </div>
+      )}
+      <div className="flex flex-col gap-4 min-w-max">
+        {visibleCategories.map((category) => {
           const categoryEvents = eventsByCategory[category];
           const theme = getCalendarTheme(category);
+
+          const participantNames = Array.from(
+            new Set([
+              ...(hideInactiveParticipants ? [] : friendNames),
+              ...categoryEvents.flatMap((event) => event.participants),
+            ]),
+          ).sort((a, b) => a.localeCompare(b));
+
+          /**
+           * Density logic calibrated for standard 1440px laptop screens.
+           *
+           * The 7- and 14-participant thresholds prevent horizontal layout breaks
+           * while keeping the checkbox targets large enough for accessible touch and
+           * pointer interaction.
+           */
+          const count = participantNames.length;
+          let colWidthClass = "w-16 min-w-16";
+          let cellPaddingClass = "px-2";
+          let checkContainerClass = "h-9 w-9";
+          let checkIconSize = 22;
+          let labelSize = "text-[12px]";
+          if (count > 7) {
+            colWidthClass = "w-12 min-w-12";
+            cellPaddingClass = "px-1";
+            checkContainerClass = "h-8 w-8";
+            checkIconSize = 18;
+            labelSize = "text-[11px]";
+          }
+          if (count > 14) {
+            colWidthClass = "w-9 min-w-9";
+            cellPaddingClass = "px-0.5";
+            checkContainerClass = "h-7 w-7";
+            checkIconSize = 16;
+            labelSize = "text-[10px]";
+          }
 
           return (
             <article
               key={category}
-              className={`min-w-0 overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${theme.section}`}
+              className={`overflow-hidden rounded-[1.5rem] border p-4 shadow-sm ${theme.section}`}
             >
               <div className="mb-3 flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${theme.accent}`} />
@@ -156,9 +173,8 @@ export function CrosstablesView() {
                 </span>
               </div>
 
-              <div className="max-w-full overflow-x-auto">
-                <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-sam-border bg-sam-surface/90 text-sm">
-                  <thead>
+              <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-sam-border bg-sam-surface/90 text-sm">
+                <thead>
                     <tr>
                       <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-sam-border bg-sam-surface-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-sam-text-3">
                         Event
@@ -250,8 +266,7 @@ export function CrosstablesView() {
                       ))
                     )}
                   </tbody>
-                </table>
-              </div>
+              </table>
             </article>
           );
         })}

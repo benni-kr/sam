@@ -17,6 +17,7 @@ import { BirthdayBanner } from "@/components/ui/birthday-banner";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { getBirthdaysForDate } from "@/features/friends/lib/birthday-utils";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { useFilterState } from "@/features/planner/state/filter-state";
 import { getCalendarTheme } from "@/features/planner/lib/category-config";
 import type {
   PlannerEvent,
@@ -88,6 +89,7 @@ function getEventStatus(
  */
 export function ListView() {
   const { events, updateEvent, deleteEvent } = usePlannerState();
+  const { applyFilters } = useFilterState();
   const { friends, friendNames } = useFriendsState();
   const [previewEventId, setPreviewEventId] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -105,8 +107,9 @@ export function ListView() {
   const hideFinished = searchParams.get("hideFinished") !== "0"; // default on
 
   const scheduledEvents = useMemo(
-    () => events.filter((event) => Boolean(event.startDate)),
-    [events],
+    () =>
+      applyFilters(events).filter((event) => Boolean(event.startDate)),
+    [events, applyFilters],
   );
 
   const sortedEvents = useMemo(() => {
@@ -131,7 +134,7 @@ export function ListView() {
   }, [scheduledEvents, hideFinished, todayDateKey]);
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4">
+    <section className="h-full overflow-y-auto pb-4 pr-1">
       <div className="rounded-[2rem] border border-sam-border bg-sam-surface/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="mt-4 space-y-4">
           {sortedEvents.length === 0 ? (
@@ -144,11 +147,11 @@ export function ListView() {
                 <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
               </div>
               <h3 className="text-lg font-semibold text-sam-text-1">
-                No events match your current view
+                No events found
               </h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-sam-text-3">
-                Try showing completed events again, or add something new from
-                the Calendar. Unscheduled ideas will still live in the Inbox.
+                Add a new event from the sidebar, or adjust your filters to
+                see more events.
               </p>
             </div>
           ) : (

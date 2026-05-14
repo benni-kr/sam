@@ -4,6 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 
 import { DraggableEvent } from "@/features/planner/components/draggable-event";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { useFilterState } from "@/features/planner/state/filter-state";
 
 /**
  * Global inbox for unscheduled events.
@@ -17,6 +18,8 @@ import { usePlannerState } from "@/features/planner/state/planner-state";
  */
 export function SidebarInbox() {
   const { inboxEvents } = usePlannerState();
+  const { applyFilters } = useFilterState();
+  const visibleInboxEvents = applyFilters(inboxEvents);
   const { setNodeRef, isOver } = useDroppable({
     // NOTE: The exact string "inbox" is a DnD contract. app-shell.tsx's
     // `handleDragEnd` checks for this id to decide when to call
@@ -44,7 +47,7 @@ export function SidebarInbox() {
       </div>
 
       <div className="space-y-2 overflow-hidden">
-        {inboxEvents.map((event) => (
+        {visibleInboxEvents.map((event) => (
           <DraggableEvent key={event.id} event={event} compact />
         ))}
       </div>
