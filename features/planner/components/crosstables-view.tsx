@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check } from "lucide-react";
+import { CalendarDays, Check } from "lucide-react";
 
 import { EventPreviewModal } from "@/components/ui/event-preview";
 import { PlannerEventForm } from "@/features/planner/components/event-form";
@@ -102,11 +102,16 @@ export function CrosstablesView() {
     <section className="flex flex-col gap-4 pb-4">
       {visibleCategories.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
-          <p className="text-sm font-semibold text-sam-text-1">
-            No events match your filters
-          </p>
-          <p className="mt-1 text-xs text-sam-text-3">
-            Try adjusting your search or participant filters.
+          <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm dark:bg-sam-surface-2">
+            <CalendarDays className="h-7 w-7 text-sam-text-4" aria-hidden="true" />
+            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-sam-text-1">
+            No events found
+          </h3>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-sam-text-3">
+            Add a new event from the sidebar, or adjust your filters to see
+            more events.
           </p>
         </div>
       )}
