@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SAM | Semester Activity Manager",
   description:
-    "Collaborative semester planner for shared calendars, inbox ideas, and participation tracking.",
+    "Collaborative semester planner for shared activities, inboxing ideas, and participation tracking.",
 };
 
 //Note: suppressHydrationWarning only tells React to ignore attribute mismatches
