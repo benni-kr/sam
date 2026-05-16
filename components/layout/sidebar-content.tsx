@@ -9,15 +9,12 @@
  */
 
 import { useEffect, useRef } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { FilterArea } from "@/components/layout/sidebar-filter";
 
 import { SidebarInbox } from "@/components/layout/sidebar-inbox";
-import {
-  defaultPlannerSemesterId,
-  plannerEventCategories,
-} from "@/features/planner/lib/planner";
+import { plannerEventCategories } from "@/features/planner/lib/planner";
 import { plannerWeekEventCategories } from "@/features/weekly-schedule/lib/week-types";
 import { getCalendarTheme } from "@/features/planner/lib/category-config";
 import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
@@ -30,8 +27,6 @@ import { useFriendsState } from "@/features/friends/state/friends-state";
  */
 export function SidebarContent() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const semesterId = searchParams.get("semester") ?? defaultPlannerSemesterId;
 
   const { openCreateEvent, openCreateWeekEvent, openManageFriends } =
     useCreateEvent();
