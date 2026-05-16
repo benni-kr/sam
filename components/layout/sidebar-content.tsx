@@ -13,7 +13,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { FilterArea } from "@/components/layout/sidebar-filter";
 
-import { PlannerTabs } from "@/features/planner/components/planner-tabs";
 import { SidebarInbox } from "@/components/layout/sidebar-inbox";
 import {
   defaultPlannerSemesterId,
@@ -67,10 +66,6 @@ export function SidebarContent() {
 
   return (
     <>
-      <div>
-        <PlannerTabs activeSemesterId={semesterId} />
-      </div>
-
       {isWeekView ? (
         <>
           <section className="rounded-[1.25rem] border border-sam-border bg-sam-surface p-3">
@@ -188,4 +183,3 @@ export function SidebarContent() {
     </>
   );
 }
-

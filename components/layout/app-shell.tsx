@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
+import { PlannerTabs } from "@/features/planner/components/planner-tabs";
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { CreateEventProvider } from "@/features/planner/components/create-event-context";
 import { FilterStateProvider } from "@/features/planner/state/filter-state";
@@ -189,7 +190,7 @@ export function AppShell({ children, sidebarContent }: AppShellProps) {
     <FriendsProvider>
       <FilterStateProvider>
         <PlannerStateProvider activeSemesterId={semesterId}>
-            <AppShellFrame
+          <AppShellFrame
             semesterId={semesterId}
             activeSemester={activeSemester}
             semesterMenuOpen={semesterMenuOpen}
@@ -422,31 +423,55 @@ function AppShellFrame({
         onDragCancel={handleDragCancel}
       >
         <main className="min-h-screen bg-page text-sam-text-1">
-          <div className="mx-auto grid min-h-screen w-full max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
-            <aside className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/80 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_20px_60px_rgba(0,0,0,0.3)] lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-              <div className="min-w-0 space-y-4 lg:h-full lg:overflow-y-auto lg:pr-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sam-text-3">
-                    Semester Activity Manager
-                  </p>
+          <div className="mx-auto grid min-h-screen w-full max-w-350 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
+            <aside className="flex flex-col overflow-hidden rounded-3xl border border-sam-border bg-sam-surface p-4 shadow-xl dark:shadow-none lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+              {/* PINNED HEADER */}
+              <div className="flex-none flex flex-col gap-3 pb-4 mb-2 border-b border-sam-border/60 dark:border-slate-700/60">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-baseline gap-2 pt-1">
+                    <h1 className="text-2xl font-black tracking-tighter text-sam-text-1 leading-none">
+                      sam
+                      <span className="text-blue-500 dark:text-blue-400">
+                        .
+                      </span>
+                    </h1>
+                  </div>
                   <ThemeToggle />
                 </div>
 
-                <div className="flex items-center gap-2">
-                <div ref={semesterMenuRef} className="relative min-w-0 flex-1">
+                {/* Dropdown: Improved contrast and perfectly attached submenu */}
+                <div className="relative min-w-0 flex-1" ref={semesterMenuRef}>
                   <button
                     type="button"
                     onClick={() => setSemesterMenuOpen((current) => !current)}
                     aria-expanded={semesterMenuOpen}
                     aria-haspopup="menu"
-                    className="inline-flex w-full items-center justify-between rounded-full border border-sam-border bg-sam-surface-2 px-4 py-2 text-sm text-sam-text-2 shadow-sm transition-colors hover:border-sam-border-2 hover:bg-sam-surface dark:hover:border-slate-600 dark:hover:bg-slate-700"
+                    className="group flex w-full items-center justify-between rounded-xl border border-sam-border bg-sam-surface-2 px-3 py-2 text-left transition-all hover:border-sam-border-2 hover:bg-sam-surface-3"
                   >
-                    <span className="font-medium">{activeSemester.label}</span>
-                    <span className="text-sam-text-4">▾</span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-sam-text-3">
+                        {activeSemester.label}
+                      </span>
+                    </div>
+                    <span className="text-sam-text-4 transition-colors group-hover:text-sam-text-2">
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M8 9l4-4 4 4m0 6l-4 4-4-4"
+                        />
+                      </svg>
+                    </span>
                   </button>
 
                   {semesterMenuOpen ? (
-                    <div className="absolute left-0 right-0 top-12 z-20 overflow-hidden rounded-[1rem] border border-sam-border bg-sam-surface p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
+                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-xl border border-sam-border bg-sam-surface p-1 shadow-[0_16px_40px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
                       {plannerSemesters.map((semester) => {
                         const isActive = semester.id === semesterId;
                         const href = buildSemesterHref(semester.id);
@@ -457,24 +482,30 @@ function AppShellFrame({
                             href={href}
                             aria-current={isActive ? "true" : undefined}
                             onClick={() => setSemesterMenuOpen(false)}
-                            className={`mt-1 block rounded-xl px-3 py-2 text-left transition-colors ${
+                            className={`block rounded-lg px-3 py-2 text-left transition-colors ${
                               isActive
-                                ? "bg-sam-solid text-sam-solid-fg"
-                                : "text-sam-text-2 hover:bg-sam-surface-3 dark:hover:bg-sam-surface-2"
+                                ? "bg-sam-surface-3 text-sam-text-1 font-semibold"
+                                : "text-sam-text-2 hover:bg-sam-surface-2"
                             }`}
                           >
-                            <span className="text-sm font-medium">
-                              {semester.label}
-                            </span>
+                            <span className="text-sm">{semester.label}</span>
                           </a>
                         );
                       })}
                     </div>
                   ) : null}
                 </div>
-                </div>
 
-                {sidebarContent ? sidebarContent : null}
+                <div className="pt-1">
+                  <PlannerTabs activeSemesterId={semesterId} />
+                </div>
+              </div>
+
+              {/* SCROLLING CONTENT */}
+              <div className="min-h-0 flex-1">
+                <div className="h-full space-y-5 overflow-y-auto pb-4 scrollbar-slim pr-2">
+                  {sidebarContent ? sidebarContent : null}
+                </div>
               </div>
             </aside>
 
@@ -542,9 +573,7 @@ function AppShellFrame({
           isOpen={isManageFriendsOpen}
           onClose={() => setIsManageFriendsOpen(false)}
         />
-
       </DndContext>
     </CreateEventProvider>
   );
 }
-

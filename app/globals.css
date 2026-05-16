@@ -100,6 +100,50 @@ html.dark {
   }
 }
 
+/* ── 1. GLOBAL SCROLLBAR (Chrome/Edge/Safari) ──────────────────────────── */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sam-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--sam-border-2);
+  border: 3px solid var(--sam-surface);
+  background-clip: padding-box;
+}
+
+/* ── 2. SLIM SCROLLBAR (Specifically for sidebar) ─────────────────── */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sam-border-2) transparent; /* Firefox support */
+}
+
+.scrollbar-slim::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background-color: var(--sam-border-2);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+/* ── 3. FIREFOX GLOBAL SCROLLBAR ───────────────────────────────────────── */
+html {
+  scrollbar-width: auto;
+  scrollbar-color: var(--sam-border-2) var(--sam-surface);
+}
+
+/* ── Base Element Styling ──────────────────────────────────────────────── */
 body {
   background: var(--sam-surface);
   color: var(--sam-text-1);
