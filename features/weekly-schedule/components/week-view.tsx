@@ -53,6 +53,13 @@ type PositionedWeekEvent = {
 const WEEK_START_MINUTES = 6 * 60;
 const WEEK_END_MINUTES = 24 * 60;
 const MIN_EVENT_HEIGHT = 42;
+// Minimum body height: 1 hour-slot = MIN_EVENT_HEIGHT px over 18 hours.
+// Below this the parent scroll container takes over.
+const MIN_BODY_HEIGHT = 18 * MIN_EVENT_HEIGHT;
+// leading-tight at the respective font sizes, used to compute how many
+// participant lines fit in the remaining block height.
+const TITLE_LINE_PX = 13; // leading-tight at text-[10px]
+const PARTICIPANT_LINE_PX = 11; // leading-tight at text-[8.5px]
 
 function parseTimeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
@@ -256,16 +263,21 @@ function WeekDayColumn({
                 );
                 const theme = getWeekTheme(item.event.category);
 
-                // Logic variables kept so you can easily toggle them later
-                //const showTime = height >= 52 && group.laneCount <= 2;
-                const showParticipants = height >= 52 && group.laneCount <= 2;
+                // How many participant lines fit below the title.
+                // Overhead: 2px padding + 2 title lines + 2px gap.
+                const participantLines = Math.max(
+                  1,
+                  Math.floor(
+                    (height - 2 - 2 * TITLE_LINE_PX - 2) / PARTICIPANT_LINE_PX,
+                  ),
+                );
 
                 return (
                   <button
                     key={item.event.id}
                     type="button"
                     onClick={() => onEdit(item.event)}
-                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${theme.card}`}
+                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${theme.card}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,
@@ -274,27 +286,23 @@ function WeekDayColumn({
                     }}
                   >
                     <div className="min-w-0 space-y-0.5">
-                      <div className="line-clamp-2 text-[10px] font-semibold leading-3.5">
+                      <div className="line-clamp-2 text-[10px] font-semibold leading-tight">
                         {item.event.title}
                       </div>
 
-                      {/* Commented out the time display block below */}
-                      {/* 
-                      {showTime ? (
-                        <div className="truncate text-[8.5px] font-medium leading-3.5 opacity-75">
-                          {item.event.startTime} - {item.event.endTime}
+                      {item.event.participants.length > 0 && (
+                        <div
+                          className="text-[8.5px] font-medium leading-tight opacity-65"
+                          style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: participantLines,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {item.event.participants.join(" · ")}
                         </div>
-                      ) : null} 
-                      */}
-
-                      {showParticipants ? (
-                        <div className="min-w-0 text-[8.5px] font-medium leading-3.5 opacity-65">
-                          <span className="whitespace-normal break-words">
-                            {item.event.participants.join(" · ") ||
-                              "No participants"}
-                          </span>
-                        </div>
-                      ) : null}
+                      )}
                     </div>
                   </button>
                 );
@@ -412,7 +420,7 @@ export function WeekView() {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
+    <section className="flex min-h-full flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
       <div className="grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90">
         <div className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sam-text-4">
           Time
@@ -433,7 +441,8 @@ export function WeekView() {
 
       <div
         ref={bodyRef}
-        className="grid min-h-0 flex-1 grid-cols-[4rem_repeat(7,minmax(0,1fr))] overflow-hidden"
+        className="grid flex-1 grid-cols-[4rem_repeat(7,minmax(0,1fr))] overflow-hidden"
+        style={{ minHeight: MIN_BODY_HEIGHT }}
       >
         <div className="relative border-r border-sam-border bg-slate-50/80 dark:bg-slate-800/60">
           <div
