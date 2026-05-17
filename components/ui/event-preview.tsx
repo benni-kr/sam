@@ -135,7 +135,7 @@ export function EventPreviewModal({
       aria-label={`${heading}: ${event.title}`}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-5 shadow-2xl"
+        className="w-full max-w-md overflow-y-auto rounded-xl border border-sam-border bg-sam-surface p-5 shadow-2xl max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header: Title and Top Right Actions */}
