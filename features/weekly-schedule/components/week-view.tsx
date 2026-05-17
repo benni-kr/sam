@@ -53,9 +53,10 @@ type PositionedWeekEvent = {
 const WEEK_START_MINUTES = 6 * 60;
 const WEEK_END_MINUTES = 24 * 60;
 const MIN_EVENT_HEIGHT = 42;
-// Minimum body height: 1 hour-slot = MIN_EVENT_HEIGHT px over 18 hours.
-// Below this the parent scroll container takes over.
-const MIN_BODY_HEIGHT = 18 * MIN_EVENT_HEIGHT;
+// Default visible range: 08:00–18:00. Extended automatically when events
+// fall outside this window; never exceeds WEEK_START/END_MINUTES.
+const DEFAULT_DISPLAY_START = 8 * 60;
+const DEFAULT_DISPLAY_END = 18 * 60;
 // leading-tight at the respective font sizes, used to compute how many
 // participant lines fit in the remaining block height.
 const TITLE_LINE_PX = 13; // leading-tight at text-[10px]
@@ -218,11 +219,13 @@ function WeekDayColumn({
   day,
   groups,
   minuteScale,
+  displayStartMinutes,
   onEdit,
 }: {
   day: PlannerWeekday;
   groups: EventGroup[];
   minuteScale: number;
+  displayStartMinutes: number;
   onEdit: (event: PlannerWeekEvent) => void;
 }) {
   return (
@@ -241,7 +244,7 @@ function WeekDayColumn({
 
         {groups.map((group, groupIndex) => {
           const groupTop =
-            (group.startMinutes - WEEK_START_MINUTES) * minuteScale;
+            (group.startMinutes - displayStartMinutes) * minuteScale;
           const groupHeight = Math.max(
             MIN_EVENT_HEIGHT,
             (group.endMinutes - group.startMinutes) * minuteScale,
@@ -264,11 +267,11 @@ function WeekDayColumn({
                 const theme = getWeekTheme(item.event.category);
 
                 // How many participant lines fit below the title.
-                // Overhead: 2px padding + 2 title lines + 2px gap.
+                // Overhead: 2px padding + 1 title line + 2px gap.
                 const participantLines = Math.max(
                   1,
                   Math.floor(
-                    (height - 2 - 2 * TITLE_LINE_PX - 2) / PARTICIPANT_LINE_PX,
+                    (height - 2 - TITLE_LINE_PX - 2) / PARTICIPANT_LINE_PX,
                   ),
                 );
 
@@ -276,6 +279,7 @@ function WeekDayColumn({
                   <button
                     key={item.event.id}
                     type="button"
+                    title={item.event.title}
                     onClick={() => onEdit(item.event)}
                     className={`absolute min-w-0 overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${theme.card}`}
                     style={{
@@ -286,7 +290,7 @@ function WeekDayColumn({
                     }}
                   >
                     <div className="min-w-0 space-y-0.5">
-                      <div className="line-clamp-2 text-[10px] font-semibold leading-tight">
+                      <div className="truncate text-[10px] font-semibold leading-tight">
                         {item.event.title}
                       </div>
 
@@ -329,11 +333,37 @@ export function WeekView() {
     null,
   );
 
-  // Map the fixed 18-hour timeline (1080 minutes from 06:00 to 24:00) to the
-  // exact pixel height of the viewport so the grid fits perfectly without
-  // requiring vertical scrolling.
+  // Compute the visible time range: default 08:00–18:00, expanded to the
+  // nearest hour boundary whenever events fall outside that window.
+  const { displayStartMinutes, displayEndMinutes } = useMemo(() => {
+    if (visibleWeekEvents.length === 0) {
+      return {
+        displayStartMinutes: DEFAULT_DISPLAY_START,
+        displayEndMinutes: DEFAULT_DISPLAY_END,
+      };
+    }
+    const earliestStart = Math.min(
+      ...visibleWeekEvents.map((e) => parseTimeToMinutes(e.startTime)),
+    );
+    const latestEnd = Math.max(
+      ...visibleWeekEvents.map((e) => parseTimeToMinutes(e.endTime)),
+    );
+    return {
+      displayStartMinutes: Math.max(
+        WEEK_START_MINUTES,
+        Math.floor(Math.min(earliestStart, DEFAULT_DISPLAY_START) / 60) * 60,
+      ),
+      displayEndMinutes: Math.min(
+        WEEK_END_MINUTES,
+        Math.ceil(Math.max(latestEnd, DEFAULT_DISPLAY_END) / 60) * 60,
+      ),
+    };
+  }, [visibleWeekEvents]);
+
+  const displayHourCount = (displayEndMinutes - displayStartMinutes) / 60;
+
   const minuteScale =
-    bodyHeight > 0 ? bodyHeight / (WEEK_END_MINUTES - WEEK_START_MINUTES) : 1.0;
+    bodyHeight > 0 ? bodyHeight / (displayEndMinutes - displayStartMinutes) : 1.0;
 
   useEffect(() => {
     if (!previewEvent) {
@@ -393,6 +423,12 @@ export function WeekView() {
     );
   }, [eventsByDay]);
 
+  const visibleDays = useMemo(() => {
+    return plannerWeekdays.filter(
+      (day) => day !== "Sat" && day !== "Sun" || (eventsByDay[day]?.length ?? 0) > 0,
+    );
+  }, [eventsByDay]);
+
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -421,11 +457,14 @@ export function WeekView() {
 
   return (
     <section className="flex min-h-full flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
-      <div className="grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90">
+      <div
+        className="grid border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90"
+        style={{ gridTemplateColumns: `4rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}
+      >
         <div className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sam-text-4">
           Time
         </div>
-        {plannerWeekdays.map((day) => {
+        {visibleDays.map((day) => {
           return (
             <div
               key={day}
@@ -441,8 +480,11 @@ export function WeekView() {
 
       <div
         ref={bodyRef}
-        className="grid flex-1 grid-cols-[4rem_repeat(7,minmax(0,1fr))] overflow-hidden"
-        style={{ minHeight: MIN_BODY_HEIGHT }}
+        className="grid flex-1 overflow-hidden"
+        style={{
+          gridTemplateColumns: `4rem repeat(${visibleDays.length}, minmax(0, 1fr))`,
+          minHeight: displayHourCount * MIN_EVENT_HEIGHT,
+        }}
       >
         <div className="relative border-r border-sam-border bg-slate-50/80 dark:bg-slate-800/60">
           <div
@@ -456,15 +498,20 @@ export function WeekView() {
             }
           />
           {Array.from(
-            { length: 19 },
-            (_, index) => WEEK_START_MINUTES / 60 + index,
+            { length: displayHourCount + 1 },
+            (_, index) => displayStartMinutes / 60 + index,
           ).map((hour) => (
             <div
               key={hour}
-              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-sam-text-3"
+              style={{ height: `calc(100% / ${displayHourCount})` }}
+              className="relative flex items-center justify-center text-[9px] font-medium text-sam-text-3"
             >
               <span
-                className={hour === 24 ? "font-semibold text-slate-700" : ""}
+                className={
+                  hour === displayEndMinutes / 60
+                    ? "font-semibold text-slate-700"
+                    : ""
+                }
               >
                 {formatHourLabel(hour)}
               </span>
@@ -472,12 +519,13 @@ export function WeekView() {
           ))}
         </div>
 
-        {plannerWeekdays.map((day) => (
+        {visibleDays.map((day) => (
           <WeekDayColumn
             key={day}
             day={day}
             groups={layouts[day].groups}
             minuteScale={minuteScale}
+            displayStartMinutes={displayStartMinutes}
             onEdit={(event) => setPreviewEvent(event)}
           />
         ))}
