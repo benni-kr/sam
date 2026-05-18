@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import {
@@ -57,15 +57,17 @@ export function useDragInteraction({
 
   // Keep latest values accessible inside stable mouse-event callbacks
   const minuteScaleRef = useRef(minuteScale);
-  minuteScaleRef.current = minuteScale;
   const displayStartMinutesRef = useRef(displayStartMinutes);
-  displayStartMinutesRef.current = displayStartMinutes;
   const visibleDaysRef = useRef(visibleDays);
-  visibleDaysRef.current = visibleDays;
   const updateWeekEventRef = useRef(updateWeekEvent);
-  updateWeekEventRef.current = updateWeekEvent;
   const onEventClickRef = useRef(onEventClick);
-  onEventClickRef.current = onEventClick;
+  useLayoutEffect(() => {
+    minuteScaleRef.current = minuteScale;
+    displayStartMinutesRef.current = displayStartMinutes;
+    visibleDaysRef.current = visibleDays;
+    updateWeekEventRef.current = updateWeekEvent;
+    onEventClickRef.current = onEventClick;
+  });
 
   // Hypothetical layouts that include the ghost event so other events in the
   // target column immediately adjust their lane widths during drag/resize.
@@ -246,6 +248,8 @@ export function useDragInteraction({
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
+    // bodyRef is a stable ref object; all mutable values are read via refs updated in useLayoutEffect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

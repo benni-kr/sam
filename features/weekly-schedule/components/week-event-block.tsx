@@ -51,7 +51,7 @@ export function WeekEventContent({
     if (!el) return;
     const overflows = el.scrollWidth > el.clientWidth;
     if (overflows !== singleLine) setSingleLine(overflows);
-  });
+  }, [singleLine, titleLines, event.title]);
 
   return (
     <div className="min-w-0 flex-1 space-y-0.5">
