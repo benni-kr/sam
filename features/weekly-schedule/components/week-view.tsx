@@ -62,6 +62,23 @@ const DEFAULT_DISPLAY_END = 18 * 60;
 const TITLE_LINE_PX = 13; // leading-tight at text-[10px]
 const PARTICIPANT_LINE_PX = 11; // leading-tight at text-[8.5px]
 
+function minutesToTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+type DragMode = "move" | "resize-start" | "resize-end";
+
+type DragState = {
+  event: PlannerWeekEvent;
+  mode: DragMode;
+  offsetMinutes: number;
+  duration: number;
+  pointerStart: { x: number; y: number };
+  isDragging: boolean;
+  ghost: { top: number; left: number; width: number; height: number };
+  target: { day: PlannerWeekday; startMinutes: number; endMinutes: number };
+};
+
 function parseTimeToMinutes(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
@@ -183,6 +200,22 @@ function buildDayLayouts(events: PlannerWeekEvent[]) {
   return groups;
 }
 
+function getLaneSpan(item: PositionedWeekEvent, group: EventGroup): number {
+  let span = 1;
+  for (let lane = item.lane + 1; lane < group.laneCount; lane++) {
+    const blocked = group.items.some(
+      (other) =>
+        other.event.id !== item.event.id &&
+        other.lane === lane &&
+        other.startMinutes < item.endMinutes &&
+        other.endMinutes > item.startMinutes,
+    );
+    if (blocked) break;
+    span++;
+  }
+  return span;
+}
+
 /**
  * Measures the grid container so the responsive time scale can track the
  * available viewport height.
@@ -215,18 +248,87 @@ function useMeasuredHeight<T extends HTMLElement>() {
   return { ref, height };
 }
 
+function WeekEventContent({
+  event,
+  height,
+  naturalHeight,
+}: {
+  event: PlannerWeekEvent;
+  height: number;
+  naturalHeight: number;
+}) {
+  const hasParticipants =
+    naturalHeight >= MIN_EVENT_HEIGHT && event.participants.length > 0;
+
+  const available = height - 2; // py-px: 1px top + 1px bottom
+
+  let titleLines: number;
+  let participantLines = 0;
+
+  if (hasParticipants) {
+    const titleHeight = Math.floor(available * 0.6);
+    const participantHeight = available - titleHeight - 2; // 2px space-y-0.5 gap
+    if (participantHeight >= PARTICIPANT_LINE_PX) {
+      titleLines = Math.max(1, Math.floor(titleHeight / TITLE_LINE_PX));
+      participantLines = Math.max(1, Math.floor(participantHeight / PARTICIPANT_LINE_PX));
+    } else {
+      titleLines = Math.max(1, Math.floor(available / TITLE_LINE_PX));
+    }
+  } else {
+    titleLines = Math.max(1, Math.floor(available / TITLE_LINE_PX));
+  }
+
+  return (
+    <div className="min-w-0 flex-1 space-y-0.5">
+      <div
+        className="text-[10px] font-semibold leading-tight"
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: titleLines,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+      >
+        {event.title}
+      </div>
+      {participantLines > 0 && (
+        <div
+          className="text-[8.5px] font-medium leading-tight opacity-65"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: participantLines,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {event.participants.join(" · ")}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WeekDayColumn({
   day,
   groups,
   minuteScale,
   displayStartMinutes,
-  onEdit,
+  onInteractionMouseDown,
+  draggingEventId,
+
 }: {
   day: PlannerWeekday;
   groups: EventGroup[];
   minuteScale: number;
   displayStartMinutes: number;
-  onEdit: (event: PlannerWeekEvent) => void;
+  onInteractionMouseDown: (
+    event: PlannerWeekEvent,
+    mode: DragMode,
+    e: React.MouseEvent<HTMLElement>,
+    blockRect: DOMRect,
+  ) => void;
+  draggingEventId?: string;
+
 }) {
   return (
     <div className="relative border-r border-sam-border last:border-r-0">
@@ -242,7 +344,7 @@ function WeekDayColumn({
           }
         />
 
-        {groups.map((group, groupIndex) => {
+{groups.map((group, groupIndex) => {
           const groupTop =
             (group.startMinutes - displayStartMinutes) * minuteScale;
           const groupHeight = Math.max(
@@ -263,78 +365,47 @@ function WeekDayColumn({
                 const naturalHeight =
                   (item.endMinutes - item.startMinutes) * minuteScale;
                 const height = Math.max(MIN_EVENT_HEIGHT, naturalHeight);
+                const span = getLaneSpan(item, group);
                 const theme = getWeekTheme(item.event.category);
-
-                // Only show participants when the block is naturally tall
-                // enough — i.e. not artificially expanded by MIN_EVENT_HEIGHT.
-                const showParticipants =
-                  naturalHeight >= MIN_EVENT_HEIGHT &&
-                  item.event.participants.length > 0;
-
-                // Participants have priority: compute their lines first,
-                // reserving only one title line. Title gets what remains.
-                const participantLines = showParticipants
-                  ? Math.max(
-                      1,
-                      Math.floor(
-                        (height - 2 - TITLE_LINE_PX - 2) / PARTICIPANT_LINE_PX,
-                      ),
-                    )
-                  : 0;
-
-                const titleLines = Math.max(
-                  1,
-                  Math.floor(
-                    (height -
-                      2 -
-                      (showParticipants
-                        ? participantLines * PARTICIPANT_LINE_PX + 2
-                        : 0)) /
-                      TITLE_LINE_PX,
-                  ),
-                );
 
                 return (
                   <button
                     key={item.event.id}
                     type="button"
                     title={item.event.title}
-                    onClick={() => onEdit(item.event)}
-                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${theme.card}`}
+                    onMouseDown={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      onInteractionMouseDown(item.event, "move", e, rect);
+                    }}
+                    className={`absolute flex items-center min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,
-                      width: `${laneWidth}%`,
+                      width: `${laneWidth * span}%`,
                       height: `${height}px`,
                     }}
                   >
-                    <div className="min-w-0 space-y-0.5">
-                      <div
-                        className="text-[10px] font-semibold leading-tight"
-                        style={{
-                          display: "-webkit-box",
-                          WebkitLineClamp: titleLines,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {item.event.title}
-                      </div>
-
-                      {showParticipants && (
-                        <div
-                          className="text-[8.5px] font-medium leading-tight opacity-65"
-                          style={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: participantLines,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {item.event.participants.join(" · ")}
-                        </div>
-                      )}
-                    </div>
+                    <div
+                      className="absolute inset-x-0 top-0 h-2 cursor-ns-resize"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                        onInteractionMouseDown(item.event, "resize-start", e, rect);
+                      }}
+                    />
+                    <WeekEventContent
+                      event={item.event}
+                      height={height}
+                      naturalHeight={naturalHeight}
+                    />
+                    <div
+                      className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                        onInteractionMouseDown(item.event, "resize-end", e, rect);
+                      }}
+                    />
                   </button>
                 );
               })}
@@ -451,10 +522,232 @@ export function WeekView() {
   }, [eventsByDay]);
 
   const visibleDays = useMemo(() => {
-    return plannerWeekdays.filter(
-      (day) => day !== "Sat" && day !== "Sun" || (eventsByDay[day]?.length ?? 0) > 0,
-    );
+    const sunVisible = (eventsByDay["Sun"]?.length ?? 0) > 0;
+    return plannerWeekdays.filter((day) => {
+      if (day === "Sun") return sunVisible;
+      if (day === "Sat") return (eventsByDay["Sat"]?.length ?? 0) > 0 || sunVisible;
+      return true;
+    });
   }, [eventsByDay]);
+
+  const updateWeekEventRef = useRef(updateWeekEvent);
+  updateWeekEventRef.current = updateWeekEvent;
+  const setPreviewEventRef = useRef(setPreviewEvent);
+  setPreviewEventRef.current = setPreviewEvent;
+
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const minuteScaleRef = useRef(minuteScale);
+  minuteScaleRef.current = minuteScale;
+  const displayStartMinutesRef = useRef(displayStartMinutes);
+  displayStartMinutesRef.current = displayStartMinutes;
+  const visibleDaysRef = useRef(visibleDays);
+  visibleDaysRef.current = visibleDays;
+
+  // Hypothetical layouts that include the ghost event so other events in the
+  // target column immediately adjust their lane widths during drag/resize.
+  const draggingLayouts = useMemo(() => {
+    if (!drag?.isDragging) return null;
+    const { event: dragged, target } = drag;
+
+    const ghostEvent: PlannerWeekEvent = {
+      ...dragged,
+      day: target.day,
+      startTime: minutesToTime(target.startMinutes),
+      endTime: minutesToTime(target.endMinutes),
+    };
+
+    const result: Partial<Record<PlannerWeekday, DayLayout>> = {};
+
+    if (dragged.day !== target.day) {
+      result[dragged.day] = {
+        groups: buildDayLayouts(
+          (eventsByDay[dragged.day] ?? []).filter((e) => e.id !== dragged.id),
+        ),
+      };
+    }
+
+    result[target.day] = {
+      groups: buildDayLayouts([
+        ...(eventsByDay[target.day] ?? []).filter((e) => e.id !== dragged.id),
+        ghostEvent,
+      ]),
+    };
+
+    return result;
+  }, [drag, eventsByDay]);
+
+  const ghostLaneInfo = useMemo(() => {
+    if (!drag?.isDragging || !draggingLayouts) return null;
+    const targetGroups = draggingLayouts[drag.target.day]?.groups ?? [];
+    for (const group of targetGroups) {
+      const item = group.items.find((i) => i.event.id === drag.event.id);
+      if (item) return { lane: item.lane, laneCount: group.laneCount, span: getLaneSpan(item, group) };
+    }
+    return null;
+  }, [drag, draggingLayouts]);
+
+  function handleInteractionMouseDown(
+    event: PlannerWeekEvent,
+    mode: DragMode,
+    e: React.MouseEvent<HTMLElement>,
+    blockRect: DOMRect,
+  ) {
+    e.preventDefault();
+    if (!bodyRef.current || minuteScale === 0) return;
+
+    const gridRect = bodyRef.current.getBoundingClientRect();
+    const dayColWidth = (gridRect.width - 64) / visibleDays.length;
+    const eventStart = parseTimeToMinutes(event.startTime);
+    const eventEnd = parseTimeToMinutes(event.endTime);
+    const eventDuration = eventEnd - eventStart;
+    const clickYInBlock = e.clientY - blockRect.top;
+    const offsetMinutes = Math.max(
+      0,
+      Math.min(eventDuration, clickYInBlock / minuteScale),
+    );
+    const dayIndex = visibleDays.indexOf(event.day);
+
+    dragRef.current = {
+      event,
+      mode,
+      offsetMinutes,
+      duration: eventDuration,
+      pointerStart: { x: e.clientX, y: e.clientY },
+      isDragging: false,
+      ghost: {
+        top: blockRect.top,
+        left: gridRect.left + 64 + dayIndex * dayColWidth,
+        width: dayColWidth,
+        height: Math.max(MIN_EVENT_HEIGHT, eventDuration * minuteScale),
+      },
+      target: {
+        day: event.day,
+        startMinutes: eventStart,
+        endMinutes: eventEnd,
+      },
+    };
+  }
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      const state = dragRef.current;
+      if (!state || !bodyRef.current) return;
+
+      const dx = e.clientX - state.pointerStart.x;
+      const dy = e.clientY - state.pointerStart.y;
+      if (!state.isDragging && Math.hypot(dx, dy) < 5) return;
+
+      const gridRect = bodyRef.current.getBoundingClientRect();
+      const days = visibleDaysRef.current;
+      const scale = minuteScaleRef.current;
+      const startMin = displayStartMinutesRef.current;
+      const dayColWidth = (gridRect.width - 64) / days.length;
+      const relY = e.clientY - gridRect.top;
+      const rawMinutes = relY / scale + startMin;
+      const snapped = Math.round(rawMinutes / 15) * 15;
+
+      let targetDay = state.target.day;
+      let targetStart = state.target.startMinutes;
+      let targetEnd = state.target.endMinutes;
+      let ghostTop = state.ghost.top;
+      let ghostLeft = state.ghost.left;
+      let ghostHeight = state.ghost.height;
+
+      if (state.mode === "move") {
+        const relX = e.clientX - gridRect.left - 64;
+        const dayIndex = Math.max(
+          0,
+          Math.min(days.length - 1, Math.floor(relX / dayColWidth)),
+        );
+        targetDay = days[dayIndex];
+        const moveSnapped = Math.round(
+          (relY / scale + startMin - state.offsetMinutes) / 15,
+        ) * 15;
+        targetStart = Math.max(
+          WEEK_START_MINUTES,
+          Math.min(WEEK_END_MINUTES - state.duration, moveSnapped),
+        );
+        targetEnd = targetStart + state.duration;
+        ghostTop = gridRect.top + (targetStart - startMin) * scale;
+        ghostLeft = gridRect.left + 64 + dayIndex * dayColWidth;
+      } else if (state.mode === "resize-start") {
+        targetStart = Math.max(
+          WEEK_START_MINUTES,
+          Math.min(state.target.endMinutes - 15, snapped),
+        );
+        ghostTop = gridRect.top + (targetStart - startMin) * scale;
+        ghostHeight = Math.max(
+          MIN_EVENT_HEIGHT,
+          (targetEnd - targetStart) * scale,
+        );
+      } else {
+        targetEnd = Math.max(
+          state.target.startMinutes + 15,
+          Math.min(WEEK_END_MINUTES, snapped),
+        );
+        ghostHeight = Math.max(
+          MIN_EVENT_HEIGHT,
+          (targetEnd - targetStart) * scale,
+        );
+      }
+
+      const updated: DragState = {
+        ...state,
+        isDragging: true,
+        ghost: { ...state.ghost, top: ghostTop, left: ghostLeft, height: ghostHeight },
+        target: { day: targetDay, startMinutes: targetStart, endMinutes: targetEnd },
+      };
+
+      dragRef.current = updated;
+      setDrag({ ...updated });
+    }
+
+    function onMouseUp() {
+      const state = dragRef.current;
+      if (!state) return;
+
+      if (state.isDragging) {
+        const { event, target } = state;
+        updateWeekEventRef.current(event.id, {
+          title: event.title,
+          description: event.description,
+          category: event.category,
+          day: target.day,
+          startTime: minutesToTime(target.startMinutes),
+          endTime: minutesToTime(target.endMinutes),
+          participants: event.participants,
+        });
+      } else if (state.mode === "move") {
+        setPreviewEventRef.current(state.event);
+      }
+
+      dragRef.current = null;
+      setDrag(null);
+    }
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (drag?.isDragging) {
+      document.body.style.cursor =
+        drag.mode === "move" ? "grabbing" : "ns-resize";
+      document.body.style.userSelect = "none";
+    } else {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [drag?.isDragging, drag?.mode]);
 
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -550,10 +843,12 @@ export function WeekView() {
           <WeekDayColumn
             key={day}
             day={day}
-            groups={layouts[day].groups}
+            groups={(draggingLayouts?.[day] ?? layouts[day]).groups}
             minuteScale={minuteScale}
             displayStartMinutes={displayStartMinutes}
-            onEdit={(event) => setPreviewEvent(event)}
+            onInteractionMouseDown={handleInteractionMouseDown}
+            draggingEventId={drag?.isDragging ? drag.event.id : undefined}
+
           />
         ))}
       </div>
@@ -631,6 +926,38 @@ export function WeekView() {
             document.body,
           )
         : null}
+      {drag?.isDragging && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              style={{
+                position: "fixed",
+                top: drag.ghost.top,
+                left: ghostLaneInfo
+                  ? drag.ghost.left +
+                    ghostLaneInfo.lane * (drag.ghost.width / ghostLaneInfo.laneCount)
+                  : drag.ghost.left,
+                width: ghostLaneInfo
+                  ? (drag.ghost.width / ghostLaneInfo.laneCount) * ghostLaneInfo.span
+                  : drag.ghost.width,
+                height: drag.ghost.height,
+                pointerEvents: "none",
+                zIndex: 9999,
+              }}
+              className={`flex items-center overflow-hidden rounded-md border px-1 py-px shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${getWeekTheme(drag.event.category).card}`}
+            >
+              <WeekEventContent
+                event={drag.event}
+                height={drag.ghost.height}
+                naturalHeight={
+                  (drag.target.endMinutes - drag.target.startMinutes) *
+                  minuteScale
+                }
+              />
+            </div>,
+            document.body,
+          )
+        : null}
+
     </section>
   );
 }
