@@ -309,7 +309,7 @@ export function WeekView() {
                 pointerEvents: "none",
                 zIndex: 9999,
               }}
-              className={`flex items-center overflow-hidden rounded-md border px-1 py-px shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${getWeekTheme(drag.event.category).card}`}
+              className={`flex items-start overflow-hidden rounded-md border px-1 py-px shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${getWeekTheme(drag.event.category).card}`}
             >
               <WeekEventContent
                 event={drag.event}

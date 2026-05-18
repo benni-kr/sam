@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
 import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import {
@@ -29,23 +29,45 @@ export function WeekEventContent({
     naturalHeight >= MIN_EVENT_HEIGHT && event.participants.length > 0;
 
   const available = height - 2; // py-px: 1px top + 1px bottom
-  const participantSpace = available - TITLE_LINE_PX - 2; // 2px space-y-0.5 gap
+
+  // How many title lines fit: if participants are shown, reserve space for at
+  // least one participant line + the gap (2px space-y-0.5); otherwise fill all.
+  const titleLines = hasParticipants
+    ? Math.max(1, Math.floor((available - 2 - PARTICIPANT_LINE_PX) / TITLE_LINE_PX))
+    : Math.max(1, Math.floor(available / TITLE_LINE_PX));
+
+  // Participants fill whatever space remains after the title.
+  const remaining = available - titleLines * TITLE_LINE_PX - 2;
   const participantLines =
-    hasParticipants && participantSpace >= PARTICIPANT_LINE_PX
-      ? Math.max(1, Math.floor(participantSpace / PARTICIPANT_LINE_PX))
+    hasParticipants && remaining >= PARTICIPANT_LINE_PX
+      ? Math.max(1, Math.floor(remaining / PARTICIPANT_LINE_PX))
       : 0;
+
+  const titleRef = useRef<HTMLDivElement>(null);
+  const [singleLine, setSingleLine] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    const overflows = el.scrollWidth > el.clientWidth;
+    if (overflows !== singleLine) setSingleLine(overflows);
+  });
 
   return (
     <div className="min-w-0 flex-1 space-y-0.5">
       <div
+        ref={titleRef}
         className="text-[10px] font-semibold leading-tight"
-        style={{
-          display: "block",
-          width: "100%",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        style={
+          singleLine
+            ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+            : {
+                display: "-webkit-box",
+                WebkitLineClamp: titleLines,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }
+        }
       >
         {event.title}
       </div>
@@ -131,7 +153,7 @@ export function WeekDayColumn({
                       const rect = e.currentTarget.getBoundingClientRect();
                       onInteractionMouseDown(item.event, "move", e, rect);
                     }}
-                    className={`absolute flex items-center min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
+                    className={`absolute flex items-start min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,
