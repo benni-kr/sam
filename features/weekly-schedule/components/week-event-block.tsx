@@ -153,7 +153,7 @@ export function WeekDayColumn({
                       const rect = e.currentTarget.getBoundingClientRect();
                       onInteractionMouseDown(item.event, "move", e, rect);
                     }}
-                    className={`absolute flex items-start min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
+                    className={`absolute flex items-center min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,
