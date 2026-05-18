@@ -260,18 +260,37 @@ function WeekDayColumn({
               {group.items.map((item) => {
                 const top =
                   (item.startMinutes - group.startMinutes) * minuteScale;
-                const height = Math.max(
-                  MIN_EVENT_HEIGHT,
-                  (item.endMinutes - item.startMinutes) * minuteScale,
-                );
+                const naturalHeight =
+                  (item.endMinutes - item.startMinutes) * minuteScale;
+                const height = Math.max(MIN_EVENT_HEIGHT, naturalHeight);
                 const theme = getWeekTheme(item.event.category);
 
-                // How many participant lines fit below the title.
-                // Overhead: 2px padding + 1 title line + 2px gap.
-                const participantLines = Math.max(
+                // Only show participants when the block is naturally tall
+                // enough — i.e. not artificially expanded by MIN_EVENT_HEIGHT.
+                const showParticipants =
+                  naturalHeight >= MIN_EVENT_HEIGHT &&
+                  item.event.participants.length > 0;
+
+                // Participants have priority: compute their lines first,
+                // reserving only one title line. Title gets what remains.
+                const participantLines = showParticipants
+                  ? Math.max(
+                      1,
+                      Math.floor(
+                        (height - 2 - TITLE_LINE_PX - 2) / PARTICIPANT_LINE_PX,
+                      ),
+                    )
+                  : 0;
+
+                const titleLines = Math.max(
                   1,
                   Math.floor(
-                    (height - 2 - TITLE_LINE_PX - 2) / PARTICIPANT_LINE_PX,
+                    (height -
+                      2 -
+                      (showParticipants
+                        ? participantLines * PARTICIPANT_LINE_PX + 2
+                        : 0)) /
+                      TITLE_LINE_PX,
                   ),
                 );
 
@@ -290,11 +309,19 @@ function WeekDayColumn({
                     }}
                   >
                     <div className="min-w-0 space-y-0.5">
-                      <div className="truncate text-[10px] font-semibold leading-tight">
+                      <div
+                        className="text-[10px] font-semibold leading-tight"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: titleLines,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
                         {item.event.title}
                       </div>
 
-                      {item.event.participants.length > 0 && (
+                      {showParticipants && (
                         <div
                           className="text-[8.5px] font-medium leading-tight opacity-65"
                           style={{
