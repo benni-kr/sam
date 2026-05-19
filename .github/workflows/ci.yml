@@ -13,6 +13,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # CRITICAL: Fetches all history so TruffleHog can scan it
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@v3.95.3
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified # Optional: Only fails if the secret is active/live
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
