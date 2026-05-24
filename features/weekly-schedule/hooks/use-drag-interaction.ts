@@ -191,14 +191,21 @@ export function useDragInteraction({
           Math.min(WEEK_END_MINUTES - state.duration, moveSnapped),
         );
         targetEnd = targetStart + state.duration;
-        ghostTop = gridRect.top + (targetStart - startMin) * scale;
+        // Clamp the ghost to stay inside the grid body so it never overlaps the header
+        ghostTop = Math.max(
+          gridRect.top,
+          Math.min(gridRect.bottom - state.ghost.height, gridRect.top + (targetStart - startMin) * scale),
+        );
         ghostLeft = gridRect.left + 64 + dayIndex * dayColWidth;
       } else if (state.mode === "resize-start") {
         targetStart = Math.max(
           WEEK_START_MINUTES,
           Math.min(state.target.endMinutes - 15, snapped),
         );
-        ghostTop = gridRect.top + (targetStart - startMin) * scale;
+        ghostTop = Math.max(
+          gridRect.top,
+          gridRect.top + (targetStart - startMin) * scale,
+        );
         ghostHeight = Math.max(MIN_EVENT_HEIGHT, (targetEnd - targetStart) * scale);
       } else {
         targetEnd = Math.max(

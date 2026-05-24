@@ -30,28 +30,31 @@ export function WeekEventContent({
 
   const available = height - 2; // py-px: 1px top + 1px bottom
 
-  // How many title lines fit: if participants are shown, reserve space for at
-  // least one participant line + the gap (2px space-y-0.5); otherwise fill all.
-  const titleLines = hasParticipants
+  // Max lines the title may occupy (always reserve ≥1 participant line when needed).
+  const maxTitleLines = hasParticipants
     ? Math.max(1, Math.floor((available - 2 - PARTICIPANT_LINE_PX) / TITLE_LINE_PX))
     : Math.max(1, Math.floor(available / TITLE_LINE_PX));
 
-  // Participants fill whatever space remains after the title.
-  const remaining = available - titleLines * TITLE_LINE_PX - 2;
-  const participantLines =
-    hasParticipants && remaining >= PARTICIPANT_LINE_PX
-      ? Math.max(1, Math.floor(remaining / PARTICIPANT_LINE_PX))
-      : 0;
-
   const titleRef = useRef<HTMLDivElement>(null);
   const [singleLine, setSingleLine] = useState(false);
+  // Actual rendered title height — start with estimate, corrected after first paint.
+  const [titleHeight, setTitleHeight] = useState(TITLE_LINE_PX);
 
   useLayoutEffect(() => {
     const el = titleRef.current;
     if (!el) return;
     const overflows = el.scrollWidth > el.clientWidth;
     if (overflows !== singleLine) setSingleLine(overflows);
-  }, [singleLine, titleLines, event.title]);
+    const h = el.offsetHeight;
+    if (h !== titleHeight) setTitleHeight(h);
+  }, [singleLine, maxTitleLines, event.title, titleHeight]);
+
+  // Use measured title height so a short title donates its unused lines to participants.
+  const remaining = available - titleHeight - 2;
+  const participantLines =
+    hasParticipants && remaining >= PARTICIPANT_LINE_PX
+      ? Math.max(1, Math.floor(remaining / PARTICIPANT_LINE_PX))
+      : 0;
 
   return (
     <div className="min-w-0 flex-1 space-y-0.5">
@@ -63,7 +66,7 @@ export function WeekEventContent({
             ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
             : {
                 display: "-webkit-box",
-                WebkitLineClamp: titleLines,
+                WebkitLineClamp: maxTitleLines,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }

@@ -198,25 +198,29 @@ export function getDefaultWeekAppointmentTimeRange(
   endTime?: string,
 ) {
   const earliestStart = "06:00";
-  const oneHourLater = "07:00";
+  const midnight = 24 * 60; // hard ceiling — events must not cross midnight
 
   const start =
     startTime && timeToMinutes(startTime) >= timeToMinutes(earliestStart)
       ? startTime
       : earliestStart;
 
-  const minimumEnd = minutesToTime(timeToMinutes(start) + 60);
+  const startMinutes = timeToMinutes(start);
 
+  // Minimum end is 1 hour after start, but never past midnight.
+  const minimumEndMinutes = Math.min(startMinutes + 60, midnight);
+  const minimumEnd = minutesToTime(minimumEndMinutes);
+
+  // Accept a supplied end time only when it is strictly after start and
+  // does not cross midnight.
+  const endMinutes = endTime ? timeToMinutes(endTime) : null;
   const normalizedEnd =
-    endTime && timeToMinutes(endTime) > timeToMinutes(start)
-      ? endTime
+    endMinutes !== null && endMinutes > startMinutes && endMinutes <= midnight
+      ? endTime!
       : minimumEnd;
 
   return {
     startTime: start,
-    endTime:
-      timeToMinutes(normalizedEnd) > timeToMinutes(start)
-        ? normalizedEnd
-        : oneHourLater,
+    endTime: normalizedEnd,
   };
 }
