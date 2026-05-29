@@ -49,7 +49,7 @@ export function BaseEventForm({
       onClick={onCancel}
     >
       <section
-        className={`w-full max-w-md border border-sam-border bg-sam-surface shadow-2xl ${panelClassName}`}
+        className={`flex w-full max-w-md flex-col overflow-y-auto border border-sam-border bg-sam-surface shadow-2xl max-h-[90vh] ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
       >
         <form onSubmit={onSubmit} className="space-y-3">
@@ -63,7 +63,7 @@ export function BaseEventForm({
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
             placeholder={titlePlaceholder}
-            maxLength={40}
+            maxLength={60}
             required
             className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 dark:placeholder:text-slate-500"
           />

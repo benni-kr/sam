@@ -1,25 +1,10 @@
 "use client";
 
-/**
- * Primary layout engine for the Weekly Routine domain.
- *
- * This component renders the responsive time-grid for the weekly schedule
- * and calculates how overlapping events should be arranged into lanes so
- * they can be displayed side-by-side instead of stacked on top of each other.
- */
-
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
+import { WeekDayColumn, WeekEventContent } from "@/features/weekly-schedule/components/week-event-block";
 import { EventPreviewModal } from "@/components/ui/event-preview";
 import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker";
 import {
@@ -27,370 +12,116 @@ import {
   type PlannerWeekEvent,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
+import {
+  buildDayLayouts,
+  formatHourLabel,
+  parseTimeToMinutes,
+  MIN_EVENT_HEIGHT,
+  DEFAULT_DISPLAY_START,
+  DEFAULT_DISPLAY_END,
+  WEEK_START_MINUTES,
+  WEEK_END_MINUTES,
+  type DayLayout,
+} from "@/features/weekly-schedule/lib/week-layout";
 import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { useFilterState } from "@/features/planner/state/filter-state";
-
-type DayLayout = {
-  groups: EventGroup[];
-};
-
-type EventGroup = {
-  startMinutes: number;
-  endMinutes: number;
-  laneCount: number;
-  items: PositionedWeekEvent[];
-};
-
-type PositionedWeekEvent = {
-  event: PlannerWeekEvent;
-  lane: number;
-  startMinutes: number;
-  endMinutes: number;
-};
-
-const WEEK_START_MINUTES = 6 * 60;
-const WEEK_END_MINUTES = 24 * 60;
-const MIN_EVENT_HEIGHT = 42;
-
-function parseTimeToMinutes(value: string) {
-  const [hours, minutes] = value.split(":").map(Number);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    return WEEK_START_MINUTES;
-  }
-  return hours * 60 + minutes;
-}
-
-function clampMinutes(minutes: number) {
-  return Math.min(WEEK_END_MINUTES, Math.max(WEEK_START_MINUTES, minutes));
-}
-
-function formatHourLabel(hour: number) {
-  if (hour === 24) {
-    return "24:00";
-  }
-
-  return `${String(hour).padStart(2, "0")}:00`;
-}
-
-/**
- * Groups overlapping weekly events and assigns lanes using a greedy
- * interval-layout approach.
- *
- * Events are sorted by start/end time, then packed into groups where each
- * event receives the first available lane that does not overlap with the
- * preceding item in that lane. This allows the UI to render overlapping
- * items side-by-side (similar to Google Calendar) rather than stacking them
- * vertically on top of one another.
- */
-function buildDayLayouts(events: PlannerWeekEvent[]) {
-  const sorted = [...events].sort((left, right) => {
-    const startComparison =
-      parseTimeToMinutes(left.startTime) - parseTimeToMinutes(right.startTime);
-
-    if (startComparison !== 0) {
-      return startComparison;
-    }
-
-    const endComparison =
-      parseTimeToMinutes(left.endTime) - parseTimeToMinutes(right.endTime);
-
-    if (endComparison !== 0) {
-      return endComparison;
-    }
-
-    return left.title.localeCompare(right.title);
-  });
-
-  const groups: EventGroup[] = [];
-  let currentGroup: PositionedWeekEvent[] = [];
-  let currentGroupEnd = WEEK_START_MINUTES;
-
-  function flushGroup() {
-    if (currentGroup.length === 0) {
-      return;
-    }
-
-    const startMinutes = Math.min(
-      ...currentGroup.map((item) => item.startMinutes),
-    );
-    const endMinutes = Math.max(...currentGroup.map((item) => item.endMinutes));
-
-    groups.push({
-      startMinutes,
-      endMinutes,
-      laneCount: Math.max(...currentGroup.map((item) => item.lane)) + 1,
-      items: currentGroup,
-    });
-
-    currentGroup = [];
-    currentGroupEnd = WEEK_START_MINUTES;
-  }
-
-  for (const event of sorted) {
-    const rawStartMinutes = parseTimeToMinutes(event.startTime);
-
-    // Clamp start time to a maximum of 23:45 (WEEK_END_MINUTES - 15)
-    const startMinutes = Math.min(
-      WEEK_END_MINUTES - 15,
-      Math.max(WEEK_START_MINUTES, rawStartMinutes),
-    );
-    const endMinutes = clampMinutes(
-      Math.max(startMinutes + 15, parseTimeToMinutes(event.endTime)),
-    );
-
-    if (currentGroup.length > 0 && startMinutes >= currentGroupEnd) {
-      flushGroup();
-    }
-
-    if (currentGroup.length === 0) {
-      currentGroupEnd = endMinutes;
-    } else {
-      currentGroupEnd = Math.max(currentGroupEnd, endMinutes);
-    }
-
-    let lane = 0;
-    const laneEndTimes = currentGroup.reduce<number[]>((accumulator, item) => {
-      accumulator[item.lane] = Math.max(
-        accumulator[item.lane] ?? 0,
-        item.endMinutes,
-      );
-      return accumulator;
-    }, []);
-
-    while (laneEndTimes[lane] > startMinutes) {
-      lane += 1;
-    }
-
-    currentGroup.push({
-      event,
-      lane,
-      startMinutes,
-      endMinutes,
-    });
-  }
-
-  flushGroup();
-  return groups;
-}
-
-/**
- * Measures the grid container so the responsive time scale can track the
- * available viewport height.
- *
- * The weekly grid uses this measurement to convert the fixed timeline into
- * exact pixel values as the browser resizes.
- */
-function useMeasuredHeight<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
-  const [height, setHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    if (!ref.current) {
-      return;
-    }
-
-    const element = ref.current;
-    const updateHeight = () => {
-      setHeight(element.getBoundingClientRect().height);
-    };
-
-    updateHeight();
-
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, []);
-
-  return { ref, height };
-}
-
-function WeekDayColumn({
-  day,
-  groups,
-  minuteScale,
-  onEdit,
-}: {
-  day: PlannerWeekday;
-  groups: EventGroup[];
-  minuteScale: number;
-  onEdit: (event: PlannerWeekEvent) => void;
-}) {
-  return (
-    <div className="relative border-r border-sam-border last:border-r-0">
-      <div className="relative h-full min-h-0" style={{ minHeight: 1 }}>
-        <div
-          className="absolute inset-0"
-          style={
-            {
-              backgroundImage:
-                "repeating-linear-gradient(to bottom, rgba(148,163,184,0.18) 0, rgba(148,163,184,0.18) 1px, transparent 1px, transparent calc(var(--slot-height)))",
-              ["--slot-height" as never]: `${60 * minuteScale}px`,
-            } as CSSProperties
-          }
-        />
-
-        {groups.map((group, groupIndex) => {
-          const groupTop =
-            (group.startMinutes - WEEK_START_MINUTES) * minuteScale;
-          const groupHeight = Math.max(
-            MIN_EVENT_HEIGHT,
-            (group.endMinutes - group.startMinutes) * minuteScale,
-          );
-          const laneWidth = 100 / group.laneCount;
-
-          return (
-            <div
-              key={`${day}-${groupIndex}`}
-              className="absolute inset-x-0"
-              style={{ top: `${groupTop}px`, height: `${groupHeight}px` }}
-            >
-              {group.items.map((item) => {
-                const top =
-                  (item.startMinutes - group.startMinutes) * minuteScale;
-                const height = Math.max(
-                  MIN_EVENT_HEIGHT,
-                  (item.endMinutes - item.startMinutes) * minuteScale,
-                );
-                const theme = getWeekTheme(item.event.category);
-
-                // Logic variables kept so you can easily toggle them later
-                //const showTime = height >= 52 && group.laneCount <= 2;
-                const showParticipants = height >= 52 && group.laneCount <= 2;
-
-                return (
-                  <button
-                    key={item.event.id}
-                    type="button"
-                    onClick={() => onEdit(item.event)}
-                    className={`absolute min-w-0 overflow-hidden rounded-md border px-1.5 py-0.5 text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)] ${theme.card}`}
-                    style={{
-                      top: `${top}px`,
-                      left: `${item.lane * laneWidth}%`,
-                      width: `${laneWidth}%`,
-                      height: `${height}px`,
-                    }}
-                  >
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="line-clamp-2 text-[10px] font-semibold leading-3.5">
-                        {item.event.title}
-                      </div>
-
-                      {/* Commented out the time display block below */}
-                      {/* 
-                      {showTime ? (
-                        <div className="truncate text-[8.5px] font-medium leading-3.5 opacity-75">
-                          {item.event.startTime} - {item.event.endTime}
-                        </div>
-                      ) : null} 
-                      */}
-
-                      {showParticipants ? (
-                        <div className="min-w-0 text-[8.5px] font-medium leading-3.5 opacity-65">
-                          <span className="whitespace-normal break-words">
-                            {item.event.participants.join(" · ") ||
-                              "No participants"}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+import { useMeasuredHeight } from "@/features/weekly-schedule/hooks/use-measured-height";
+import { useDragInteraction } from "@/features/weekly-schedule/hooks/use-drag-interaction";
 
 export function WeekView() {
   const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
   const { applyWeekFilters } = useFilterState();
   const { friendNames } = useFriendsState();
   const visibleWeekEvents = applyWeekFilters(weekEvents);
-  const { ref: bodyRef, height: bodyHeight } =
-    useMeasuredHeight<HTMLDivElement>();
-  const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(
-    null,
-  );
-  const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(
-    null,
-  );
+  const { ref: bodyRef, height: bodyHeight } = useMeasuredHeight<HTMLDivElement>();
+  const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(null);
+  const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(null);
 
-  // Map the fixed 18-hour timeline (1080 minutes from 06:00 to 24:00) to the
-  // exact pixel height of the viewport so the grid fits perfectly without
-  // requiring vertical scrolling.
-  const minuteScale =
-    bodyHeight > 0 ? bodyHeight / (WEEK_END_MINUTES - WEEK_START_MINUTES) : 1.0;
-
-  useEffect(() => {
-    if (!previewEvent) {
-      return;
+  // Compute the visible time range: default 08:00–18:00, expanded to the
+  // nearest hour boundary whenever events fall outside that window.
+  const { displayStartMinutes, displayEndMinutes } = useMemo(() => {
+    if (visibleWeekEvents.length === 0) {
+      return { displayStartMinutes: DEFAULT_DISPLAY_START, displayEndMinutes: DEFAULT_DISPLAY_END };
     }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setPreviewEvent(null);
-      }
-    }
-
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
+    const earliestStart = Math.min(
+      ...visibleWeekEvents.map((e) => parseTimeToMinutes(e.startTime)),
+    );
+    const latestEnd = Math.max(
+      ...visibleWeekEvents.map((e) => parseTimeToMinutes(e.endTime)),
+    );
+    return {
+      displayStartMinutes: Math.max(
+        WEEK_START_MINUTES,
+        Math.floor(Math.min(earliestStart, DEFAULT_DISPLAY_START) / 60) * 60,
+      ),
+      displayEndMinutes: Math.min(
+        WEEK_END_MINUTES,
+        Math.ceil(Math.max(latestEnd, DEFAULT_DISPLAY_END) / 60) * 60,
+      ),
     };
-  }, [previewEvent]);
+  }, [visibleWeekEvents]);
+
+  const displayHourCount = (displayEndMinutes - displayStartMinutes) / 60;
+  const minuteScale =
+    bodyHeight > 0 ? bodyHeight / (displayEndMinutes - displayStartMinutes) : 1.0;
 
   const eventsByDay = useMemo(() => {
     return plannerWeekdays.reduce<Record<PlannerWeekday, PlannerWeekEvent[]>>(
       (accumulator, day) => {
-        accumulator[day] = visibleWeekEvents.filter(
-          (event) => event.day === day,
-        );
+        accumulator[day] = visibleWeekEvents.filter((event) => event.day === day);
         return accumulator;
       },
-      {
-        Mon: [],
-        Tue: [],
-        Wed: [],
-        Thu: [],
-        Fri: [],
-        Sat: [],
-        Sun: [],
-      },
+      { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [] },
     );
   }, [visibleWeekEvents]);
 
   const layouts = useMemo(() => {
     return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(
       (accumulator, day) => {
-        accumulator[day] = {
-          groups: buildDayLayouts(eventsByDay[day] ?? []),
-        };
+        accumulator[day] = { groups: buildDayLayouts(eventsByDay[day] ?? []) };
         return accumulator;
       },
       {
-        Mon: { groups: [] },
-        Tue: { groups: [] },
-        Wed: { groups: [] },
-        Thu: { groups: [] },
-        Fri: { groups: [] },
-        Sat: { groups: [] },
-        Sun: { groups: [] },
+        Mon: { groups: [] }, Tue: { groups: [] }, Wed: { groups: [] },
+        Thu: { groups: [] }, Fri: { groups: [] }, Sat: { groups: [] }, Sun: { groups: [] },
       },
     );
   }, [eventsByDay]);
 
+  const visibleDays = useMemo(() => {
+    const sunVisible = (eventsByDay["Sun"]?.length ?? 0) > 0;
+    return plannerWeekdays.filter((day) => {
+      if (day === "Sun") return sunVisible;
+      if (day === "Sat") return (eventsByDay["Sat"]?.length ?? 0) > 0 || sunVisible;
+      return true;
+    });
+  }, [eventsByDay]);
+
+  const { drag, draggingLayouts, ghostLaneInfo, handleInteractionMouseDown } =
+    useDragInteraction({
+      bodyRef,
+      minuteScale,
+      displayStartMinutes,
+      visibleDays,
+      eventsByDay,
+      updateWeekEvent,
+      onEventClick: setPreviewEvent,
+    });
+
+  useEffect(() => {
+    if (!previewEvent) return;
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setPreviewEvent(null);
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [previewEvent]);
+
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!editingEvent) {
-      return;
-    }
+    if (!editingEvent) return;
 
     const normalizedRange = getDefaultWeekAppointmentTimeRange(
       editingEvent.startTime,
@@ -412,28 +143,35 @@ export function WeekView() {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
-      <div className="grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90">
+    <section className="flex min-h-full flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
+      {/* Day header row */}
+      <div
+        className="grid border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90"
+        style={{ gridTemplateColumns: `4rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}
+      >
         <div className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sam-text-4">
           Time
         </div>
-        {plannerWeekdays.map((day) => {
-          return (
-            <div
-              key={day}
-              className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 last:border-r-0"
-            >
-              <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-sam-text-2">
-                {day}
-              </div>
+        {visibleDays.map((day) => (
+          <div
+            key={day}
+            className="flex items-center justify-center border-r border-sam-border px-1.5 py-2.5 last:border-r-0"
+          >
+            <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-sam-text-2">
+              {day}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
+      {/* Grid body: time column + day columns */}
       <div
         ref={bodyRef}
-        className="grid min-h-0 flex-1 grid-cols-[4rem_repeat(7,minmax(0,1fr))] overflow-hidden"
+        className="grid flex-1 overflow-hidden"
+        style={{
+          gridTemplateColumns: `4rem repeat(${visibleDays.length}, minmax(0, 1fr))`,
+          minHeight: displayHourCount * MIN_EVENT_HEIGHT,
+        }}
       >
         <div className="relative border-r border-sam-border bg-slate-50/80 dark:bg-slate-800/60">
           <div
@@ -447,15 +185,18 @@ export function WeekView() {
             }
           />
           {Array.from(
-            { length: 19 },
-            (_, index) => WEEK_START_MINUTES / 60 + index,
+            { length: displayHourCount + 1 },
+            (_, index) => displayStartMinutes / 60 + index,
           ).map((hour) => (
             <div
               key={hour}
-              className="relative flex h-[calc(100%/18)] items-center justify-center text-[9px] font-medium text-sam-text-3"
+              style={{ height: `calc(100% / ${displayHourCount})` }}
+              className="relative flex items-center justify-center text-[9px] font-medium text-sam-text-3"
             >
               <span
-                className={hour === 24 ? "font-semibold text-slate-700" : ""}
+                className={
+                  hour === displayEndMinutes / 60 ? "font-semibold text-slate-700" : ""
+                }
               >
                 {formatHourLabel(hour)}
               </span>
@@ -463,17 +204,20 @@ export function WeekView() {
           ))}
         </div>
 
-        {plannerWeekdays.map((day) => (
+        {visibleDays.map((day) => (
           <WeekDayColumn
             key={day}
             day={day}
-            groups={layouts[day].groups}
+            groups={(draggingLayouts?.[day] ?? layouts[day]).groups}
             minuteScale={minuteScale}
-            onEdit={(event) => setPreviewEvent(event)}
+            displayStartMinutes={displayStartMinutes}
+            onInteractionMouseDown={handleInteractionMouseDown}
+            draggingEventId={drag?.isDragging ? drag.event.id : undefined}
           />
         ))}
       </div>
 
+      {/* Portals: preview modal, edit form, drag ghost */}
       {previewEvent && typeof document !== "undefined"
         ? createPortal(
             <EventPreviewModal
@@ -544,6 +288,37 @@ export function WeekView() {
               onSubmit={handleSubmitEdit}
               onCancel={() => setEditingEvent(null)}
             />,
+            document.body,
+          )
+        : null}
+
+      {drag?.isDragging && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              style={{
+                position: "fixed",
+                top: drag.ghost.top,
+                left: ghostLaneInfo
+                  ? drag.ghost.left +
+                    ghostLaneInfo.lane * (drag.ghost.width / ghostLaneInfo.laneCount)
+                  : drag.ghost.left,
+                width: ghostLaneInfo
+                  ? (drag.ghost.width / ghostLaneInfo.laneCount) * ghostLaneInfo.span
+                  : drag.ghost.width,
+                height: drag.ghost.height,
+                pointerEvents: "none",
+                zIndex: 9999,
+              }}
+              className={`flex items-center overflow-hidden rounded-md border px-1 py-px shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${getWeekTheme(drag.event.category).card}`}
+            >
+              <WeekEventContent
+                event={drag.event}
+                height={drag.ghost.height}
+                naturalHeight={
+                  (drag.target.endMinutes - drag.target.startMinutes) * minuteScale
+                }
+              />
+            </div>,
             document.body,
           )
         : null}

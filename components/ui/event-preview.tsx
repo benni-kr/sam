@@ -135,7 +135,7 @@ export function EventPreviewModal({
       aria-label={`${heading}: ${event.title}`}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-5 shadow-2xl"
+        className="w-full max-w-md overflow-y-auto rounded-xl border border-sam-border bg-sam-surface p-5 shadow-2xl max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header: Title and Top Right Actions */}
@@ -200,8 +200,8 @@ export function EventPreviewModal({
           )}`}
         >
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold leading-none">
+            <div className="min-w-0">
+              <h3 className="break-words text-lg font-semibold leading-none">
                 {event.title}
               </h3>
               <p className="mt-2 text-sm font-medium opacity-80">{dateLine}</p>
@@ -212,7 +212,7 @@ export function EventPreviewModal({
             </span>
           </div>
 
-          <div className="mt-4 text-[13px] font-medium opacity-90">
+          <div className="mt-4 break-words text-[13px] font-medium opacity-90">
             {event.participants.join(" · ") || "No participants"}
           </div>
 
