@@ -16,6 +16,7 @@ import {
   formatBirthdayMessage,
   getBirthdaysForDate,
 } from "@/features/friends/lib/birthday-utils";
+import { formatDateKey } from "@/features/planner/lib/planner-utils";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import { useCreateEvent } from "@/features/planner/components/create-event-context";
 
@@ -39,6 +40,7 @@ export function CalendarDayCell({
 }: CalendarDayCellProps) {
   const { openCreateEvent } = useCreateEvent();
   const { friends } = useFriendsState();
+  const isToday = dateKey === formatDateKey(new Date());
   const birthdays = getBirthdaysForDate(dateKey, friends);
   const birthdayTooltip = formatBirthdayMessage(dateKey, birthdays);
   const { isOver, setNodeRef } = useDroppable({
@@ -61,10 +63,22 @@ export function CalendarDayCell({
             isWeekend
             ? "border-sam-border bg-sam-surface-2/90 hover:bg-sam-surface-3 dark:bg-slate-800/60 dark:hover:bg-slate-800"
             : "border-sam-border bg-sam-surface hover:bg-sam-surface-2 dark:hover:bg-slate-800"
+      } ${
+        isToday && !isOver
+          ? "bg-sky-500/18 dark:bg-sky-500/22"
+          : ""
       }`}
     >
       <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1">
-        <div className="text-[11px] font-medium text-sam-text-3">{day}</div>
+        <div
+          className={`text-[11px] font-medium ${
+            isToday
+              ? "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-linear-to-br from-sky-500 to-blue-600 px-1 font-semibold text-white shadow-[0_2px_8px_rgba(37,99,235,0.35)]"
+              : "text-sam-text-3"
+          }`}
+        >
+          {day}
+        </div>
 
         {birthdays.length > 0 ? (
           <Tooltip content={birthdayTooltip}>
