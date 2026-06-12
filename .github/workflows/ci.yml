@@ -20,9 +20,9 @@ jobs:
         uses: trufflesecurity/trufflehog@v3.95.3
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --only-verified # Optional: Only fails if the secret is active/live
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
