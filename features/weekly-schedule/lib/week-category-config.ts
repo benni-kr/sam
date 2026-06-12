@@ -27,7 +27,7 @@ export const WEEK_CATEGORY_THEMES: Record<
   WeekCategoryTheme
 > = {
   University: {
-    card: "border-slate-300 bg-slate-100 text-slate-950 dark:border-slate-400 dark:bg-slate-700 dark:text-slate-100",
+    card: "border-slate-300 bg-slate-100 text-slate-950 dark:border-slate-400/60 dark:bg-[#334155] dark:text-slate-100",
     accent: "bg-slate-500",
     heading: "text-slate-700 dark:text-slate-300",
   },
@@ -37,12 +37,12 @@ export const WEEK_CATEGORY_THEMES: Record<
     heading: "text-emerald-700 dark:text-emerald-300",
   },
   Sports: {
-    card: "border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-400 dark:bg-orange-800 dark:text-orange-100",
+    card: "border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-400/60 dark:bg-[#663C22] dark:text-orange-100",
     accent: "bg-orange-500",
     heading: "text-orange-700 dark:text-orange-300",
   },
   Other: {
-    card: "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400 dark:bg-sky-800 dark:text-sky-100",
+    card: "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-[#244B6E] dark:text-sky-100",
     accent: "bg-sky-500",
     heading: "text-sky-700 dark:text-sky-300",
   },
