@@ -53,7 +53,7 @@ export const CALENDAR_CATEGORY_THEMES: Record<
   },
   "Group Event": {
     badge:
-      "border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-[#225239] dark:text-emerald-100",
+      "border-emerald-500 bg-emerald-100 text-emerald-950 dark:border-emerald-400 dark:bg-emerald-800 dark:text-emerald-100",
     section:
       "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/30 dark:bg-[#153625]",
     heading: "text-emerald-900 dark:text-emerald-100",
