@@ -27,6 +27,12 @@ import {
 } from "@/features/weekly-schedule/lib/week-persistence";
 import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
 import { useFriendsState } from "@/features/friends/state/friends-state";
+import {
+  diffForNotifications,
+  type DiffableEvent,
+} from "@/features/notifications/lib/notification-diff";
+import { broadcastNotifications } from "@/features/notifications/lib/notify-broadcast";
+import { getActiveSubscriptionEndpoint } from "@/features/notifications/lib/push-subscription";
 
 import {
   defaultPlannerSemesterId,
@@ -356,6 +362,30 @@ function buildWeekEventsBySemesterSnapshot(
 
     return acc;
   }, {} as PlannerWeekEventsBySemester);
+}
+
+/**
+ * Flattens a semester-keyed event map into the minimal shape the notification
+ * diff needs, so both calendar and weekly events feed one comparison.
+ */
+function flattenToDiffable(
+  bySemester: Partial<
+    Record<PlannerSemesterId, Array<{ id: string; title: string; participants: string[] }>>
+  >,
+): DiffableEvent[] {
+  const result: DiffableEvent[] = [];
+
+  for (const semesterId of plannerSemesterIds) {
+    for (const event of bySemester[semesterId] ?? []) {
+      result.push({
+        id: event.id,
+        title: event.title,
+        participants: event.participants,
+      });
+    }
+  }
+
+  return result;
 }
 
 function toPlannerPersistenceError(error: unknown, fallbackMessage: string) {
@@ -721,6 +751,17 @@ export function PlannerStateProvider({
   const eventStore = useRef(resolvePlannerEventStore());
   const weekEventStore = useRef(resolveWeekEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
+  // Notification baselines: the last snapshot we compared against, per event
+  // kind. Null until the first post-hydration save establishes the baseline
+  // (so hydration itself never fires a flood of "new event" notifications).
+  const prevEventsSnapshotRef = useRef<DiffableEvent[] | null>(null);
+  const prevWeekSnapshotRef = useRef<DiffableEvent[] | null>(null);
+  // Set when a friend rename/remove cascade is about to rewrite participant
+  // names across every event; the next calendar save then updates its baseline
+  // without notifying, so a rename is not misread as many "new participant"s.
+  const skipEventsNotifyRef = useRef(false);
+  // This device's own push endpoint, excluded from its own broadcasts.
+  const ownEndpointRef = useRef<string | null>(null);
   const {
     friendNames,
     isHydrated: friendsHydrated,
@@ -780,9 +821,38 @@ export function PlannerStateProvider({
     // are handled by the RENAME/REMOVE_PARTICIPANT effects below.
   }, [friendsHydrated]);
 
+  // Track this device's push subscription so it can be excluded from its own
+  // broadcasts. Refreshed whenever the toggle changes subscription state.
+  useEffect(() => {
+    let cancelled = false;
+
+    const sync = () => {
+      void getActiveSubscriptionEndpoint().then((endpoint) => {
+        if (!cancelled) {
+          ownEndpointRef.current = endpoint;
+        }
+      });
+    };
+
+    sync();
+    window.addEventListener("sam:push:changed", sync);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("sam:push:changed", sync);
+    };
+  }, []);
+
   useEffect(() => {
     if (!didHydrateFromStorage || !lastMutation) {
       return;
+    }
+
+    // A rename or remove rewrites participant names across many events at once.
+    // Flag the imminent calendar save so it re-baselines silently instead of
+    // announcing every rewritten name as a new participant.
+    if (lastMutation.type === "rename" || lastMutation.type === "remove") {
+      skipEventsNotifyRef.current = true;
     }
 
     // Cross-domain listener: friend renames and deletions cascade into the
@@ -812,8 +882,26 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
+    const nextDiffable = flattenToDiffable(snapshot);
+    const baseline = prevEventsSnapshotRef.current;
+    const skipNotify = skipEventsNotifyRef.current;
+
     void eventStore.current
       .saveEventsBySemester(snapshot)
+      .then(() => {
+        // Only notify once a baseline exists (i.e. not on the hydration save)
+        // and the change was not a friend rename/remove cascade.
+        if (baseline && !skipNotify) {
+          const items = diffForNotifications(baseline, nextDiffable);
+
+          if (items.length > 0) {
+            void broadcastNotifications(items, ownEndpointRef.current);
+          }
+        }
+
+        prevEventsSnapshotRef.current = nextDiffable;
+        skipEventsNotifyRef.current = false;
+      })
       .catch((error: unknown) => {
         setPersistenceError(
           toPlannerPersistenceError(
@@ -830,8 +918,24 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
+    const nextDiffable = flattenToDiffable(snapshot);
+    const baseline = prevWeekSnapshotRef.current;
+
     void weekEventStore.current
       .saveWeekEventsBySemester(snapshot)
+      .then(() => {
+        // Weekly events are not touched by friend cascades, so any post-baseline
+        // change here is a genuine new appointment or added participant.
+        if (baseline) {
+          const items = diffForNotifications(baseline, nextDiffable);
+
+          if (items.length > 0) {
+            void broadcastNotifications(items, ownEndpointRef.current);
+          }
+        }
+
+        prevWeekSnapshotRef.current = nextDiffable;
+      })
       .catch((error: unknown) => {
         setPersistenceError(
           toPlannerPersistenceError(
