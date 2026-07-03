@@ -44,3 +44,5 @@ supabase/.backups/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+certificates

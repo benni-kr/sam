@@ -33,6 +33,7 @@ import { FilterStateProvider } from "@/features/planner/state/filter-state";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { CreateEventModal } from "@/components/layout/create-event-modal";
+import { AddEventFab } from "@/components/layout/add-event-fab";
 import { CreateWeekEventModal } from "@/components/layout/create-week-event-modal";
 import { ManageFriendsModal } from "@/components/layout/manage-friends-modal";
 import {
@@ -534,6 +535,8 @@ function AppShellFrame({
             </section>
           </div>
         </main>
+
+        <AddEventFab />
 
         <DragOverlay modifiers={[snapOverlayToCursor]}>
           {activeEvent ? (

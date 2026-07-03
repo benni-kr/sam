@@ -36,11 +36,13 @@
     </filter>
   </defs>
 
-  <!-- Rounded background plate (purpose: any) -->
-  <rect x="0" y="0" width="1236" height="1236" rx="270" ry="270" fill="url(#bg)"/>
+  <!-- Full-bleed background: maskable icons are cropped to a circle/squircle by
+       the OS, so the plate has NO rounded corners of its own and covers the whole
+       canvas. The wordmark stays inside the central safe zone (~17% margin). -->
+  <rect x="0" y="0" width="1236" height="1236" fill="url(#bg)"/>
 
-  <!-- Wordmark, optically centered in the plate. -->
-  <g transform="translate(600,618) scale(0.78) translate(-620,-653)">
+  <!-- Wordmark, scaled down + optically centered so it survives the crop. -->
+  <g transform="translate(600,618) scale(0.70) translate(-620,-653)">
     <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#ds)">
 
       <!-- S -->
