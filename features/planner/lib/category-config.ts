@@ -42,7 +42,7 @@ export const CALENDAR_CATEGORY_THEMES: Record<
     accent: "bg-violet-500",
     checkbox: "text-violet-700 dark:text-violet-300",
   },
-  "Language Exam": {
+  "Semi Exam": {
     badge:
       "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-400/60 dark:bg-[#63283B] dark:text-rose-100",
     section:
