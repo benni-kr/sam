@@ -13,7 +13,7 @@ import type { PlannerWeekEvent } from "@/features/weekly-schedule/lib/week-types
  */
 export type PlannerEventCategory =
   | "Exam"
-  | "Language Exam"
+  | "Semi Exam"
   | "Group Event"
   | "Private Event"
   | "Other";
@@ -23,7 +23,7 @@ export type PlannerEventCategory =
  */
 export const plannerEventCategories: PlannerEventCategory[] = [
   "Exam",
-  "Language Exam",
+  "Semi Exam",
   "Group Event",
   "Private Event",
   "Other",
