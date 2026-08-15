@@ -25,6 +25,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 import { PlannerTabs } from "@/features/planner/components/planner-tabs";
 import { EventBadge } from "@/features/planner/components/event-badge";
@@ -427,14 +428,9 @@ function AppShellFrame({
             <aside className="flex flex-col overflow-hidden rounded-3xl border border-sam-border bg-sam-surface p-4 shadow-xl dark:shadow-none lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
               {/* PINNED HEADER */}
               <div className="flex-none flex flex-col gap-3 pb-4 mb-2 border-b border-sam-border/60 dark:border-slate-700/60">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-baseline gap-2 pt-1">
-                    <h1 className="text-2xl font-black tracking-tighter text-sam-text-1 leading-none">
-                      sam
-                      <span className="text-blue-500 dark:text-blue-400">
-                        .
-                      </span>
-                    </h1>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Logo className="h-8 w-auto" />
                   </div>
 
                   <div className="flex items-center gap-2">
