@@ -299,7 +299,7 @@ async function upsertSupabaseEventsBySemester(
   // the client's state, completing the two-way sync.
   const eventIds = rows.map((row) => row.event_id);
   const deleteFilter = buildNotInFilter(eventIds);
-  const categoryFilter = `&category=in.(${plannerEventCategories.map(encodeURIComponent).join(",")})`;
+  const categoryFilter = `&category=in.(${plannerEventCategories.map((c) => `"${c}"`).join(",")})`;
   const deleteEndpoint = deleteFilter
     ? `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}${categoryFilter}`
     : `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}${categoryFilter}`;

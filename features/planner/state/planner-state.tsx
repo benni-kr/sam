@@ -756,6 +756,8 @@ export function PlannerStateProvider({
           type: "HYDRATE_WEEK_FROM_STORE",
           payload: { weekEventsBySemester },
         });
+
+        setDidHydrateFromStorage(true);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -765,11 +767,6 @@ export function PlannerStateProvider({
               "Failed to hydrate planner data from Supabase.",
             ),
           );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setDidHydrateFromStorage(true);
         }
       });
 
