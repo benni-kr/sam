@@ -18,7 +18,7 @@ import { getCalendarTheme } from "@/features/planner/lib/category-config";
 
 const categoryLabelsPlural: Record<PlannerEventCategory, string> = {
   Exam: "Exams",
-  "Language Exam": "Language Exams",
+  "Semi Exam": "Semi Exams",
   "Group Event": "Group Events",
   "Private Event": "Private Events",
   Other: "Others",
@@ -103,15 +103,18 @@ export function CrosstablesView() {
       {visibleCategories.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
           <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm dark:bg-sam-surface-2">
-            <CalendarDays className="h-7 w-7 text-sam-text-4" aria-hidden="true" />
+            <CalendarDays
+              className="h-7 w-7 text-sam-text-4"
+              aria-hidden="true"
+            />
             <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
           </div>
           <h3 className="text-lg font-semibold text-sam-text-1">
             No events found
           </h3>
           <p className="mt-2 max-w-sm text-sm leading-6 text-sam-text-3">
-            Add a new event from the sidebar, or adjust your filters to see
-            more events.
+            Add a new event from the sidebar, or adjust your filters to see more
+            events.
           </p>
         </div>
       )}
@@ -175,97 +178,96 @@ export function CrosstablesView() {
 
               <table className="min-w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-xl border border-sam-border bg-sam-surface/90 text-sm">
                 <thead>
-                    <tr>
-                      <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-sam-border bg-sam-surface-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-sam-text-3">
-                        Event
-                      </th>
-                      {participantNames.map((participantName) => (
-                        <th
-                          key={`${category}-${participantName}-header`}
-                          className={`${colWidthClass} border-b border-sam-border bg-sam-surface-2 ${cellPaddingClass} py-2 text-center align-bottom transition-all duration-200`}
+                  <tr>
+                    <th className="sticky left-0 z-20 min-w-[260px] border-b border-r border-sam-border bg-sam-surface-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.18em] text-sam-text-3">
+                      Event
+                    </th>
+                    {participantNames.map((participantName) => (
+                      <th
+                        key={`${category}-${participantName}-header`}
+                        className={`${colWidthClass} border-b border-sam-border bg-sam-surface-2 ${cellPaddingClass} py-2 text-center align-bottom transition-all duration-200`}
+                      >
+                        <span
+                          className={`inline-block origin-center -rotate-180 whitespace-nowrap font-medium tracking-[0.14em] text-sam-text-3 [writing-mode:vertical-rl] ${labelSize}`}
+                          // `vertical-rl` writes text top-to-bottom; rotating
+                          // it ensures names read naturally bottom-to-top,
+                          // which is the standard for vertical table headers.
                         >
-                          <span
-                            className={`inline-block origin-center -rotate-180 whitespace-nowrap font-medium tracking-[0.14em] text-sam-text-3 [writing-mode:vertical-rl] ${labelSize}`}
-                            // `vertical-rl` writes text top-to-bottom; rotating
-                            // it ensures names read naturally bottom-to-top,
-                            // which is the standard for vertical table headers.
-                          >
-                            {participantName}
-                          </span>
-                        </th>
+                          {participantName}
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {categoryEvents.length === 0 ? (
+                    <tr>
+                      <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface-2 px-3 py-4 text-left text-sm text-sam-text-3">
+                        No events in this category yet.
+                      </td>
+                      {participantNames.map((n) => (
+                        <td
+                          key={n}
+                          className={`${colWidthClass} border-l border-sam-border dark:border-slate-800`}
+                        />
                       ))}
                     </tr>
-                  </thead>
-
-                  <tbody>
-                    {categoryEvents.length === 0 ? (
-                      <tr>
-                        <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface-2 px-3 py-4 text-left text-sm text-sam-text-3">
-                          No events in this category yet.
+                  ) : (
+                    categoryEvents.map((event) => (
+                      <tr
+                        key={`${category}-${event.id}`}
+                        className="odd:bg-sam-surface even:bg-sam-surface-2/50"
+                      >
+                        <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewEventId(event.id)}
+                            className="font-medium text-sam-text-1 underline-offset-2 hover:underline"
+                          >
+                            {event.title}
+                          </button>
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-sam-text-3">
+                            {event.startDate
+                              ? formatDisplayDate(event.startDate)
+                              : "Undated"}
+                            {event.endDate && event.endDate !== event.startDate
+                              ? ` to ${formatDisplayDate(event.endDate)}`
+                              : ""}
+                          </p>
                         </td>
-                        {participantNames.map((n) => (
+
+                        {participantNames.map((participantName) => (
                           <td
-                            key={n}
-                            className={`${colWidthClass} border-l border-sam-border dark:border-slate-800`}
-                          />
+                            key={`${event.id}-${participantName}`}
+                            className={`${colWidthClass} border-l border-sam-border ${cellPaddingClass} py-2 text-center transition-all duration-200 dark:border-slate-800`}
+                          >
+                            <label className="inline-flex cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={event.participants.includes(
+                                  participantName,
+                                )}
+                                onChange={() =>
+                                  toggleParticipant(event.id, participantName)
+                                }
+                                className="peer sr-only"
+                              />
+                              <span
+                                className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${theme.checkbox}`}
+                              >
+                                <Check size={checkIconSize} strokeWidth={3} />
+                              </span>
+                              <span className="sr-only">
+                                Toggle {participantName}
+                              </span>
+                            </label>
+                          </td>
                         ))}
                       </tr>
-                    ) : (
-                      categoryEvents.map((event) => (
-                        <tr
-                          key={`${category}-${event.id}`}
-                          className="odd:bg-sam-surface even:bg-sam-surface-2/50"
-                        >
-                          <td className="sticky left-0 z-20 border-r border-sam-border bg-sam-surface px-3 py-2">
-                            <button
-                              type="button"
-                              onClick={() => setPreviewEventId(event.id)}
-                              className="font-medium text-sam-text-1 underline-offset-2 hover:underline"
-                            >
-                              {event.title}
-                            </button>
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-sam-text-3">
-                              {event.startDate
-                                ? formatDisplayDate(event.startDate)
-                                : "Undated"}
-                              {event.endDate &&
-                              event.endDate !== event.startDate
-                                ? ` to ${formatDisplayDate(event.endDate)}`
-                                : ""}
-                            </p>
-                          </td>
-
-                          {participantNames.map((participantName) => (
-                            <td
-                              key={`${event.id}-${participantName}`}
-                              className={`${colWidthClass} border-l border-sam-border ${cellPaddingClass} py-2 text-center transition-all duration-200 dark:border-slate-800`}
-                            >
-                              <label className="inline-flex cursor-pointer items-center justify-center">
-                                <input
-                                  type="checkbox"
-                                  checked={event.participants.includes(
-                                    participantName,
-                                  )}
-                                  onChange={() =>
-                                    toggleParticipant(event.id, participantName)
-                                  }
-                                  className="peer sr-only"
-                                />
-                                <span
-                                  className={`inline-flex ${checkContainerClass} items-center justify-center rounded-md border border-transparent opacity-0 transition-all hover:bg-slate-100 peer-checked:opacity-100 ${theme.checkbox}`}
-                                >
-                                  <Check size={checkIconSize} strokeWidth={3} />
-                                </span>
-                                <span className="sr-only">
-                                  Toggle {participantName}
-                                </span>
-                              </label>
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
+                    ))
+                  )}
+                </tbody>
               </table>
             </article>
           );

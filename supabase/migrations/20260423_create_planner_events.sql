@@ -16,7 +16,7 @@ create table if not exists public.planner_events (
       category = any (
         array[
           'Exam'::text,
-          'Language Exam'::text,
+          'Semi Exam'::text,
           'Group Event'::text,
           'Private Event'::text,
           'Other'::text

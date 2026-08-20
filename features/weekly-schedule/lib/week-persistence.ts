@@ -354,9 +354,11 @@ async function upsertSupabaseWeekEventsBySemester(
   // completing a two-way sync.
   const eventIds = rows.map((row) => row.event_id);
   const deleteFilter = buildNotInFilter(eventIds);
+  const categoryFilter = `&category=in.(${plannerWeekEventCategories.map((c) => `"${c}"`).join(",")})`;
+  const dayFilter = `&day=in.(${plannerWeekdays.map((d) => `"${d}"`).join(",")})`;
   const deleteEndpoint = deleteFilter
-    ? `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}`
-    : `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+    ? `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}${categoryFilter}${dayFilter}`
+    : `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}${categoryFilter}${dayFilter}`;
 
   const deleteResponse = await fetch(deleteEndpoint, {
     method: "DELETE",
