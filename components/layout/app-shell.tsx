@@ -36,6 +36,7 @@ import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { CreateEventModal } from "@/components/layout/create-event-modal";
 import { AddEventFab } from "@/components/layout/add-event-fab";
+import { OfflineBanner } from "@/components/layout/offline-banner";
 import { CreateWeekEventModal } from "@/components/layout/create-week-event-modal";
 import { ManageFriendsModal } from "@/components/layout/manage-friends-modal";
 import {
@@ -231,6 +232,7 @@ function AppShellFrame({
 }) {
   const {
     events,
+    isOffline,
     moveEventToInbox,
     moveEventToDate,
     createEvent,
@@ -284,6 +286,13 @@ function AppShellFrame({
   }, [activeEventId]);
 
   function handleDragStart(event: DragStartEvent) {
+    // Offline is read-only: refusing the drag here keeps the overlay from ever
+    // appearing, so nothing looks draggable that cannot actually be moved.
+    if (isOffline) {
+      setActiveEventId(null);
+      return;
+    }
+
     const activeId = String(event.active.id);
 
     if (!activeId.startsWith("event:")) {
@@ -296,6 +305,10 @@ function AppShellFrame({
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveEventId(null);
+
+    if (isOffline) {
+      return;
+    }
 
     const overId = event.over?.id;
     const overDateKey = event.over?.data.current?.dateKey;
@@ -328,6 +341,12 @@ function AppShellFrame({
   }
 
   function openCreateEvent(dateKey?: string) {
+    // Guard every entry point into the editors, not just the visible buttons:
+    // day cells and the weekly grid also call these directly.
+    if (isOffline) {
+      return;
+    }
+
     setTitle("");
     setDescription("");
     setCategory("Exam");
@@ -348,6 +367,10 @@ function AppShellFrame({
   }
 
   function openCreateWeekEvent(day: PlannerWeekday = "Mon") {
+    if (isOffline) {
+      return;
+    }
+
     setWeekTitle("");
     setWeekDescription("");
     setWeekCategory("University");
@@ -414,7 +437,13 @@ function AppShellFrame({
       value={{
         openCreateEvent,
         openCreateWeekEvent,
-        openManageFriends: () => setIsManageFriendsOpen(true),
+        openManageFriends: () => {
+          if (isOffline) {
+            return;
+          }
+
+          setIsManageFriendsOpen(true);
+        },
       }}
     >
       <DndContext
@@ -426,6 +455,16 @@ function AppShellFrame({
         onDragCancel={handleDragCancel}
       >
         <main className="min-h-screen bg-page text-sam-text-1">
+          {/*
+            Sticky, not just in-flow: read-only mode has to stay visible no
+            matter how far the user scrolls, otherwise a long calendar hides the
+            one explanation for why nothing can be edited. bg-sam-page-solid
+            keeps content from showing through the padding as it scrolls under.
+            empty:hidden collapses the strip entirely when online.
+          */}
+          <div className="sticky top-0 z-50 mx-auto w-full max-w-350 bg-sam-page-solid px-3 pt-4 pb-2 sm:px-4 lg:px-6 empty:hidden">
+            <OfflineBanner />
+          </div>
           <div className="mx-auto grid min-h-screen w-full max-w-350 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
             <aside className="flex flex-col overflow-hidden rounded-3xl border border-sam-border bg-sam-surface p-4 shadow-xl dark:shadow-none lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
               {/* PINNED HEADER */}

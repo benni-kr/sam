@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { useCreateEvent } from "@/features/planner/components/create-event-context";
+import { usePlannerState } from "@/features/planner/state/planner-state";
 
 /**
  * True only when SAM runs as an installed PWA (standalone display mode), false
@@ -48,6 +49,7 @@ function useIsStandalone() {
 
 export function AddEventFab() {
   const { openCreateEvent, openCreateWeekEvent } = useCreateEvent();
+  const { isOffline } = usePlannerState();
   const pathname = usePathname();
   const isWeekView = pathname?.startsWith("/week") ?? false;
   const isStandalone = useIsStandalone();
@@ -55,6 +57,12 @@ export function AddEventFab() {
   // Only surface the floating action on the installed PWA; in a browser tab the
   // sidebar "add" controls are the intended entry point.
   if (!isStandalone) {
+    return null;
+  }
+
+  // Offline is read-only, and the editors refuse to open anyway — hiding the
+  // button avoids offering an action that would silently do nothing.
+  if (isOffline) {
     return null;
   }
 
