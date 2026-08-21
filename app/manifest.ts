@@ -29,12 +29,10 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/svg+xml",
         purpose: "any",
       },
-      {
-        src: "/icons/maskable.svg",
-        sizes: "any",
-        type: "image/svg+xml",
-        purpose: "maskable",
-      },
+      // The maskable icon is PNG-only on purpose. Chrome's Android launcher-icon
+      // path cannot rasterise SVG, and an SVG entry advertising sizes "any"
+      // outranks the PNG — Chrome then falls back to the "any" icon and composes
+      // it onto a white tile.
       // PNG fallbacks for platforms/launchers that don't render SVG icons.
       {
         src: "/icons/icon-192.png",
@@ -55,27 +53,48 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
+    // Each shortcut carries the glyph its tab uses in the planner tab bar, so
+    // the long-press menu reads the same as the in-app navigation. Generated
+    // from the lucide icon data by scripts/generate-icons.mjs.
     shortcuts: [
       {
         name: "Kalender",
         short_name: "Kalender",
         description: "Vollständigen Semesterkalender öffnen",
         url: "/",
-        icons: [{ src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" }],
+        icons: [
+          {
+            src: "/icons/shortcuts/calendar-96.png",
+            sizes: "96x96",
+            type: "image/png",
+          },
+        ],
       },
       {
         name: "Diese Woche",
         short_name: "Woche",
         description: "Wochenplan öffnen",
         url: "/week",
-        icons: [{ src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" }],
+        icons: [
+          {
+            src: "/icons/shortcuts/week-96.png",
+            sizes: "96x96",
+            type: "image/png",
+          },
+        ],
       },
       {
         name: "Termin-Liste",
         short_name: "Liste",
         description: "Anstehende Termine als Liste",
         url: "/list",
-        icons: [{ src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" }],
+        icons: [
+          {
+            src: "/icons/shortcuts/list-96.png",
+            sizes: "96x96",
+            type: "image/png",
+          },
+        ],
       },
     ],
   };

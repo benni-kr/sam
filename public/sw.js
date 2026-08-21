@@ -7,8 +7,10 @@
  * requested, and serves a cached app shell for navigations when offline.
  */
 
-const CACHE_VERSION = "sam-cache-v2";
-const APP_SHELL = ["/", "/icons/icon.svg", "/icons/maskable.svg"];
+// Bumping the version drops every older cache in the activate handler, which is
+// how stale icons get evicted from installed copies.
+const CACHE_VERSION = "sam-cache-v3";
+const APP_SHELL = ["/", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -51,8 +53,10 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "SAM";
   const options = {
     body: payload.body || "",
-    icon: "/icons/icon.svg",
-    badge: "/icons/icon.svg",
+    // Both must be raster: the Notification API does not render SVG, and the
+    // badge is reduced to its alpha channel for the status-bar silhouette.
+    icon: "/icons/icon-192.png",
+    badge: "/icons/badge-96.png",
     // Collapse repeated notifications about the same event into one entry.
     tag: payload.tag,
     data: { url: payload.url || "/" },
