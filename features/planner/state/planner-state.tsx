@@ -22,11 +22,22 @@ import {
   type PlannerEventsBySemester,
 } from "@/features/planner/lib/planner-persistence";
 import {
+  isOfflineError,
+  readSnapshot,
+  writeSnapshot,
+} from "@/features/planner/lib/offline-cache";
+import {
   resolveWeekEventStore,
   type PlannerWeekEventsBySemester,
 } from "@/features/weekly-schedule/lib/week-persistence";
 import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
 import { useFriendsState } from "@/features/friends/state/friends-state";
+import {
+  diffForNotifications,
+  type DiffableEvent,
+} from "@/features/notifications/lib/notification-diff";
+import { broadcastNotifications } from "@/features/notifications/lib/notify-broadcast";
+import { getActiveSubscriptionEndpoint } from "@/features/notifications/lib/push-subscription";
 
 import {
   defaultPlannerSemesterId,
@@ -48,9 +59,21 @@ import {
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
 
+/** Offline snapshot keys; namespaced per planner scope by the cache module. */
+const EVENTS_SNAPSHOT_KEY = "planner-events";
+const WEEK_EVENTS_SNAPSHOT_KEY = "week-events";
+
 type EventsBySemester = Record<PlannerSemesterId, PlannerEvent[]>;
 
 type PlannerStateContextValue = {
+  /**
+   * True while the data on screen came from the offline snapshot rather than
+   * Supabase. The app is read-only in this state: writes are suppressed because
+   * persisting cache-hydrated state would prune real rows.
+   */
+  isOffline: boolean;
+  /** ISO timestamp the visible data was last known to be current, if known. */
+  lastSyncedAt: string | null;
   activeSemesterId: PlannerSemesterId;
   activeSemester: PlannerSemester;
   months: PlannerMonth[];
@@ -356,6 +379,44 @@ function buildWeekEventsBySemesterSnapshot(
 
     return acc;
   }, {} as PlannerWeekEventsBySemester);
+}
+
+/**
+ * Flattens a semester-keyed event map into the minimal shape the notification
+ * diff needs, so both calendar and weekly events feed one comparison.
+ */
+function flattenToDiffable(
+  bySemester: Partial<
+    Record<
+      PlannerSemesterId,
+      Array<{
+        id: string;
+        title: string;
+        participants: string[];
+        // Calendar events carry a date, weekly ones a weekday. Both are optional
+        // here so the single implementation keeps covering either kind.
+        startDate?: string | null;
+        day?: string;
+      }>
+    >
+  >,
+): DiffableEvent[] {
+  const result: DiffableEvent[] = [];
+
+  for (const semesterId of plannerSemesterIds) {
+    for (const event of bySemester[semesterId] ?? []) {
+      result.push({
+        id: event.id,
+        title: event.title,
+        participants: event.participants,
+        startDate: event.startDate,
+        day: event.day,
+        semesterId,
+      });
+    }
+  }
+
+  return result;
 }
 
 function toPlannerPersistenceError(error: unknown, fallbackMessage: string) {
@@ -721,6 +782,23 @@ export function PlannerStateProvider({
   const eventStore = useRef(resolvePlannerEventStore());
   const weekEventStore = useRef(resolveWeekEventStore());
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
+  // Offline mode: the data on screen came from the local snapshot instead of
+  // Supabase. While this is set the app is read-only — see the save effects.
+  const [isOffline, setIsOffline] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  // Bumped by the `online` event to re-run the load effect after reconnecting.
+  const [reloadToken, setReloadToken] = useState(0);
+  // Notification baselines: the last snapshot we compared against, per event
+  // kind. Null until the first post-hydration save establishes the baseline
+  // (so hydration itself never fires a flood of "new event" notifications).
+  const prevEventsSnapshotRef = useRef<DiffableEvent[] | null>(null);
+  const prevWeekSnapshotRef = useRef<DiffableEvent[] | null>(null);
+  // Set when a friend rename/remove cascade is about to rewrite participant
+  // names across every event; the next calendar save then updates its baseline
+  // without notifying, so a rename is not misread as many "new participant"s.
+  const skipEventsNotifyRef = useRef(false);
+  // This device's own push endpoint, excluded from its own broadcasts.
+  const ownEndpointRef = useRef<string | null>(null);
   const {
     friendNames,
     isHydrated: friendsHydrated,
@@ -738,48 +816,150 @@ export function PlannerStateProvider({
 
     let cancelled = false;
 
+    // Two-argument then, deliberately not .then().catch(): a chained catch also
+    // swallows anything thrown by the success handler, and a TypeError from a
+    // bug in our own code would then be misread as "offline" and quietly
+    // replace live data with the snapshot. This way only the load itself can
+    // trigger the offline path.
     void Promise.all([
       eventStore.current.loadEventsBySemester(),
       weekEventStore.current.loadWeekEventsBySemester(),
-    ])
-      .then(([eventsBySemester, weekEventsBySemester]) => {
+    ]).then(
+      ([eventsBySemester, weekEventsBySemester]) => {
         if (cancelled) {
           return;
         }
 
-        dispatch({
-          type: "HYDRATE_FROM_STORE",
-          payload: { eventsBySemester },
-        });
+        if (eventsBySemester) {
+          dispatch({
+            type: "HYDRATE_FROM_STORE",
+            payload: { eventsBySemester },
+          });
 
-        dispatchWeek({
-          type: "HYDRATE_WEEK_FROM_STORE",
-          payload: { weekEventsBySemester },
-        });
+          writeSnapshot(EVENTS_SNAPSHOT_KEY, eventsBySemester);
+        }
 
+        if (weekEventsBySemester) {
+          dispatchWeek({
+            type: "HYDRATE_WEEK_FROM_STORE",
+            payload: { weekEventsBySemester },
+          });
+
+          writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, weekEventsBySemester);
+        }
+
+        // A null result means the adapter deferred the load — no usable auth
+        // token — not that the database is empty. Marking this as hydrated
+        // would arm the save effects, which would then push the local default
+        // state over the real rows and prune everything else away.
+        if (!eventsBySemester || !weekEventsBySemester) {
+          return;
+        }
+
+        setIsOffline(false);
+        setLastSyncedAt(new Date().toISOString());
         setDidHydrateFromStorage(true);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
+      },
+      (error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        // A rejected request only means "offline" when the host was actually
+        // unreachable. A 4xx/5xx or a missing config must still surface, so it
+        // keeps the original throwing behaviour.
+        if (!isOfflineError(error)) {
           setPersistenceError(
             toPlannerPersistenceError(
               error,
               "Failed to hydrate planner data from Supabase.",
             ),
           );
+          return;
         }
-      });
+
+        const cachedEvents =
+          readSnapshot<PlannerEventsBySemester>(EVENTS_SNAPSHOT_KEY);
+        const cachedWeekEvents = readSnapshot<PlannerWeekEventsBySemester>(
+          WEEK_EVENTS_SNAPSHOT_KEY,
+        );
+
+        if (cachedEvents) {
+          dispatch({
+            type: "HYDRATE_FROM_STORE",
+            payload: { eventsBySemester: cachedEvents.payload },
+          });
+        }
+
+        if (cachedWeekEvents) {
+          dispatchWeek({
+            type: "HYDRATE_WEEK_FROM_STORE",
+            payload: { weekEventsBySemester: cachedWeekEvents.payload },
+          });
+        }
+
+        // Deliberately leave didHydrateFromStorage false: it gates the save
+        // effects, whose prune step deletes every row missing from state. A
+        // save from cache-hydrated state could therefore erase real data.
+        setLastSyncedAt(cachedEvents?.savedAt ?? null);
+        setIsOffline(true);
+      },
+    );
 
     return () => {
       cancelled = true;
     };
-    // Run once when friends have finished loading; subsequent friend changes
-    // are handled by the RENAME/REMOVE_PARTICIPANT effects below.
-  }, [friendsHydrated]);
+    // Re-runs when friends finish loading and whenever connectivity returns;
+    // other friend changes are handled by the RENAME/REMOVE effects below.
+  }, [friendsHydrated, reloadToken]);
+
+  // Reconnecting re-runs the load, which replaces cached data with live rows
+  // and lifts the read-only state.
+  useEffect(() => {
+    const handleOnline = () => setReloadToken((token) => token + 1);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Track this device's push subscription so it can be excluded from its own
+  // broadcasts. Refreshed whenever the toggle changes subscription state.
+  useEffect(() => {
+    let cancelled = false;
+
+    const sync = () => {
+      void getActiveSubscriptionEndpoint().then((endpoint) => {
+        if (!cancelled) {
+          ownEndpointRef.current = endpoint;
+        }
+      });
+    };
+
+    sync();
+    window.addEventListener("sam:push:changed", sync);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("sam:push:changed", sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (!didHydrateFromStorage || !lastMutation) {
       return;
+    }
+
+    // A rename or remove rewrites participant names across many events at once.
+    // Flag the imminent calendar save so it re-baselines silently instead of
+    // announcing every rewritten name as a new participant.
+    if (lastMutation.type === "rename" || lastMutation.type === "remove") {
+      skipEventsNotifyRef.current = true;
     }
 
     // Cross-domain listener: friend renames and deletions cascade into the
@@ -804,40 +984,93 @@ export function PlannerStateProvider({
   }, [didHydrateFromStorage, lastMutation]);
 
   useEffect(() => {
-    if (!didHydrateFromStorage) {
+    // Both guards matter. didHydrateFromStorage stays false after a cache
+    // hydration, and isOffline covers losing the connection mid-session. A save
+    // here prunes every row missing from state, so it must never run against
+    // data that did not come from Supabase.
+    if (!didHydrateFromStorage || isOffline) {
       return;
     }
 
     const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
-    void eventStore.current
-      .saveEventsBySemester(snapshot)
-      .catch((error: unknown) => {
+    const nextDiffable = flattenToDiffable(snapshot);
+    const baseline = prevEventsSnapshotRef.current;
+    const skipNotify = skipEventsNotifyRef.current;
+
+    void eventStore.current.saveEventsBySemester(snapshot).then(
+      () => {
+        // Only notify once a baseline exists (i.e. not on the hydration save)
+        // and the change was not a friend rename/remove cascade.
+        if (baseline && !skipNotify) {
+          const items = diffForNotifications(baseline, nextDiffable);
+
+          if (items.length > 0) {
+            void broadcastNotifications(items, ownEndpointRef.current);
+          }
+        }
+
+        prevEventsSnapshotRef.current = nextDiffable;
+        skipEventsNotifyRef.current = false;
+        writeSnapshot(EVENTS_SNAPSHOT_KEY, snapshot);
+      },
+      (error: unknown) => {
+        // Losing the network mid-session drops to read-only rather than
+        // crashing; anything else is still a real persistence failure.
+        if (isOfflineError(error)) {
+          setIsOffline(true);
+          return;
+        }
+
         setPersistenceError(
           toPlannerPersistenceError(
             error,
             "Failed to persist planner events to Supabase.",
           ),
         );
-      });
-  }, [didHydrateFromStorage, eventsBySemester]);
+      },
+    );
+  }, [didHydrateFromStorage, isOffline, eventsBySemester]);
 
   useEffect(() => {
-    if (!didHydrateFromStorage) {
+    // Same two guards as the calendar save above, for the same reason.
+    if (!didHydrateFromStorage || isOffline) {
       return;
     }
 
     const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
-    void weekEventStore.current
-      .saveWeekEventsBySemester(snapshot)
-      .catch((error: unknown) => {
+    const nextDiffable = flattenToDiffable(snapshot);
+    const baseline = prevWeekSnapshotRef.current;
+
+    void weekEventStore.current.saveWeekEventsBySemester(snapshot).then(
+      () => {
+        // Weekly events are not touched by friend cascades, so any post-baseline
+        // change here is a genuine new appointment or added participant.
+        if (baseline) {
+          const items = diffForNotifications(baseline, nextDiffable);
+
+          if (items.length > 0) {
+            void broadcastNotifications(items, ownEndpointRef.current);
+          }
+        }
+
+        prevWeekSnapshotRef.current = nextDiffable;
+        writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, snapshot);
+      },
+      (error: unknown) => {
+        if (isOfflineError(error)) {
+          setIsOffline(true);
+          return;
+        }
+
         setPersistenceError(
           toPlannerPersistenceError(
             error,
             "Failed to persist planner week events to Supabase.",
           ),
         );
-      });
-  }, [didHydrateFromStorage, weekEventsBySemester]);
+      },
+    );
+  }, [didHydrateFromStorage, isOffline, weekEventsBySemester]);
 
   const normalizedSemesterId = (
     plannerSemesters.some((semester) => semester.id === activeSemesterId)
@@ -857,6 +1090,8 @@ export function PlannerStateProvider({
     const chronologicalEvents = sortChronological(events);
 
     return {
+      isOffline,
+      lastSyncedAt,
       activeSemesterId: normalizedSemesterId,
       activeSemester,
       months: activeSemester.months,
@@ -1039,6 +1274,8 @@ export function PlannerStateProvider({
     events,
     friendNames,
     inboxEvents,
+    isOffline,
+    lastSyncedAt,
     normalizedSemesterId,
     weekEvents,
   ]);

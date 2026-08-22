@@ -177,19 +177,21 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
       {/* New Feature Announcement Box */}
       <div className="w-full max-w-sm mt-6 p-6 rounded-[1.5rem] bg-gradient-to-br from-sky-50 to-violet-50 dark:from-sky-950/40 dark:to-violet-950/40 border border-sky-100 dark:border-sky-900/50 shadow-md text-center">
-        <div className="text-4xl mb-3">🔍✨</div>
+        <div className="text-4xl mb-3">📲🔔</div>
         <h2 className="text-lg font-bold text-sky-900 dark:text-sky-300 mb-3 tracking-tight">
-          SAM now has Search &amp; Filters!
+          SAM installs like an app now!
         </h2>
         <div className="text-sm text-sky-800/80 dark:text-sky-200/80 space-y-3 leading-relaxed">
           <p>
-            Use the new <strong>filter panel</strong> in the sidebar to search
-            events by name, filter by participant, or narrow down by date range.
+            Add SAM to your home screen and it opens in its own window, without
+            the browser bar. Long-press the icon to jump straight to the
+            calendar, this week, or your event list.
           </p>
           <p>
-            For example, pick a participant — say, &quot;Paul&quot; — and see
-            exactly which events they&apos;re attending. Useful if you&apos;re
-            still on the fence about attending.
+            Tap the <strong>bell</strong> in the sidebar to get notified when
+            someone adds an event or joins one of yours. And if you lose signal,
+            your last synced plan stays readable — editing waits until
+            you&apos;re back online.
           </p>
         </div>
       </div>

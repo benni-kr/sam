@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="SAM">
+  <!-- Transparent; follows the viewer's colour scheme. -->
+  <style>
+    .s-bg { fill: #ede9fe; stroke: #c4b5fd; }
+    .s-text { fill: #4c1d95; }
+    .a-bg { fill: #d1fae5; stroke: #10b981; }
+    .a-icon { stroke: rgba(2, 44, 34, 0.2); }
+    .a-text { fill: #022c22; }
+    .m-bg { fill: #fcf5d2; stroke: #fcd34d; }
+    .m-text { fill: #78350f; }
+
+    @media (prefers-color-scheme: dark) {
+      .s-bg { fill: #432C6A; stroke: rgba(167, 139, 250, 0.6); }
+      .s-text { fill: #ede9fe; }
+      .a-bg { fill: #065f46; stroke: #34d399; }
+      .a-icon { stroke: rgba(209, 250, 229, 0.2); }
+      .a-text { fill: #d1fae5; }
+      .m-bg { fill: #663C22; stroke: rgba(251, 191, 36, 0.6); }
+      .m-text { fill: #fef3c7; }
+    }
+  </style>
+  <g transform="translate(256,256) scale(2.35) translate(-103,-103)"
+     font-family="system-ui, -apple-system, sans-serif" font-size="76" font-weight="800" text-anchor="middle">
+
+  <!-- S Block (Top) -->
+  <g transform="translate(55, 5)">
+    <rect width="96" height="96" rx="20" stroke-width="4" class="s-bg"/>
+    <text x="48" y="75" class="s-text">S</text>
+  </g>
+
+  <!-- A Block (Bottom Left) -->
+  <g transform="translate(5, 105)">
+    <rect width="96" height="96" rx="20" stroke-width="4" class="a-bg"/>
+    <g fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="a-icon">
+      <rect x="10" y="20" width="76" height="66" rx="6"/>
+      <path d="M28 10v16M68 10v16"/>
+      <path d="M10 40h76"/>
+      <path d="M35 40v46M61 40v46"/>
+      <path d="M10 60h76"/>
+    </g>
+    <text x="48" y="75" class="a-text">A</text>
+  </g>
+
+  <!-- M Block (Bottom Right) -->
+  <g transform="translate(105, 105)">
+    <rect width="96" height="96" rx="20" stroke-width="4" class="m-bg"/>
+    <text x="48" y="75" class="m-text">M</text>
+  </g>
+  </g>
+</svg>

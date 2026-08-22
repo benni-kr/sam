@@ -24,6 +24,14 @@ import {
   saveFriends,
 } from "@/features/friends/lib/friends-persistence";
 import type { Friend } from "@/features/friends/lib/friend";
+import {
+  isOfflineError,
+  readSnapshot,
+  writeSnapshot,
+} from "@/features/planner/lib/offline-cache";
+
+/** Offline snapshot key; namespaced per planner scope by the cache module. */
+const FRIENDS_SNAPSHOT_KEY = "friends";
 
 /**
  * A discrete description of the most recent friend mutation.
@@ -273,7 +281,15 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
     lastMutation: null,
   });
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
+  // Gates *saving*: true only once the server's own list is in state. Saving
+  // from the built-in defaults or from a cached snapshot would overwrite the
+  // real list, so this must never be set on a failed load.
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
+  // Gates *waiting*: the load attempt finished, successfully or not. The planner
+  // blocks its own hydration on this, so it has to flip in the offline case too
+  // — otherwise a failed friends load leaves the calendar permanently empty.
+  const [hasSettled, setHasSettled] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   if (persistenceError) {
     throw persistenceError;
@@ -282,9 +298,21 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   useEffect(() => {
     let cancelled = false;
 
-    void loadFriends()
-      .then((friendsFromStore) => {
+    // Two-argument then, deliberately not .then().catch(): a chained catch would
+    // also swallow errors thrown by the success handler, and those would then be
+    // misread as "offline" and silently swap live data for the snapshot.
+    void loadFriends().then(
+      (friendsFromStore) => {
         if (cancelled) {
+          return;
+        }
+
+        // A null result means the adapter deferred the load — no usable auth
+        // token — not that the list is empty. Hydrating and arming the save
+        // from that would push the built-in defaults over the real list.
+        // hasSettled still flips so the planner is not blocked forever.
+        if (!friendsFromStore) {
+          setHasSettled(true);
           return;
         }
 
@@ -293,21 +321,39 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
         );
 
         dispatch({ type: "hydrate", friends: hydratedFriends });
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
+        writeSnapshot(FRIENDS_SNAPSHOT_KEY, hydratedFriends);
+
+        setIsOffline(false);
+        setDidHydrateFromStorage(true);
+        setHasSettled(true);
+      },
+      (error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        // Only an unreachable host means "offline". A rejected request still
+        // surfaces as a real error.
+        if (!isOfflineError(error)) {
           setPersistenceError(
             error instanceof Error
               ? error
               : new Error("Failed to hydrate planner friends from Supabase."),
           );
+          return;
         }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setDidHydrateFromStorage(true);
+
+        const cached = readSnapshot<Friend[]>(FRIENDS_SNAPSHOT_KEY);
+
+        if (cached) {
+          dispatch({ type: "hydrate", friends: cached.payload });
         }
-      });
+
+        // didHydrateFromStorage stays false on purpose: it gates the save below.
+        setIsOffline(true);
+        setHasSettled(true);
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -315,26 +361,39 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   }, []);
 
   useEffect(() => {
-    if (!didHydrateFromStorage) {
-      return;
-    }
     // Important: only persist after initial hydration. If we attempted to
     // save before `didHydrateFromStorage` is true we might overwrite the
     // remote database with the local default state (losing server-side data).
-    void saveFriends(state.friends).catch((error: unknown) => {
-      setPersistenceError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to persist planner friends to Supabase."),
-      );
-    });
-  }, [didHydrateFromStorage, state.friends]);
+    // isOffline covers losing the connection after a successful load.
+    if (!didHydrateFromStorage || isOffline) {
+      return;
+    }
+
+    void saveFriends(state.friends).then(
+      () => {
+        writeSnapshot(FRIENDS_SNAPSHOT_KEY, state.friends);
+      },
+      (error: unknown) => {
+        if (isOfflineError(error)) {
+          setIsOffline(true);
+          return;
+        }
+
+        setPersistenceError(
+          error instanceof Error
+            ? error
+            : new Error("Failed to persist planner friends to Supabase."),
+        );
+      },
+    );
+  }, [didHydrateFromStorage, isOffline, state.friends]);
 
   const value = useMemo<FriendsStateContextValue>(() => {
     return {
       friends: state.friends,
       friendNames: state.friends.map((friend) => friend.name),
-      isHydrated: didHydrateFromStorage,
+      // "The load finished", not "we have server data" — see hasSettled.
+      isHydrated: hasSettled,
       lastMutation: state.lastMutation,
       addFriend: (name, birthday) => {
         dispatch({ type: "addFriend", name, birthday });
@@ -358,7 +417,7 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
         dispatch({ type: "removeFriend", name });
       },
     };
-  }, [state.friends, state.lastMutation, didHydrateFromStorage]);
+  }, [state.friends, state.lastMutation, hasSettled]);
 
   return (
     <FriendsStateContext.Provider value={value}>
