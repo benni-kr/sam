@@ -149,3 +149,41 @@ body {
   color: var(--sam-text-1);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* ── Wordmark block animation ──────────────────────────────────────────────
+   Clicking a letter of the SAM wordmark makes that block hop. Purely
+   decorative, and undiscoverable on purpose: no cursor, no hover state.
+   transform-box: fill-box keeps each block rotating around its own centre
+   rather than the SVG origin. */
+.sam-logo-block {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes sam-logo-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.12) rotate(-10deg);
+  }
+  55% {
+    transform: scale(0.95) rotate(8deg);
+  }
+  80% {
+    transform: scale(1.04) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.sam-logo-pop {
+  animation: sam-logo-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sam-logo-pop {
+    animation: none;
+  }
+}
