@@ -20,7 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     background_color: "#0f172a",
     theme_color: "#0f172a",
-    lang: "de",
+    lang: "en",
     categories: ["productivity", "education"],
     icons: [
       {
@@ -58,9 +58,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // from the lucide icon data by scripts/generate-icons.mjs.
     shortcuts: [
       {
-        name: "Kalender",
-        short_name: "Kalender",
-        description: "Vollständigen Semesterkalender öffnen",
+        name: "Calendar",
+        short_name: "Calendar",
+        description: "Open the full semester calendar",
         url: "/",
         icons: [
           {
@@ -71,9 +71,9 @@ export default function manifest(): MetadataRoute.Manifest {
         ],
       },
       {
-        name: "Diese Woche",
-        short_name: "Woche",
-        description: "Wochenplan öffnen",
+        name: "This Week",
+        short_name: "Week",
+        description: "Open the weekly schedule",
         url: "/week",
         icons: [
           {
@@ -84,9 +84,9 @@ export default function manifest(): MetadataRoute.Manifest {
         ],
       },
       {
-        name: "Termin-Liste",
-        short_name: "Liste",
-        description: "Anstehende Termine als Liste",
+        name: "Event List",
+        short_name: "List",
+        description: "Upcoming events as a list",
         url: "/list",
         icons: [
           {

@@ -83,10 +83,10 @@ export function NotificationToggle() {
   }
 
   const label = denied
-    ? "Benachrichtigungen im Browser blockiert"
+    ? "Notifications blocked in browser settings"
     : enabled
-      ? "Benachrichtigungen ausschalten"
-      : "Benachrichtigungen einschalten";
+      ? "Turn off notifications"
+      : "Turn on notifications";
 
   return (
     <button
