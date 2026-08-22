@@ -105,13 +105,13 @@ describe("offline fallback", () => {
     window.localStorage.setItem(
       EVENTS_KEY,
       JSON.stringify({
-        savedAt: "2026-08-01T10:00:00.000Z",
+        version: 1, savedAt: "2026-08-01T10:00:00.000Z",
         payload: { ...emptySemesters, "spring-2026": [cachedEvent] },
       }),
     );
     window.localStorage.setItem(
       WEEK_KEY,
-      JSON.stringify({ savedAt: "2026-08-01T10:00:00.000Z", payload: emptySemesters }),
+      JSON.stringify({ version: 1, savedAt: "2026-08-01T10:00:00.000Z", payload: emptySemesters }),
     );
 
     // fetch rejects with a TypeError when the host cannot be reached at all,
@@ -147,7 +147,7 @@ describe("offline fallback", () => {
     window.localStorage.setItem(
       EVENTS_KEY,
       JSON.stringify({
-        savedAt: "2026-08-01T10:00:00.000Z",
+        version: 1, savedAt: "2026-08-01T10:00:00.000Z",
         payload: { ...emptySemesters, "spring-2026": [cachedEvent] },
       }),
     );
@@ -178,7 +178,7 @@ describe("offline fallback", () => {
     // "come back later", not "the database is empty". Persisting that would
     // replace a good snapshot with nothing.
     const goodSnapshot = JSON.stringify({
-      savedAt: "2026-08-01T10:00:00.000Z",
+      version: 1, savedAt: "2026-08-01T10:00:00.000Z",
       payload: { ...emptySemesters, "spring-2026": [cachedEvent] },
     });
     window.localStorage.setItem(EVENTS_KEY, goodSnapshot);
@@ -202,7 +202,7 @@ describe("offline fallback", () => {
   it("ignores a snapshot whose payload is null", async () => {
     window.localStorage.setItem(
       EVENTS_KEY,
-      JSON.stringify({ savedAt: "2026-08-01T10:00:00.000Z", payload: null }),
+      JSON.stringify({ version: 1, savedAt: "2026-08-01T10:00:00.000Z", payload: null }),
     );
 
     mocks.loadFriends.mockResolvedValue([]);
