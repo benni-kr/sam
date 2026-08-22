@@ -11,6 +11,7 @@
  */
 
 import webpush from "web-push";
+import { normalizePlannerScope } from "@/features/planner/lib/planner-scope";
 
 // web-push relies on Node's crypto, so this route must run on the Node runtime
 // rather than the Edge runtime.
@@ -18,7 +19,6 @@ export const runtime = "nodejs";
 
 const SUBSCRIPTIONS_TABLE = "push_subscriptions";
 const MAX_NOTIFICATIONS_PER_REQUEST = 20;
-const DEFAULT_PLANNER_SCOPE = "default";
 
 type PushPayload = {
   title: string;
@@ -32,17 +32,6 @@ type SubscriptionRow = {
   p256dh: string;
   auth: string;
 };
-
-function normalizePlannerScope(rawScope: string | undefined) {
-  const normalized = (rawScope ?? "")
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return normalized || DEFAULT_PLANNER_SCOPE;
-}
 
 function readServerConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

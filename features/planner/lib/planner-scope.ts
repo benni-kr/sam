@@ -7,9 +7,9 @@
  * offline cache need the scope without pulling in (or being defeated by test
  * mocks of) a persistence adapter.
  *
- * Note: the same normalisation is currently repeated in week-persistence,
- * friends-persistence, push-subscription and app/api/notify/route.ts. Those
- * copies are untouched here; folding them in is a separate cleanup.
+ * This is the single definition. Every planner, friends, weekly-schedule and
+ * notification adapter imports it — client and server alike — so the scope a
+ * row is written under can never disagree with the scope it is read under.
  */
 
 const DEFAULT_PLANNER_SCOPE = "default";

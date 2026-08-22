@@ -9,19 +9,9 @@
  * same scope partitioning, and the same localStorage auth token.
  */
 
+import { normalizePlannerScope } from "@/features/planner/lib/planner-scope";
+
 const SUPABASE_SUBSCRIPTIONS_TABLE = "push_subscriptions";
-const DEFAULT_PLANNER_SCOPE = "default";
-
-function normalizePlannerScope(rawScope: string | undefined) {
-  const normalized = (rawScope ?? "")
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return normalized || DEFAULT_PLANNER_SCOPE;
-}
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

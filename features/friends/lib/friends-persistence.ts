@@ -1,5 +1,6 @@
 import { SEMESTER_FRIENDS } from "@/features/planner/lib/planner";
 import type { Friend } from "@/features/friends/lib/friend";
+import { getPlannerScope } from "@/features/planner/lib/planner-scope";
 
 /**
  * Friends Persistence
@@ -9,7 +10,6 @@ import type { Friend } from "@/features/friends/lib/friend";
  */
 
 const SUPABASE_FRIENDS_TABLE = "planner_friends";
-const DEFAULT_PLANNER_SCOPE = "default";
 
 /**
  * Row shape mapping directly to the `planner_friends` Supabase table.
@@ -30,20 +30,6 @@ function normalizeBirthday(birthday: string | undefined) {
   return /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : undefined;
 }
 
-function normalizePlannerScope(rawScope: string | undefined) {
-  const normalized = (rawScope ?? "")
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return normalized || DEFAULT_PLANNER_SCOPE;
-}
-
-function getPlannerScope() {
-  return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
-}
 
 function dedupeFriends(friends: Friend[]) {
   const uniqueByLowerCase = new Map<string, Friend>();
