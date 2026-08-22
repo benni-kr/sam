@@ -54,13 +54,11 @@ data_file="$backup_dir/sam-$stamp.data.sql"
 echo "Dumping schema + data -> $dump_file"
 pg_dump --format=custom --schema=public --file="$dump_file" "$SAM_DB_URL"
 
+# Deliberately not `supabase db dump`: that wrapper runs pg_dump inside a Docker
+# container to pin the server version, so it fails outright when Docker is not
+# installed. Plain pg_dump needs nothing beyond postgresql-client.
 echo "Dumping data only     -> $data_file"
-if command -v supabase >/dev/null 2>&1; then
-  supabase db dump --db-url "$SAM_DB_URL" --data-only --use-copy --file "$data_file"
-else
-  # Same output without the CLI wrapper.
-  pg_dump --data-only --column-inserts --schema=public --file="$data_file" "$SAM_DB_URL"
-fi
+pg_dump --data-only --column-inserts --schema=public --file="$data_file" "$SAM_DB_URL"
 
 # A dump of an unreachable or empty database is the failure worth catching here,
 # so confirm the archive actually lists the planner tables before declaring
