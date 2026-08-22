@@ -8,6 +8,11 @@
  * unit-testable and independent of React, Supabase, and the service worker.
  */
 
+import { format, parseISO } from "date-fns";
+import { enGB } from "date-fns/locale";
+
+import { defaultPlannerSemesterId } from "@/features/planner/lib/planner";
+
 /**
  * The minimal event shape the diff needs. Both calendar and weekly events are
  * flattened into this shape before diffing so a single implementation covers
@@ -17,6 +22,21 @@ export type DiffableEvent = {
   id: string;
   title: string;
   participants: string[];
+  /** ISO date of a calendar event. Absent on weekly events, which recur. */
+  startDate?: string | null;
+  /** Weekday of a weekly event. Absent on calendar events. */
+  day?: string;
+  /** Semester the event lives in, used to build the notification's click target. */
+  semesterId?: string;
+};
+
+/** Fields every notification carries, regardless of what triggered it. */
+type NotificationContext = {
+  eventId: string;
+  title: string;
+  startDate?: string | null;
+  day?: string;
+  semesterId?: string;
 };
 
 /**
@@ -24,13 +44,8 @@ export type DiffableEvent = {
  * `new-participant` fires once per participant added to a pre-existing event.
  */
 export type NotificationItem =
-  | { kind: "new-event"; eventId: string; title: string }
-  | {
-      kind: "new-participant";
-      eventId: string;
-      title: string;
-      participant: string;
-    };
+  | ({ kind: "new-event" } & NotificationContext)
+  | ({ kind: "new-participant"; participant: string } & NotificationContext);
 
 function toEventMap(events: DiffableEvent[]): Map<string, DiffableEvent> {
   const map = new Map<string, DiffableEvent>();
@@ -60,13 +75,16 @@ export function diffForNotifications(
 
   for (const event of next) {
     const before = previousById.get(event.id);
+    const context: NotificationContext = {
+      eventId: event.id,
+      title: event.title,
+      startDate: event.startDate,
+      day: event.day,
+      semesterId: event.semesterId,
+    };
 
     if (!before) {
-      notifications.push({
-        kind: "new-event",
-        eventId: event.id,
-        title: event.title,
-      });
+      notifications.push({ kind: "new-event", ...context });
       continue;
     }
 
@@ -82,9 +100,8 @@ export function diffForNotifications(
       if (!knownParticipants.has(normalized.toLocaleLowerCase())) {
         notifications.push({
           kind: "new-participant",
-          eventId: event.id,
-          title: event.title,
           participant: normalized,
+          ...context,
         });
       }
     }
@@ -94,23 +111,64 @@ export function diffForNotifications(
 }
 
 /**
- * Renders a notification item into the { title, body, tag, url } payload the
- * service worker displays. Copy is intentionally German to match the app UI.
+ * A short "when" label for the notification body: the weekday for a recurring
+ * weekly event, otherwise the calendar date. Null when the event is undated,
+ * which is the case for anything still sitting in the inbox.
  */
-export function toPushPayload(item: NotificationItem, url = "/") {
+function formatWhen(item: NotificationContext) {
+  if (item.day) {
+    return item.day;
+  }
+
+  if (!item.startDate) {
+    return null;
+  }
+
+  try {
+    return format(parseISO(item.startDate), "d MMM", { locale: enGB });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The click target. There is no per-event deep link in the app, so this gets the
+ * reader as close as the routes allow: the right view, and the semester the
+ * event belongs to. The default semester needs no query string.
+ */
+function buildUrl(item: NotificationContext) {
+  const path = item.day ? "/week" : "/";
+
+  if (!item.semesterId || item.semesterId === defaultPlannerSemesterId) {
+    return path;
+  }
+
+  return `${path}?semester=${encodeURIComponent(item.semesterId)}`;
+}
+
+/**
+ * Renders a notification item into the { title, body, tag, url } payload the
+ * service worker displays. Copy is English, matching the rest of the app UI.
+ * Pass `url` to override the derived click target.
+ */
+export function toPushPayload(item: NotificationItem, url?: string) {
+  const target = url ?? buildUrl(item);
+
   if (item.kind === "new-event") {
+    const when = formatWhen(item);
+
     return {
-      title: "Neuer Termin",
-      body: item.title,
+      title: "New event",
+      body: when ? `${item.title} · ${when}` : item.title,
       tag: `event:${item.eventId}`,
-      url,
+      url: target,
     };
   }
 
   return {
-    title: "Neue:r Teilnehmer:in",
+    title: "New participant",
     body: `${item.participant} → ${item.title}`,
     tag: `participant:${item.eventId}:${item.participant.toLocaleLowerCase()}`,
-    url,
+    url: target,
   };
 }

@@ -387,7 +387,18 @@ function buildWeekEventsBySemesterSnapshot(
  */
 function flattenToDiffable(
   bySemester: Partial<
-    Record<PlannerSemesterId, Array<{ id: string; title: string; participants: string[] }>>
+    Record<
+      PlannerSemesterId,
+      Array<{
+        id: string;
+        title: string;
+        participants: string[];
+        // Calendar events carry a date, weekly ones a weekday. Both are optional
+        // here so the single implementation keeps covering either kind.
+        startDate?: string | null;
+        day?: string;
+      }>
+    >
   >,
 ): DiffableEvent[] {
   const result: DiffableEvent[] = [];
@@ -398,6 +409,9 @@ function flattenToDiffable(
         id: event.id,
         title: event.title,
         participants: event.participants,
+        startDate: event.startDate,
+        day: event.day,
+        semesterId,
       });
     }
   }

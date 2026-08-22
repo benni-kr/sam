@@ -5,6 +5,10 @@ import {
   toPushPayload,
   type DiffableEvent,
 } from "@/features/notifications/lib/notification-diff";
+import {
+  defaultPlannerSemesterId,
+  plannerSemesterIds,
+} from "@/features/planner/lib/planner";
 
 function event(
   id: string,
@@ -68,7 +72,7 @@ describe("toPushPayload", () => {
   it("renders a new-event payload with a stable per-event tag", () => {
     expect(
       toPushPayload({ kind: "new-event", eventId: "a", title: "Exam" }),
-    ).toEqual({ title: "Neuer Termin", body: "Exam", tag: "event:a", url: "/" });
+    ).toEqual({ title: "New event", body: "Exam", tag: "event:a", url: "/" });
   });
 
   it("renders a new-participant payload keyed by event and participant", () => {
@@ -80,10 +84,72 @@ describe("toPushPayload", () => {
         participant: "Mia",
       }),
     ).toEqual({
-      title: "Neue:r Teilnehmer:in",
+      title: "New participant",
       body: "Mia → Exam",
       tag: "participant:a:mia",
       url: "/",
     });
+  });
+
+  it("appends the date of a calendar event to the body", () => {
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "a",
+        title: "Exam",
+        startDate: "2026-03-02",
+      }).body,
+    ).toBe("Exam · 2 Mar");
+  });
+
+  it("uses the weekday for a recurring weekly event", () => {
+    expect(
+      toPushPayload({ kind: "new-event", eventId: "a", title: "Lab", day: "Mon" })
+        .body,
+    ).toBe("Lab · Mon");
+  });
+
+  it("leaves the body bare for an undated inbox event", () => {
+    expect(
+      toPushPayload({ kind: "new-event", eventId: "a", title: "Idea", startDate: null })
+        .body,
+    ).toBe("Idea");
+  });
+
+  it("points a weekly event at the week view", () => {
+    expect(
+      toPushPayload({ kind: "new-event", eventId: "a", title: "Lab", day: "Mon" }).url,
+    ).toBe("/week");
+  });
+
+  it("adds a semester query only when it is not the default one", () => {
+    const other = plannerSemesterIds.find((id) => id !== defaultPlannerSemesterId);
+
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "a",
+        title: "Exam",
+        semesterId: defaultPlannerSemesterId,
+      }).url,
+    ).toBe("/");
+
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "a",
+        title: "Exam",
+        semesterId: other,
+      }).url,
+    ).toBe(`/?semester=${other}`);
+  });
+
+  it("lets an explicit url override the derived target", () => {
+    expect(
+      toPushPayload(
+        { kind: "new-event", eventId: "a", title: "Exam", day: "Mon" },
+        "/list",
+      ).url,
+    ).toBe("/list");
   });
 });
