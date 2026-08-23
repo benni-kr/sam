@@ -180,12 +180,12 @@ export async function enablePushNotifications(): Promise<string> {
  * nothing is subscribed.
  */
 export async function disablePushNotifications(): Promise<void> {
-  if (!("serviceWorker" in navigator)) {
+  if (!isPushSupported()) {
     return;
   }
 
   const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
+  const subscription = await registration.pushManager?.getSubscription();
 
   if (!subscription) {
     return;
@@ -200,12 +200,12 @@ export async function disablePushNotifications(): Promise<void> {
  * restore the toggle state on load and to exclude this device from broadcasts.
  */
 export async function getActiveSubscriptionEndpoint(): Promise<string | null> {
-  if (!("serviceWorker" in navigator)) {
+  if (!isPushSupported()) {
     return null;
   }
 
   const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
+  const subscription = await registration.pushManager?.getSubscription();
 
   return subscription?.endpoint ?? null;
 }
