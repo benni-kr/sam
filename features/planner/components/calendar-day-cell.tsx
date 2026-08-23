@@ -97,7 +97,7 @@ export function CalendarDayCell({
         type="button"
         onClick={() => openCreateEvent(dateKey)}
         aria-label={`Create event on ${dateKey}`}
-        className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-sam-border bg-sam-surface text-sam-text-3 opacity-0 shadow-sm transition-all hover:border-sam-border-2 hover:bg-sam-surface-2 hover:text-sam-text-2 group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-sam-surface-2 dark:hover:border-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        className="pointer-events-none absolute right-1.5 top-1.5 hidden h-6 w-6 items-center justify-center rounded-md border border-sam-border bg-sam-surface text-sam-text-3 opacity-0 shadow-sm transition-all hover:border-sam-border-2 hover:bg-sam-surface-2 hover:text-sam-text-2 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 sm:inline-flex dark:bg-sam-surface-2 dark:hover:border-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
       >
         <Plus size={14} strokeWidth={2.5} />
       </button>

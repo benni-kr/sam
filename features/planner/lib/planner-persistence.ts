@@ -13,6 +13,7 @@ import {
   type PlannerEvent,
   type PlannerSemesterId,
 } from "@/features/planner/lib/planner";
+import { getPlannerScope } from "@/features/planner/lib/planner-scope";
 
 /**
  * Planner calendar events grouped by semester id for persistence and hydration.
@@ -33,7 +34,6 @@ export type PlannerEventStore = {
 
 const SUPABASE_EVENTS_TABLE = "planner_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
-const DEFAULT_PLANNER_SCOPE = "default";
 
 /**
  * Row shape mapping directly to the `planner_events` table in Supabase.
@@ -67,20 +67,9 @@ function logPersistenceHealth(message: string) {
   console.info(`${PERSISTENCE_LOG_PREFIX} ${message}`);
 }
 
-function normalizePlannerScope(rawScope: string | undefined) {
-  const normalized = (rawScope ?? "")
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return normalized || DEFAULT_PLANNER_SCOPE;
-}
-
-function getPlannerScope() {
-  return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
-}
+// Canonical implementation lives in planner-scope so the offline cache can use
+// it without importing this adapter. Re-exported for existing consumers.
+export { getPlannerScope };
 
 function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
   return (

@@ -18,6 +18,7 @@ import {
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
+import { getPlannerScope } from "@/features/planner/lib/planner-scope";
 
 export type PlannerWeekEventsBySemester = Partial<
   Record<PlannerSemesterId, PlannerWeekEvent[]>
@@ -35,7 +36,6 @@ export type PlannerWeekEventStore = {
 
 const SUPABASE_WEEK_EVENTS_TABLE = "planner_week_events";
 const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
-const DEFAULT_PLANNER_SCOPE = "default";
 
 /**
  * Row shape mapping directly to the `planner_week_events` table in Supabase.
@@ -72,20 +72,6 @@ function logPersistenceHealth(message: string) {
   console.info(`${PERSISTENCE_LOG_PREFIX} ${message}`);
 }
 
-function normalizePlannerScope(rawScope: string | undefined) {
-  const normalized = (rawScope ?? "")
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return normalized || DEFAULT_PLANNER_SCOPE;
-}
-
-function getPlannerScope() {
-  return normalizePlannerScope(process.env.NEXT_PUBLIC_SAM_PLANNER_SCOPE);
-}
 
 function isWeekCategoryValue(
   value: unknown,
