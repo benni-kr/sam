@@ -21,6 +21,7 @@ import { defaultPlannerSemesterId } from "@/features/planner/lib/planner";
 export type DiffableEvent = {
   id: string;
   title: string;
+  category?: string;
   participants: string[];
   /** ISO date of a calendar event. Absent on weekly events, which recur. */
   startDate?: string | null;
@@ -34,6 +35,7 @@ export type DiffableEvent = {
 type NotificationContext = {
   eventId: string;
   title: string;
+  category?: string;
   startDate?: string | null;
   day?: string;
   semesterId?: string;
@@ -78,6 +80,7 @@ export function diffForNotifications(
     const context: NotificationContext = {
       eventId: event.id,
       title: event.title,
+      category: event.category,
       startDate: event.startDate,
       day: event.day,
       semesterId: event.semesterId,
@@ -132,6 +135,18 @@ function formatWhen(item: NotificationContext) {
 }
 
 /**
+ * Generates the notification title for a new event, tailored to its category
+ * (e.g. "New exam", "New group event") or falling back to "New event".
+ */
+function formatNewEventTitle(category?: string) {
+  if (!category || category.trim().toLowerCase() === "other") {
+    return "New event";
+  }
+
+  return `New ${category.trim().toLowerCase()}`;
+}
+
+/**
  * The click target. There is no per-event deep link in the app, so this gets the
  * reader as close as the routes allow: the right view, and the semester the
  * event belongs to. The default semester needs no query string.
@@ -158,7 +173,7 @@ export function toPushPayload(item: NotificationItem, url?: string) {
     const when = formatWhen(item);
 
     return {
-      title: "New event",
+      title: formatNewEventTitle(item.category),
       body: when ? `${item.title} · ${when}` : item.title,
       tag: `event:${item.eventId}`,
       url: target,

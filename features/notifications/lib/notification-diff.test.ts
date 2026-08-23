@@ -75,6 +75,44 @@ describe("toPushPayload", () => {
     ).toEqual({ title: "New event", body: "Exam", tag: "event:a", url: "/" });
   });
 
+  it("formats the title according to category", () => {
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "a",
+        title: "Calculus",
+        category: "Exam",
+      }).title,
+    ).toBe("New exam");
+
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "b",
+        title: "Study session",
+        category: "Group Event",
+      }).title,
+    ).toBe("New group event");
+
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "c",
+        title: "Gym",
+        category: "Sports",
+      }).title,
+    ).toBe("New sports");
+
+    expect(
+      toPushPayload({
+        kind: "new-event",
+        eventId: "d",
+        title: "Random",
+        category: "Other",
+      }).title,
+    ).toBe("New event");
+  });
+
   it("renders a new-participant payload keyed by event and participant", () => {
     expect(
       toPushPayload({

@@ -393,6 +393,7 @@ function flattenToDiffable(
         id: string;
         title: string;
         participants: string[];
+        category?: string;
         // Calendar events carry a date, weekly ones a weekday. Both are optional
         // here so the single implementation keeps covering either kind.
         startDate?: string | null;
@@ -408,6 +409,7 @@ function flattenToDiffable(
       result.push({
         id: event.id,
         title: event.title,
+        category: event.category,
         participants: event.participants,
         startDate: event.startDate,
         day: event.day,
