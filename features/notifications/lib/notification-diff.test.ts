@@ -39,7 +39,21 @@ describe("diffForNotifications", () => {
     const next = [event("a", "Exam", ["Paul", "Mia"])];
 
     expect(diffForNotifications(previous, next)).toEqual([
-      { kind: "new-participant", eventId: "a", title: "Exam", participant: "Mia" },
+      { kind: "new-participant", eventId: "a", title: "Exam", participants: ["Mia"] },
+    ]);
+  });
+
+  it("groups multiple participants added to the same event into a single item", () => {
+    const previous = [event("a", "Exam", ["Paul"])];
+    const next = [event("a", "Exam", ["Paul", "Mia", "Leo", "Sam"])];
+
+    expect(diffForNotifications(previous, next)).toEqual([
+      {
+        kind: "new-participant",
+        eventId: "a",
+        title: "Exam",
+        participants: ["Mia", "Leo", "Sam"],
+      },
     ]);
   });
 
@@ -62,7 +76,7 @@ describe("diffForNotifications", () => {
     const next = [event("a", "Exam", ["Paul", "Mia"]), event("b", "Party", [])];
 
     expect(diffForNotifications(previous, next)).toEqual([
-      { kind: "new-participant", eventId: "a", title: "Exam", participant: "Mia" },
+      { kind: "new-participant", eventId: "a", title: "Exam", participants: ["Mia"] },
       { kind: "new-event", eventId: "b", title: "Party" },
     ]);
   });
@@ -113,18 +127,34 @@ describe("toPushPayload", () => {
     ).toBe("New event");
   });
 
-  it("renders a new-participant payload keyed by event and participant", () => {
+  it("renders a single participant payload", () => {
     expect(
       toPushPayload({
         kind: "new-participant",
         eventId: "a",
         title: "Exam",
-        participant: "Mia",
+        participants: ["Mia"],
       }),
     ).toEqual({
       title: "New participant",
       body: "Mia → Exam",
-      tag: "participant:a:mia",
+      tag: "participant:a",
+      url: "/",
+    });
+  });
+
+  it("renders multiple participants in a single combined payload", () => {
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Exam",
+        participants: ["Mia", "Leo", "Sam"],
+      }),
+    ).toEqual({
+      title: "New participants",
+      body: "Mia, Leo, Sam → Exam",
+      tag: "participant:a",
       url: "/",
     });
   });

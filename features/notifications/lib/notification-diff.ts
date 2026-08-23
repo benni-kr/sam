@@ -43,11 +43,11 @@ type NotificationContext = {
 
 /**
  * A single notification to broadcast. `new-event` fires once per created event;
- * `new-participant` fires once per participant added to a pre-existing event.
+ * `new-participant` fires once per event where one or more participants were added.
  */
 export type NotificationItem =
   | ({ kind: "new-event" } & NotificationContext)
-  | ({ kind: "new-participant"; participant: string } & NotificationContext);
+  | ({ kind: "new-participant"; participants: string[] } & NotificationContext);
 
 function toEventMap(events: DiffableEvent[]): Map<string, DiffableEvent> {
   const map = new Map<string, DiffableEvent>();
@@ -92,6 +92,7 @@ export function diffForNotifications(
     }
 
     const knownParticipants = toLowerSet(before.participants);
+    const addedParticipants: string[] = [];
 
     for (const participant of event.participants) {
       const normalized = participant.trim();
@@ -101,12 +102,16 @@ export function diffForNotifications(
       }
 
       if (!knownParticipants.has(normalized.toLocaleLowerCase())) {
-        notifications.push({
-          kind: "new-participant",
-          participant: normalized,
-          ...context,
-        });
+        addedParticipants.push(normalized);
       }
+    }
+
+    if (addedParticipants.length > 0) {
+      notifications.push({
+        kind: "new-participant",
+        participants: addedParticipants,
+        ...context,
+      });
     }
   }
 
@@ -180,10 +185,13 @@ export function toPushPayload(item: NotificationItem, url?: string) {
     };
   }
 
+  const isMultiple = item.participants.length > 1;
+  const participantNames = item.participants.join(", ");
+
   return {
-    title: "New participant",
-    body: `${item.participant} → ${item.title}`,
-    tag: `participant:${item.eventId}:${item.participant.toLocaleLowerCase()}`,
+    title: isMultiple ? "New participants" : "New participant",
+    body: `${participantNames} → ${item.title}`,
+    tag: `participant:${item.eventId}`,
     url: target,
   };
 }
