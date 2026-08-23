@@ -169,7 +169,7 @@ describe("toPushPayload", () => {
       }),
     ).toEqual({
       title: "New participants",
-      body: "Mia, Leo + 1 other joined Exam",
+      body: "Mia, Leo and 1 other joined Exam",
       tag: "participant:a",
       url: "/",
     });
@@ -183,7 +183,7 @@ describe("toPushPayload", () => {
       }),
     ).toEqual({
       title: "New participants",
-      body: "Mia, Leo + 3 others joined Exam",
+      body: "Mia, Leo and 3 others joined Exam",
       tag: "participant:a",
       url: "/",
     });

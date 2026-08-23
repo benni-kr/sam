@@ -790,11 +790,10 @@ export function PlannerStateProvider({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   // Bumped by the `online` event to re-run the load effect after reconnecting.
   const [reloadToken, setReloadToken] = useState(0);
-  // Notification baselines: the last snapshot we compared against, per event
-  // kind. Null until the first post-hydration save establishes the baseline
-  // (so hydration itself never fires a flood of "new event" notifications).
+  // Notification baseline: the last snapshot we compared against. Null until
+  // the first post-hydration save establishes the baseline (so hydration itself
+  // never fires a flood of "new event" notifications).
   const prevEventsSnapshotRef = useRef<DiffableEvent[] | null>(null);
-  const prevWeekSnapshotRef = useRef<DiffableEvent[] | null>(null);
   // Set when a friend rename/remove cascade is about to rewrite participant
   // names across every event; the next calendar save then updates its baseline
   // without notifying, so a rename is not misread as many "new participant"s.
@@ -1040,22 +1039,9 @@ export function PlannerStateProvider({
     }
 
     const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
-    const nextDiffable = flattenToDiffable(snapshot);
-    const baseline = prevWeekSnapshotRef.current;
 
     void weekEventStore.current.saveWeekEventsBySemester(snapshot).then(
       () => {
-        // Weekly events are not touched by friend cascades, so any post-baseline
-        // change here is a genuine new appointment or added participant.
-        if (baseline) {
-          const items = diffForNotifications(baseline, nextDiffable);
-
-          if (items.length > 0) {
-            void broadcastNotifications(items, ownEndpointRef.current);
-          }
-        }
-
-        prevWeekSnapshotRef.current = nextDiffable;
         writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, snapshot);
       },
       (error: unknown) => {
