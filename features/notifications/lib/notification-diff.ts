@@ -152,6 +152,29 @@ function formatNewEventTitle(category?: string) {
 }
 
 /**
+ * Formats a list of added participants for notification copy, using natural
+ * conjunctions and truncating long lists (e.g. "Alice, Bob + 2 others").
+ */
+function formatParticipants(participants: string[]) {
+  if (participants.length === 0) {
+    return "";
+  }
+
+  if (participants.length === 1) {
+    return participants[0];
+  }
+
+  if (participants.length === 2) {
+    return `${participants[0]} and ${participants[1]}`;
+  }
+
+  const remaining = participants.length - 2;
+  const others = remaining === 1 ? "1 other" : `${remaining} others`;
+
+  return `${participants[0]}, ${participants[1]} and ${others}`;
+}
+
+/**
  * The click target. There is no per-event deep link in the app, so this gets the
  * reader as close as the routes allow: the right view, and the semester the
  * event belongs to. The default semester needs no query string.
@@ -186,11 +209,11 @@ export function toPushPayload(item: NotificationItem, url?: string) {
   }
 
   const isMultiple = item.participants.length > 1;
-  const participantNames = item.participants.join(", ");
+  const participantNames = formatParticipants(item.participants);
 
   return {
     title: isMultiple ? "New participants" : "New participant",
-    body: `${participantNames} → ${item.title}`,
+    body: `${participantNames} joined ${item.title}`,
     tag: `participant:${item.eventId}`,
     url: target,
   };

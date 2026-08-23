@@ -137,13 +137,29 @@ describe("toPushPayload", () => {
       }),
     ).toEqual({
       title: "New participant",
-      body: "Mia → Exam",
+      body: "Mia joined Exam",
       tag: "participant:a",
       url: "/",
     });
   });
 
-  it("renders multiple participants in a single combined payload", () => {
+  it("renders two participants with natural 'and' phrasing", () => {
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Exam",
+        participants: ["Mia", "Leo"],
+      }),
+    ).toEqual({
+      title: "New participants",
+      body: "Mia and Leo joined Exam",
+      tag: "participant:a",
+      url: "/",
+    });
+  });
+
+  it("renders 3+ participants with overflow truncation", () => {
     expect(
       toPushPayload({
         kind: "new-participant",
@@ -153,7 +169,21 @@ describe("toPushPayload", () => {
       }),
     ).toEqual({
       title: "New participants",
-      body: "Mia, Leo, Sam → Exam",
+      body: "Mia, Leo + 1 other joined Exam",
+      tag: "participant:a",
+      url: "/",
+    });
+
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Exam",
+        participants: ["Mia", "Leo", "Sam", "Paul", "Anna"],
+      }),
+    ).toEqual({
+      title: "New participants",
+      body: "Mia, Leo + 3 others joined Exam",
       tag: "participant:a",
       url: "/",
     });
