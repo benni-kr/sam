@@ -42,6 +42,7 @@ import {
 import { broadcastNotifications } from "@/features/notifications/lib/notify-broadcast";
 import { getActiveSubscriptionEndpoint } from "@/features/notifications/lib/push-subscription";
 import {
+  ensureRealtimeAuth,
   getSupabaseBrowserClient,
   getSupabaseConfig,
 } from "@/lib/supabase/client";
@@ -1007,20 +1008,25 @@ export function PlannerStateProvider({
       return;
     }
 
+    let isCancelled = false;
+
     const eventsChannel = client
-      .channel(`realtime:events:${config.plannerScope}`)
+      .channel(`realtime:events:${config.plannerScope}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "planner_events",
-          filter: `planner_scope=eq.${config.plannerScope}`,
         },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
             const row = payload.new as SupabaseEventRow;
-            if (row && row.event_id) {
+            if (
+              row &&
+              row.event_id &&
+              (!row.planner_scope || row.planner_scope === config.plannerScope)
+            ) {
               const parsed = rowToPlannerEvent(row);
               if (parsed) {
                 dispatch({ type: "REMOTE_UPSERT_EVENT", payload: parsed });
@@ -1036,23 +1042,25 @@ export function PlannerStateProvider({
             }
           }
         },
-      )
-      .subscribe();
+      );
 
     const weekEventsChannel = client
-      .channel(`realtime:week_events:${config.plannerScope}`)
+      .channel(`realtime:week_events:${config.plannerScope}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "planner_week_events",
-          filter: `planner_scope=eq.${config.plannerScope}`,
         },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
             const row = payload.new as SupabaseWeekEventRow;
-            if (row && row.event_id) {
+            if (
+              row &&
+              row.event_id &&
+              (!row.planner_scope || row.planner_scope === config.plannerScope)
+            ) {
               const parsed = rowToPlannerWeekEvent(row);
               if (parsed) {
                 dispatchWeek({
@@ -1071,10 +1079,31 @@ export function PlannerStateProvider({
             }
           }
         },
-      )
-      .subscribe();
+      );
+
+    void (async () => {
+      await ensureRealtimeAuth(client);
+      if (isCancelled) return;
+
+      eventsChannel.subscribe((status, err) => {
+        if (status === "SUBSCRIBED") {
+          console.info("[SAM realtime] Subscribed to planner_events changes.");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("[SAM realtime] Channel error on planner_events:", err);
+        }
+      });
+
+      weekEventsChannel.subscribe((status, err) => {
+        if (status === "SUBSCRIBED") {
+          console.info("[SAM realtime] Subscribed to planner_week_events changes.");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("[SAM realtime] Channel error on planner_week_events:", err);
+        }
+      });
+    })();
 
     return () => {
+      isCancelled = true;
       void client.removeChannel(eventsChannel);
       void client.removeChannel(weekEventsChannel);
     };

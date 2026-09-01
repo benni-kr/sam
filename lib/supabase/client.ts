@@ -54,6 +54,12 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    accessToken: async () => getClientAuthToken() || config.anonKey,
+    realtime: {
+      params: {
+        apikey: config.anonKey,
+      },
+    },
     global: {
       fetch: (input, init) => {
         const token = getClientAuthToken();
@@ -78,3 +84,15 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
 
   return browserClient;
 }
+
+export async function ensureRealtimeAuth(client: SupabaseClient): Promise<void> {
+  const token = getClientAuthToken();
+  if (token) {
+    try {
+      await client.realtime.setAuth(token);
+    } catch (err) {
+      console.warn("[SAM realtime] Failed to set Realtime auth token:", err);
+    }
+  }
+}
+

@@ -34,6 +34,7 @@ import {
   writeSnapshot,
 } from "@/features/planner/lib/offline-cache";
 import {
+  ensureRealtimeAuth,
   getSupabaseBrowserClient,
   getSupabaseConfig,
 } from "@/lib/supabase/client";
@@ -411,20 +412,25 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
       return;
     }
 
+    let isCancelled = false;
+
     const channel = client
-      .channel(`realtime:friends:${config.plannerScope}`)
+      .channel(`realtime:friends:${config.plannerScope}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "planner_friends",
-          filter: `planner_scope=eq.${config.plannerScope}`,
         },
         (payload) => {
           if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
             const row = payload.new as SupabaseFriendRow;
-            if (row && row.friend_name) {
+            if (
+              row &&
+              row.friend_name &&
+              (!row.planner_scope || row.planner_scope === config.plannerScope)
+            ) {
               const friend = rowToFriend(row);
               dispatch({ type: "remoteUpsertFriend", friend });
             }
@@ -435,10 +441,23 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
             }
           }
         },
-      )
-      .subscribe();
+      );
+
+    void (async () => {
+      await ensureRealtimeAuth(client);
+      if (isCancelled) return;
+
+      channel.subscribe((status, err) => {
+        if (status === "SUBSCRIBED") {
+          console.info("[SAM realtime] Subscribed to planner_friends changes.");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("[SAM realtime] Channel error on planner_friends:", err);
+        }
+      });
+    })();
 
     return () => {
+      isCancelled = true;
       void client.removeChannel(channel);
     };
   }, []);
