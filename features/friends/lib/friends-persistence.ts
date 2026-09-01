@@ -16,13 +16,13 @@ const SUPABASE_FRIENDS_TABLE = "planner_friends";
  * Fields are named to match the database column names used by the REST API
  * so rows can be serialized/deserialized without transformation.
  */
-type SupabaseFriendRow = {
+export type SupabaseFriendRow = {
   planner_scope: string;
   friend_name: string;
   birthday: string | null;
 };
 
-function normalizeBirthday(birthday: string | undefined) {
+export function normalizeBirthday(birthday: string | undefined) {
   if (!birthday) {
     return undefined;
   }
@@ -30,8 +30,7 @@ function normalizeBirthday(birthday: string | undefined) {
   return /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : undefined;
 }
 
-
-function dedupeFriends(friends: Friend[]) {
+export function dedupeFriends(friends: Friend[]) {
   const uniqueByLowerCase = new Map<string, Friend>();
 
   for (const friend of friends) {
@@ -57,30 +56,37 @@ function dedupeFriends(friends: Friend[]) {
   return Array.from(uniqueByLowerCase.values());
 }
 
+export function friendToRow(
+  friend: Friend,
+  plannerScope: string,
+): SupabaseFriendRow {
+  return {
+    planner_scope: plannerScope,
+    friend_name: friend.name.trim(),
+    birthday: friend.birthday ?? null,
+  };
+}
+
+export function rowToFriend(row: SupabaseFriendRow): Friend {
+  return {
+    name: row.friend_name,
+    birthday: normalizeBirthday(row.birthday ?? undefined),
+  };
+}
+
 function friendsToRows(
   friends: Friend[],
   plannerScope: string,
 ): SupabaseFriendRow[] {
-  return dedupeFriends(friends).map((friend) => ({
-    planner_scope: plannerScope,
-    friend_name: friend.name,
-    birthday: friend.birthday ?? null,
-  }));
+  return dedupeFriends(friends).map((friend) =>
+    friendToRow(friend, plannerScope),
+  );
 }
 
-function rowsToFriends(rows: SupabaseFriendRow[]) {
-  return dedupeFriends(
-    rows.map((row) => ({
-      name: row.friend_name,
-      birthday: row.birthday ?? undefined,
-    })),
-  ).sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function buildNotInFilter(values: string[]) {
-  return values.length > 0
-    ? `not.in.(${values.map(encodeURIComponent).join(",")})`
-    : "";
+export function rowsToFriends(rows: SupabaseFriendRow[]) {
+  return dedupeFriends(rows.map(rowToFriend)).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
 }
 
 function getSupabaseConfig() {
@@ -103,6 +109,11 @@ function getClientAuthToken() {
   if (typeof window === "undefined") return null;
 
   return window.localStorage.getItem("sam_auth_token");
+}
+
+function getAuthHeader(anonKey: string) {
+  const token = getClientAuthToken();
+  return `Bearer ${token || anonKey}`;
 }
 
 /**
@@ -171,6 +182,92 @@ export async function loadFriends() {
   return rowsToFriends(rows);
 }
 
+export async function insertFriend(friend: Friend) {
+  const config = getSupabaseConfig();
+  if (!config) {
+    throw new Error("Supabase configuration missing.");
+  }
+
+  const row = friendToRow(friend, config.plannerScope);
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(row),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to insert planner friend: ${response.status}`);
+  }
+}
+
+export async function updateFriendInStore(
+  currentName: string,
+  nextFriend: Friend,
+) {
+  const config = getSupabaseConfig();
+  if (!config) {
+    throw new Error("Supabase configuration missing.");
+  }
+
+  // If name changed, we delete old row and insert new row, or update
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&friend_name=eq.${encodeURIComponent(currentName)}`;
+
+  const isRenaming = currentName.toLowerCase() !== nextFriend.name.toLowerCase();
+
+  if (isRenaming) {
+    // Delete current and insert new
+    await deleteFriendFromStore(currentName);
+    await insertFriend(nextFriend);
+    return;
+  }
+
+  // Same name, update birthday
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      birthday: nextFriend.birthday ?? null,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update planner friend: ${response.status}`);
+  }
+}
+
+export async function deleteFriendFromStore(name: string) {
+  const config = getSupabaseConfig();
+  if (!config) {
+    throw new Error("Supabase configuration missing.");
+  }
+
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&friend_name=eq.${encodeURIComponent(name)}`;
+
+  const response = await fetch(endpoint, {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete planner friend: ${response.status}`);
+  }
+}
+
 /**
  * Persists the current friend list for the active planner scope.
  */
@@ -184,122 +281,25 @@ export async function saveFriends(friends: Friend[]) {
   }
 
   const rows = friendsToRows(friends, config.plannerScope);
+  if (rows.length === 0) return null;
 
-  if (typeof window !== "undefined") {
-    const token = getClientAuthToken();
-
-    if (!token) {
-      return null;
-    }
-
-    const authHeader = `Bearer ${token}`;
-
-    if (rows.length > 0) {
-      // Upsert the current client list into Supabase. This first POST call
-      // writes or merges the provided rows so existing entries are preserved
-      // and new names are inserted (on_conflict handles deduplication).
-      const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          apikey: config.anonKey,
-          Authorization: authHeader,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal",
-        },
-        body: JSON.stringify(rows),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          try {
-            window.localStorage.removeItem("sam_auth_token");
-            window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
-          } catch {
-            // no-op
-          }
-
-          return null;
-        }
-
-        throw new Error("Failed to save planner friends to Supabase.");
-      }
-    }
-
-    // Prune step: remove any rows in the database that are not present in
-    // the client's current list. This keeps the server-side data synced with
-    // the client: names omitted by the user are deleted from Supabase.
-    const friendNames = rows.map((row) => row.friend_name);
-    const deleteFilter = buildNotInFilter(friendNames);
-    const deleteEndpoint = deleteFilter
-      ? `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&friend_name=${deleteFilter}`
-      : `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
-
-    const deleteResponse = await fetch(deleteEndpoint, {
-      method: "DELETE",
-      headers: {
-        apikey: config.anonKey,
-        Authorization: authHeader,
-      },
-    });
-
-    if (!deleteResponse.ok) {
-      if (deleteResponse.status === 401 || deleteResponse.status === 403) {
-        try {
-          window.localStorage.removeItem("sam_auth_token");
-          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
-        } catch {
-          // no-op
-        }
-
-        return null;
-      }
-
-      throw new Error("Failed to prune planner friends in Supabase.");
-    }
-
-    return null;
-  }
-
-  if (rows.length > 0) {
-    // Upsert (server-side): ensure the canonical list exists in the DB.
-    const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify(rows),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to save planner friends to Supabase.");
-    }
-  }
-
-  // Prune step (server-side): remove any rows from Supabase not present
-  // in the client's current array. This keeps the server in sync with the
-  // client's desired friend list.
-  const friendNames = rows.map((row) => row.friend_name);
-  const deleteFilter = buildNotInFilter(friendNames);
-  const deleteEndpoint = deleteFilter
-    ? `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&friend_name=${deleteFilter}`
-    : `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
-
-  const deleteResponse = await fetch(deleteEndpoint, {
-    method: "DELETE",
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_FRIENDS_TABLE}?on_conflict=planner_scope,friend_name`;
+  const response = await fetch(endpoint, {
+    method: "POST",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
     },
+    body: JSON.stringify(rows),
   });
 
-  if (!deleteResponse.ok) {
-    throw new Error("Failed to prune planner friends in Supabase.");
+  if (!response.ok) {
+    throw new Error("Failed to save planner friends to Supabase.");
   }
+
+  return null;
 }
 
 /**
@@ -310,3 +310,4 @@ export function getDefaultFriends() {
     SEMESTER_FRIENDS.map((name) => ({ name, birthday: undefined })),
   ).sort((left, right) => left.name.localeCompare(right.name));
 }
+
