@@ -239,4 +239,42 @@ describe("plannerWeekStateReducer", () => {
       expect(nextState[plannerSemesterIds[1]]).toHaveLength(0);
     });
   });
+
+  describe("Realtime Remote Sync", () => {
+    it("handles REMOTE_UPSERT_WEEK_EVENT for new week event", () => {
+      const state = cloneState();
+      const newEvent = makeEvent({ id: "remote-week-1", title: "Remote Lecture" });
+      const action: PlannerWeekAction = {
+        type: "REMOTE_UPSERT_WEEK_EVENT",
+        payload: { semesterId: plannerSemesterIds[0], event: newEvent },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]).toHaveLength(1);
+      expect(nextState[plannerSemesterIds[0]]![0].title).toBe("Remote Lecture");
+    });
+
+    it("handles REMOTE_UPSERT_WEEK_EVENT for updating existing week event", () => {
+      const state = cloneState([makeEvent({ id: "upd-1", title: "Original" })]);
+      const updatedEvent = makeEvent({ id: "upd-1", title: "Remote Modified" });
+      const action: PlannerWeekAction = {
+        type: "REMOTE_UPSERT_WEEK_EVENT",
+        payload: { semesterId: plannerSemesterIds[0], event: updatedEvent },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]![0].title).toBe("Remote Modified");
+    });
+
+    it("handles REMOTE_DELETE_WEEK_EVENT", () => {
+      const state = cloneState([makeEvent({ id: "del-remote" })]);
+      const action: PlannerWeekAction = {
+        type: "REMOTE_DELETE_WEEK_EVENT",
+        payload: { eventId: "del-remote" },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]).toHaveLength(0);
+    });
+  });
 });

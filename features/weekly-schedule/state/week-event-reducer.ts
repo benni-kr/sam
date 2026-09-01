@@ -63,6 +63,21 @@ export type PlannerWeekAction =
         /** Event identifier from the weekly semester store. */
         eventId: string;
       };
+    }
+  | {
+      /** Handles remote upsert (insert or update) from Realtime broadcast. */
+      type: "REMOTE_UPSERT_WEEK_EVENT";
+      payload: {
+        semesterId: PlannerSemesterId;
+        event: PlannerWeekEvent;
+      };
+    }
+  | {
+      /** Handles remote deletion from Realtime broadcast. */
+      type: "REMOTE_DELETE_WEEK_EVENT";
+      payload: {
+        eventId: string;
+      };
     };
 
 /**
@@ -161,6 +176,56 @@ export function plannerWeekStateReducer(
     }
 
     case "DELETE_WEEK_EVENT": {
+      const semesterId = findSemesterForWeekEvent(
+        state,
+        action.payload.eventId,
+      );
+
+      if (!semesterId) {
+        return state;
+      }
+
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: semesterEvents.filter(
+          (event) => event.id !== action.payload.eventId,
+        ),
+      };
+    }
+
+    case "REMOTE_UPSERT_WEEK_EVENT": {
+      const { semesterId, event } = action.payload;
+      const existingSemesterId = findSemesterForWeekEvent(state, event.id);
+
+      if (existingSemesterId && existingSemesterId !== semesterId) {
+        const sourceEvents = (state[existingSemesterId] ?? []).filter(
+          (item) => item.id !== event.id,
+        );
+        const targetEvents = state[semesterId] ?? [];
+        return {
+          ...state,
+          [existingSemesterId]: sourceEvents,
+          [semesterId]: [
+            ...targetEvents.filter((item) => item.id !== event.id),
+            event,
+          ],
+        };
+      }
+
+      const currentEvents = state[semesterId] ?? [];
+      const exists = currentEvents.some((item) => item.id === event.id);
+
+      return {
+        ...state,
+        [semesterId]: exists
+          ? currentEvents.map((item) => (item.id === event.id ? event : item))
+          : [...currentEvents, event],
+      };
+    }
+
+    case "REMOTE_DELETE_WEEK_EVENT": {
       const semesterId = findSemesterForWeekEvent(
         state,
         action.payload.eventId,

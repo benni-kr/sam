@@ -29,7 +29,16 @@ export type PlannerWeekEventsBySemester = Partial<
  */
 export type PlannerWeekEventStore = {
   loadWeekEventsBySemester: () => Promise<PlannerWeekEventsBySemester | null>;
-  saveWeekEventsBySemester: (
+  insertWeekEvent: (
+    event: PlannerWeekEvent,
+    semesterId: PlannerSemesterId,
+  ) => Promise<void>;
+  updateWeekEvent: (
+    eventId: string,
+    patch: Partial<PlannerWeekEvent> & { semesterId?: PlannerSemesterId },
+  ) => Promise<void>;
+  deleteWeekEvent: (eventId: string) => Promise<void>;
+  saveWeekEventsBySemester?: (
     data: PlannerWeekEventsBySemester,
   ) => Promise<void>;
 };
@@ -43,7 +52,7 @@ const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
  * serialized and deserialized without transformation when calling the REST
  * endpoints.
  */
-type SupabaseWeekEventRow = {
+export type SupabaseWeekEventRow = {
   planner_scope: string;
   semester_id: PlannerSemesterId;
   event_id: string;
@@ -73,7 +82,7 @@ function logPersistenceHealth(message: string) {
 }
 
 
-function isWeekCategoryValue(
+export function isWeekCategoryValue(
   value: unknown,
 ): value is PlannerWeekEventCategory {
   return (
@@ -82,14 +91,14 @@ function isWeekCategoryValue(
   );
 }
 
-function isWeekdayValue(value: unknown): value is PlannerWeekday {
+export function isWeekdayValue(value: unknown): value is PlannerWeekday {
   return (
     typeof value === "string" &&
     plannerWeekdays.includes(value as PlannerWeekday)
   );
 }
 
-function normalizeParticipants(value: unknown) {
+export function normalizeParticipants(value: unknown) {
   if (!Array.isArray(value)) {
     return [] as string[];
   }
@@ -100,7 +109,56 @@ function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
-function weekEventsBySemesterToRows(
+export function rowToPlannerWeekEvent(
+  row: SupabaseWeekEventRow,
+): { semesterId: PlannerSemesterId; event: PlannerWeekEvent } | null {
+  if (!isWeekCategoryValue(row.category) || !isWeekdayValue(row.day)) {
+    return null;
+  }
+
+  const targetSemesterId = plannerSemesterIds.includes(row.semester_id)
+    ? row.semester_id
+    : defaultPlannerSemesterId;
+
+  if (!row.start_time || !row.end_time) {
+    return null;
+  }
+
+  return {
+    semesterId: targetSemesterId,
+    event: {
+      id: row.event_id,
+      title: row.title,
+      description: row.description ?? undefined,
+      category: row.category,
+      day: row.day,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      participants: normalizeParticipants(row.participants),
+    },
+  };
+}
+
+export function weekEventToRow(
+  event: PlannerWeekEvent,
+  semesterId: PlannerSemesterId,
+  plannerScope: string,
+): SupabaseWeekEventRow {
+  return {
+    planner_scope: plannerScope,
+    semester_id: semesterId,
+    event_id: event.id,
+    title: event.title,
+    description: event.description ?? null,
+    category: event.category,
+    day: event.day,
+    start_time: event.startTime,
+    end_time: event.endTime,
+    participants: event.participants,
+  };
+}
+
+export function weekEventsBySemesterToRows(
   weekEventsBySemester: PlannerWeekEventsBySemester,
   plannerScope: string,
 ): SupabaseWeekEventRow[] {
@@ -110,25 +168,14 @@ function weekEventsBySemesterToRows(
     const semesterEvents = weekEventsBySemester[semesterId] ?? [];
 
     for (const event of semesterEvents) {
-      rows.push({
-        planner_scope: plannerScope,
-        semester_id: semesterId,
-        event_id: event.id,
-        title: event.title,
-        description: event.description ?? null,
-        category: event.category,
-        day: event.day,
-        start_time: event.startTime,
-        end_time: event.endTime,
-        participants: event.participants,
-      });
+      rows.push(weekEventToRow(event, semesterId, plannerScope));
     }
   }
 
   return rows;
 }
 
-function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
+export function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
   const weekEventsBySemester: PlannerWeekEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
@@ -136,37 +183,15 @@ function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
   }
 
   for (const row of rows) {
-    if (!isWeekCategoryValue(row.category) || !isWeekdayValue(row.day)) {
+    const parsed = rowToPlannerWeekEvent(row);
+    if (!parsed) {
       continue;
     }
 
-    const targetSemesterId = plannerSemesterIds.includes(row.semester_id)
-      ? row.semester_id
-      : defaultPlannerSemesterId;
-
-    if (!row.start_time || !row.end_time) {
-      continue;
-    }
-
-    weekEventsBySemester[targetSemesterId]?.push({
-      id: row.event_id,
-      title: row.title,
-      description: row.description ?? undefined,
-      category: row.category,
-      day: row.day,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      participants: normalizeParticipants(row.participants),
-    });
+    weekEventsBySemester[parsed.semesterId]?.push(parsed.event);
   }
 
   return weekEventsBySemester;
-}
-
-function buildNotInFilter(values: string[]) {
-  return values.length > 0
-    ? `not.in.(${values.map(encodeURIComponent).join(",")})`
-    : "";
 }
 
 function getSupabaseConfig() {
@@ -204,6 +229,11 @@ function requireSupabaseConfig() {
 
 function hasSupabaseConfig() {
   return Boolean(getSupabaseConfig());
+}
+
+function getAuthHeader(anonKey: string) {
+  const token = getClientAuthToken();
+  return `Bearer ${token || anonKey}`;
 }
 
 async function fetchSupabaseWeekEventsBySemester(
@@ -267,116 +297,95 @@ async function fetchSupabaseWeekEventsBySemester(
   return rowsToWeekEventsBySemester(rows);
 }
 
-async function upsertSupabaseWeekEventsBySemester(
+export async function insertSupabaseWeekEvent(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-  weekEventsBySemester: PlannerWeekEventsBySemester,
+  event: PlannerWeekEvent,
+  semesterId: PlannerSemesterId,
 ) {
-  let authHeader = `Bearer ${config.anonKey}`;
+  const row = weekEventToRow(event, semesterId, config.plannerScope);
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
 
-  if (typeof window !== "undefined") {
-    const token = getClientAuthToken();
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(row),
+  });
 
-    if (!token) {
-      logPersistenceHealth(
-        "No client auth token available yet; deferring week events save.",
-      );
-      return;
-    }
-
-    authHeader = `Bearer ${token}`;
+  if (!response.ok) {
+    const errorDetails = await response
+      .text()
+      .catch(() => "No details available");
+    throw new Error(
+      `Failed to insert planner week event to Supabase: ${response.status} ${errorDetails}`,
+    );
   }
+}
 
-  const rows = weekEventsBySemesterToRows(
-    weekEventsBySemester,
-    config.plannerScope,
-  );
+export async function updateSupabaseWeekEvent(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  eventId: string,
+  patch: Partial<PlannerWeekEvent> & { semesterId?: PlannerSemesterId },
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=eq.${encodeURIComponent(eventId)}`;
 
-  if (rows.length > 0) {
-    // Upsert step: write or merge the current client-side weekly schedule
-    // into the database. Using `on_conflict` ensures existing rows are
-    // updated while new rows are inserted, performing an idempotent sync
-    // for the provided `rows` payload.
-    const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        apikey: config.anonKey,
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify(rows),
-    });
+  const body: Record<string, unknown> = {};
 
-    if (!response.ok) {
-      if (typeof window !== "undefined") {
-        if (response.status === 401 || response.status === 403) {
-          try {
-            window.localStorage.removeItem("sam_auth_token");
-            window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
-          } catch {
-            // noop
-          }
+  if (patch.title !== undefined) body.title = patch.title;
+  if (patch.description !== undefined) body.description = patch.description ?? null;
+  if (patch.category !== undefined) body.category = patch.category;
+  if (patch.day !== undefined) body.day = patch.day;
+  if (patch.startTime !== undefined) body.start_time = patch.startTime;
+  if (patch.endTime !== undefined) body.end_time = patch.endTime;
+  if (patch.participants !== undefined) body.participants = patch.participants;
+  if (patch.semesterId !== undefined) body.semester_id = patch.semesterId;
 
-          logPersistenceHealth(
-            "Auth token invalid or expired while saving week events.",
-          );
-          return;
-        }
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(body),
+  });
 
-        logPersistenceHealth(
-          `Failed to save planner week events to Supabase (status ${response.status}).`,
-        );
-        return;
-      }
-
-      throw new Error("Failed to save planner week events to Supabase.");
-    }
+  if (!response.ok) {
+    const errorDetails = await response
+      .text()
+      .catch(() => "No details available");
+    throw new Error(
+      `Failed to update planner week event in Supabase: ${response.status} ${errorDetails}`,
+    );
   }
+}
 
-  // Prune step: remove any events from the DB that aren't present in the
-  // client's current state. After upserting the canonical set above, we
-  // delete rows whose `event_id` is not in the supplied `rows` payload,
-  // completing a two-way sync.
-  const eventIds = rows.map((row) => row.event_id);
-  const deleteFilter = buildNotInFilter(eventIds);
-  const categoryFilter = `&category=in.(${plannerWeekEventCategories.map((c) => `"${c}"`).join(",")})`;
-  const dayFilter = `&day=in.(${plannerWeekdays.map((d) => `"${d}"`).join(",")})`;
-  const deleteEndpoint = deleteFilter
-    ? `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}${categoryFilter}${dayFilter}`
-    : `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}${categoryFilter}${dayFilter}`;
+export async function deleteSupabaseWeekEvent(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  eventId: string,
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=eq.${encodeURIComponent(eventId)}`;
 
-  const deleteResponse = await fetch(deleteEndpoint, {
+  const response = await fetch(endpoint, {
     method: "DELETE",
     headers: {
       apikey: config.anonKey,
-      Authorization: authHeader,
+      Authorization: getAuthHeader(config.anonKey),
     },
   });
 
-  if (!deleteResponse.ok) {
-    if (typeof window !== "undefined") {
-      if (deleteResponse.status === 401 || deleteResponse.status === 403) {
-        try {
-          window.localStorage.removeItem("sam_auth_token");
-          window.dispatchEvent(new CustomEvent("sam:auth:invalid"));
-        } catch {
-          // noop
-        }
-
-        logPersistenceHealth(
-          "Auth token invalid or expired while pruning week events.",
-        );
-        return;
-      }
-
-      logPersistenceHealth(
-        `Failed to prune planner week events in Supabase (status ${deleteResponse.status}).`,
-      );
-      return;
-    }
-
-    throw new Error("Failed to prune planner week events in Supabase.");
+  if (!response.ok) {
+    const errorDetails = await response
+      .text()
+      .catch(() => "No details available");
+    throw new Error(
+      `Failed to delete planner week event in Supabase: ${response.status} ${errorDetails}`,
+    );
   }
 }
 
@@ -386,9 +395,19 @@ export const supabaseWeekEventStore: PlannerWeekEventStore = {
     return fetchSupabaseWeekEventsBySemester(config);
   },
 
-  async saveWeekEventsBySemester(data) {
+  async insertWeekEvent(event, semesterId) {
     const config = requireSupabaseConfig();
-    await upsertSupabaseWeekEventsBySemester(config, data);
+    await insertSupabaseWeekEvent(config, event, semesterId);
+  },
+
+  async updateWeekEvent(eventId, patch) {
+    const config = requireSupabaseConfig();
+    await updateSupabaseWeekEvent(config, eventId, patch);
+  },
+
+  async deleteWeekEvent(eventId) {
+    const config = requireSupabaseConfig();
+    await deleteSupabaseWeekEvent(config, eventId);
   },
 };
 
@@ -407,3 +426,4 @@ export function resolveWeekEventStore(): PlannerWeekEventStore {
   logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
   return supabaseWeekEventStore;
 }
+
