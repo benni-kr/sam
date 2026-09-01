@@ -41,6 +41,11 @@ vi.mock("@/features/friends/lib/friends-persistence", () => ({
   // friends-state imports these directly, not through the store.
   loadFriends: mocks.loadFriends,
   saveFriends: mocks.saveFriends,
+  insertFriend: vi.fn(async () => {}),
+  updateFriendInStore: vi.fn(async () => {}),
+  deleteFriendFromStore: vi.fn(async () => {}),
+  rowToFriend: (row: { friend_name: string; birthday?: string | null }) => ({ name: row.friend_name, birthday: row.birthday ?? undefined }),
+  friendToRow: (friend: { name: string; birthday?: string }) => ({ planner_scope: "test", friend_name: friend.name, birthday: friend.birthday ?? null }),
 }));
 
 vi.mock("@/features/planner/lib/planner-persistence", () => ({

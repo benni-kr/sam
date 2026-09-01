@@ -19,7 +19,9 @@ import {
 
 import {
   resolvePlannerEventStore,
+  rowToPlannerEvent,
   type PlannerEventsBySemester,
+  type SupabaseEventRow,
 } from "@/features/planner/lib/planner-persistence";
 import {
   isOfflineError,
@@ -28,16 +30,21 @@ import {
 } from "@/features/planner/lib/offline-cache";
 import {
   resolveWeekEventStore,
+  rowToPlannerWeekEvent,
   type PlannerWeekEventsBySemester,
+  type SupabaseWeekEventRow,
 } from "@/features/weekly-schedule/lib/week-persistence";
 import { plannerWeekStateReducer } from "@/features/weekly-schedule/state/week-event-reducer";
 import { useFriendsState } from "@/features/friends/state/friends-state";
 import {
-  diffForNotifications,
-  type DiffableEvent,
+  type NotificationItem,
 } from "@/features/notifications/lib/notification-diff";
 import { broadcastNotifications } from "@/features/notifications/lib/notify-broadcast";
 import { getActiveSubscriptionEndpoint } from "@/features/notifications/lib/push-subscription";
+import {
+  getSupabaseBrowserClient,
+  getSupabaseConfig,
+} from "@/lib/supabase/client";
 
 import {
   defaultPlannerSemesterId,
@@ -231,6 +238,21 @@ type PlannerAction =
         /** Replacement participant name stored in normalized form. */
         nextName: string;
       };
+    }
+  | {
+      /** Handles remote upsert (insert or update) from Realtime broadcast. */
+      type: "REMOTE_UPSERT_EVENT";
+      payload: {
+        semesterId: PlannerSemesterId;
+        event: PlannerEvent;
+      };
+    }
+  | {
+      /** Handles remote deletion from Realtime broadcast. */
+      type: "REMOTE_DELETE_EVENT";
+      payload: {
+        eventId: string;
+      };
     };
 
 type WeekEventsBySemester = PlannerWeekEventsBySemester;
@@ -379,46 +401,6 @@ function buildWeekEventsBySemesterSnapshot(
 
     return acc;
   }, {} as PlannerWeekEventsBySemester);
-}
-
-/**
- * Flattens a semester-keyed event map into the minimal shape the notification
- * diff needs, so both calendar and weekly events feed one comparison.
- */
-function flattenToDiffable(
-  bySemester: Partial<
-    Record<
-      PlannerSemesterId,
-      Array<{
-        id: string;
-        title: string;
-        participants: string[];
-        category?: string;
-        // Calendar events carry a date, weekly ones a weekday. Both are optional
-        // here so the single implementation keeps covering either kind.
-        startDate?: string | null;
-        day?: string;
-      }>
-    >
-  >,
-): DiffableEvent[] {
-  const result: DiffableEvent[] = [];
-
-  for (const semesterId of plannerSemesterIds) {
-    for (const event of bySemester[semesterId] ?? []) {
-      result.push({
-        id: event.id,
-        title: event.title,
-        category: event.category,
-        participants: event.participants,
-        startDate: event.startDate,
-        day: event.day,
-        semesterId,
-      });
-    }
-  }
-
-  return result;
 }
 
 function toPlannerPersistenceError(error: unknown, fallbackMessage: string) {
@@ -683,6 +665,53 @@ export function plannerStateReducer(
       }, {} as EventsBySemester);
     }
 
+    case "REMOTE_UPSERT_EVENT": {
+      const { semesterId, event } = action.payload;
+      const existingSemesterId = findSemesterForEvent(state, event.id);
+
+      if (existingSemesterId && existingSemesterId !== semesterId) {
+        const sourceEvents = (state[existingSemesterId] ?? []).filter(
+          (item) => item.id !== event.id,
+        );
+        const targetEvents = state[semesterId] ?? [];
+        return {
+          ...state,
+          [existingSemesterId]: sourceEvents,
+          [semesterId]: [
+            ...targetEvents.filter((item) => item.id !== event.id),
+            event,
+          ],
+        };
+      }
+
+      const currentEvents = state[semesterId] ?? [];
+      const exists = currentEvents.some((item) => item.id === event.id);
+
+      return {
+        ...state,
+        [semesterId]: exists
+          ? currentEvents.map((item) => (item.id === event.id ? event : item))
+          : [...currentEvents, event],
+      };
+    }
+
+    case "REMOTE_DELETE_EVENT": {
+      const semesterId = findSemesterForEvent(state, action.payload.eventId);
+
+      if (!semesterId) {
+        return state;
+      }
+
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: semesterEvents.filter(
+          (event) => event.id !== action.payload.eventId,
+        ),
+      };
+    }
+
     default:
       return state;
   }
@@ -790,14 +819,6 @@ export function PlannerStateProvider({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   // Bumped by the `online` event to re-run the load effect after reconnecting.
   const [reloadToken, setReloadToken] = useState(0);
-  // Notification baseline: the last snapshot we compared against. Null until
-  // the first post-hydration save establishes the baseline (so hydration itself
-  // never fires a flood of "new event" notifications).
-  const prevEventsSnapshotRef = useRef<DiffableEvent[] | null>(null);
-  // Set when a friend rename/remove cascade is about to rewrite participant
-  // names across every event; the next calendar save then updates its baseline
-  // without notifying, so a rename is not misread as many "new participant"s.
-  const skipEventsNotifyRef = useRef(false);
   // This device's own push endpoint, excluded from its own broadcasts.
   const ownEndpointRef = useRef<string | null>(null);
   const {
@@ -956,13 +977,6 @@ export function PlannerStateProvider({
       return;
     }
 
-    // A rename or remove rewrites participant names across many events at once.
-    // Flag the imminent calendar save so it re-baselines silently instead of
-    // announcing every rewritten name as a new participant.
-    if (lastMutation.type === "rename" || lastMutation.type === "remove") {
-      skipEventsNotifyRef.current = true;
-    }
-
     // Cross-domain listener: friend renames and deletions cascade into the
     // planner store here without tightly coupling the friends and planner
     // domains together.
@@ -984,80 +998,104 @@ export function PlannerStateProvider({
     }
   }, [didHydrateFromStorage, lastMutation]);
 
+  // Subscribe to Realtime postgres_changes on planner_events and planner_week_events
   useEffect(() => {
-    // Both guards matter. didHydrateFromStorage stays false after a cache
-    // hydration, and isOffline covers losing the connection mid-session. A save
-    // here prunes every row missing from state, so it must never run against
-    // data that did not come from Supabase.
+    const client = getSupabaseBrowserClient();
+    const config = getSupabaseConfig();
+
+    if (!client || !config) {
+      return;
+    }
+
+    const eventsChannel = client
+      .channel(`realtime:events:${config.plannerScope}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "planner_events",
+          filter: `planner_scope=eq.${config.plannerScope}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const row = payload.new as SupabaseEventRow;
+            if (row && row.event_id) {
+              const parsed = rowToPlannerEvent(row);
+              if (parsed) {
+                dispatch({ type: "REMOTE_UPSERT_EVENT", payload: parsed });
+              }
+            }
+          } else if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as Partial<SupabaseEventRow>;
+            if (oldRow && oldRow.event_id) {
+              dispatch({
+                type: "REMOTE_DELETE_EVENT",
+                payload: { eventId: oldRow.event_id },
+              });
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    const weekEventsChannel = client
+      .channel(`realtime:week_events:${config.plannerScope}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "planner_week_events",
+          filter: `planner_scope=eq.${config.plannerScope}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const row = payload.new as SupabaseWeekEventRow;
+            if (row && row.event_id) {
+              const parsed = rowToPlannerWeekEvent(row);
+              if (parsed) {
+                dispatchWeek({
+                  type: "REMOTE_UPSERT_WEEK_EVENT",
+                  payload: parsed,
+                });
+              }
+            }
+          } else if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as Partial<SupabaseWeekEventRow>;
+            if (oldRow && oldRow.event_id) {
+              dispatchWeek({
+                type: "REMOTE_DELETE_WEEK_EVENT",
+                payload: { eventId: oldRow.event_id },
+              });
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void client.removeChannel(eventsChannel);
+      void client.removeChannel(weekEventsChannel);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!didHydrateFromStorage || isOffline) {
       return;
     }
 
     const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
-    const nextDiffable = flattenToDiffable(snapshot);
-    const baseline = prevEventsSnapshotRef.current;
-    const skipNotify = skipEventsNotifyRef.current;
-
-    void eventStore.current.saveEventsBySemester(snapshot).then(
-      () => {
-        // Only notify once a baseline exists (i.e. not on the hydration save)
-        // and the change was not a friend rename/remove cascade.
-        if (baseline && !skipNotify) {
-          const items = diffForNotifications(baseline, nextDiffable);
-
-          if (items.length > 0) {
-            void broadcastNotifications(items, ownEndpointRef.current);
-          }
-        }
-
-        prevEventsSnapshotRef.current = nextDiffable;
-        skipEventsNotifyRef.current = false;
-        writeSnapshot(EVENTS_SNAPSHOT_KEY, snapshot);
-      },
-      (error: unknown) => {
-        // Losing the network mid-session drops to read-only rather than
-        // crashing; anything else is still a real persistence failure.
-        if (isOfflineError(error)) {
-          setIsOffline(true);
-          return;
-        }
-
-        setPersistenceError(
-          toPlannerPersistenceError(
-            error,
-            "Failed to persist planner events to Supabase.",
-          ),
-        );
-      },
-    );
+    writeSnapshot(EVENTS_SNAPSHOT_KEY, snapshot);
   }, [didHydrateFromStorage, isOffline, eventsBySemester]);
 
   useEffect(() => {
-    // Same two guards as the calendar save above, for the same reason.
     if (!didHydrateFromStorage || isOffline) {
       return;
     }
 
     const snapshot = buildWeekEventsBySemesterSnapshot(weekEventsBySemester);
-
-    void weekEventStore.current.saveWeekEventsBySemester(snapshot).then(
-      () => {
-        writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, snapshot);
-      },
-      (error: unknown) => {
-        if (isOfflineError(error)) {
-          setIsOffline(true);
-          return;
-        }
-
-        setPersistenceError(
-          toPlannerPersistenceError(
-            error,
-            "Failed to persist planner week events to Supabase.",
-          ),
-        );
-      },
-    );
+    writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, snapshot);
   }, [didHydrateFromStorage, isOffline, weekEventsBySemester]);
 
   const normalizedSemesterId = (
@@ -1095,16 +1133,53 @@ export function PlannerStateProvider({
       categorySummaries,
       chronologicalEvents,
       moveEventToDate: (eventId, dateKey) => {
+        const sourceSemesterId = findSemesterForEvent(eventsBySemester, eventId);
+        if (!sourceSemesterId) return;
+        const sourceEvents = eventsBySemester[sourceSemesterId] ?? [];
+        const event = sourceEvents.find((item) => item.id === eventId);
+        if (!event) return;
+
+        const duration = eventDurationInDays(event);
+        const nextStartDate = dateKey;
+        const nextEndDate = toDateKey(addDays(toDate(dateKey), duration - 1));
+
         dispatch({
           type: "MOVE_EVENT_TO_DATE",
           payload: { eventId, dateKey, targetSemesterId: normalizedSemesterId },
         });
+
+        void eventStore.current
+          .updateEvent(eventId, {
+            startDate: nextStartDate,
+            endDate: nextEndDate,
+            semesterId: normalizedSemesterId,
+          })
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to move event to date:", error);
+          });
       },
       moveEventToInbox: (eventId) => {
         dispatch({
           type: "MOVE_EVENT_TO_INBOX",
           payload: { eventId },
         });
+
+        void eventStore.current
+          .updateEvent(eventId, {
+            startDate: null,
+            endDate: null,
+          })
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to move event to inbox:", error);
+          });
       },
       createEvent: (input) => {
         const title = input.title.trim();
@@ -1119,27 +1194,49 @@ export function PlannerStateProvider({
           input.endDate,
         );
 
+        const event: PlannerEvent = {
+          id: `evt-${crypto.randomUUID()}`,
+          title,
+          description: description || undefined,
+          category: input.category,
+          startDate: normalizedDates.startDate,
+          endDate: normalizedDates.endDate,
+          // Sanitize the participant list against the active friends array at
+          // the exact moment of creation so we never persist ghost participants
+          // that no longer exist in the friends domain.
+          participants: filterParticipantsByFriends(
+            input.participants,
+            friendNames,
+          ),
+        };
+
         dispatch({
           type: "CREATE_EVENT",
           payload: {
             semesterId: normalizedSemesterId,
-            event: {
-              id: `evt-${crypto.randomUUID()}`,
-              title,
-              description: description || undefined,
-              category: input.category,
-              startDate: normalizedDates.startDate,
-              endDate: normalizedDates.endDate,
-              // Sanitize the participant list against the active friends array at
-              // the exact moment of creation so we never persist ghost participants
-              // that no longer exist in the friends domain.
-              participants: filterParticipantsByFriends(
-                input.participants,
-                friendNames,
-              ),
-            },
+            event,
           },
         });
+
+        void eventStore.current
+          .insertEvent(event, normalizedSemesterId)
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to insert event:", error);
+          });
+
+        const notifItem: NotificationItem = {
+          kind: "new-event",
+          eventId: event.id,
+          title: event.title,
+          category: event.category,
+          startDate: event.startDate,
+          semesterId: normalizedSemesterId,
+        };
+        void broadcastNotifications([notifItem], ownEndpointRef.current);
       },
       updateEvent: (eventId, input) => {
         const title = input.title.trim();
@@ -1154,6 +1251,11 @@ export function PlannerStateProvider({
           input.endDate,
         );
 
+        const participants = filterParticipantsByFriends(
+          input.participants,
+          friendNames,
+        );
+
         dispatch({
           type: "UPDATE_EVENT",
           payload: {
@@ -1163,20 +1265,40 @@ export function PlannerStateProvider({
             category: input.category,
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
-            // Sanitize the participant list against the active friends array at
-            // the exact moment of update so we never persist ghost participants
-            // that no longer exist in the friends domain.
-            participants: filterParticipantsByFriends(
-              input.participants,
-              friendNames,
-            ),
+            participants,
           },
         });
+
+        void eventStore.current
+          .updateEvent(eventId, {
+            title,
+            description: description || undefined,
+            category: input.category,
+            startDate: normalizedDates.startDate,
+            endDate: normalizedDates.endDate,
+            participants,
+            semesterId: normalizedSemesterId,
+          })
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to update event:", error);
+          });
       },
       deleteEvent: (eventId) => {
         dispatch({
           type: "DELETE_EVENT",
           payload: { eventId },
+        });
+
+        void eventStore.current.deleteEvent(eventId).catch((error) => {
+          if (isOfflineError(error)) {
+            setIsOffline(true);
+            return;
+          }
+          console.error("Failed to delete event:", error);
         });
       },
       createWeekEvent: (input) => {
@@ -1187,25 +1309,47 @@ export function PlannerStateProvider({
           return;
         }
 
+        const weekEvent: PlannerWeekEvent = {
+          id: `wevt-${crypto.randomUUID()}`,
+          title,
+          description: description || undefined,
+          category: input.category,
+          day: input.day,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          participants: filterParticipantsByFriends(
+            input.participants,
+            friendNames,
+          ),
+        };
+
         dispatchWeek({
           type: "CREATE_WEEK_EVENT",
           payload: {
             semesterId: normalizedSemesterId,
-            event: {
-              id: `wevt-${crypto.randomUUID()}`,
-              title,
-              description: description || undefined,
-              category: input.category,
-              day: input.day,
-              startTime: input.startTime,
-              endTime: input.endTime,
-              participants: filterParticipantsByFriends(
-                input.participants,
-                friendNames,
-              ),
-            },
+            event: weekEvent,
           },
         });
+
+        void weekEventStore.current
+          .insertWeekEvent(weekEvent, normalizedSemesterId)
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to insert week event:", error);
+          });
+
+        const notifItem: NotificationItem = {
+          kind: "new-event",
+          eventId: weekEvent.id,
+          title: weekEvent.title,
+          category: weekEvent.category,
+          day: weekEvent.day,
+          semesterId: normalizedSemesterId,
+        };
+        void broadcastNotifications([notifItem], ownEndpointRef.current);
       },
       updateWeekEvent: (eventId, input) => {
         const title = input.title.trim();
@@ -1214,6 +1358,11 @@ export function PlannerStateProvider({
         if (!title || !plannerWeekEventCategories.includes(input.category)) {
           return;
         }
+
+        const participants = filterParticipantsByFriends(
+          input.participants,
+          friendNames,
+        );
 
         dispatchWeek({
           type: "UPDATE_WEEK_EVENT",
@@ -1225,17 +1374,41 @@ export function PlannerStateProvider({
             day: input.day,
             startTime: input.startTime,
             endTime: input.endTime,
-            participants: filterParticipantsByFriends(
-              input.participants,
-              friendNames,
-            ),
+            participants,
           },
         });
+
+        void weekEventStore.current
+          .updateWeekEvent(eventId, {
+            title,
+            description: description || undefined,
+            category: input.category,
+            day: input.day,
+            startTime: input.startTime,
+            endTime: input.endTime,
+            participants,
+            semesterId: normalizedSemesterId,
+          })
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to update week event:", error);
+          });
       },
       deleteWeekEvent: (eventId) => {
         dispatchWeek({
           type: "DELETE_WEEK_EVENT",
           payload: { eventId },
+        });
+
+        void weekEventStore.current.deleteWeekEvent(eventId).catch((error) => {
+          if (isOfflineError(error)) {
+            setIsOffline(true);
+            return;
+          }
+          console.error("Failed to delete week event:", error);
         });
       },
       toggleParticipant: (eventId, participantName) => {
@@ -1251,15 +1424,51 @@ export function PlannerStateProvider({
           return;
         }
 
+        const semesterId = findSemesterForEvent(eventsBySemester, eventId);
+        if (!semesterId) return;
+        const event = (eventsBySemester[semesterId] ?? []).find(
+          (e) => e.id === eventId,
+        );
+        if (!event) return;
+
+        const hasParticipant = event.participants.includes(normalizedName);
+        const nextParticipants = hasParticipant
+          ? event.participants.filter((name) => name !== normalizedName)
+          : [...event.participants, normalizedName];
+
         dispatch({
           type: "TOGGLE_PARTICIPANT",
           payload: { eventId, participantName: normalizedName },
         });
+
+        void eventStore.current
+          .updateEvent(eventId, { participants: nextParticipants })
+          .catch((error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to toggle participant:", error);
+          });
+
+        if (!hasParticipant) {
+          const notifItem: NotificationItem = {
+            kind: "new-participant",
+            eventId: event.id,
+            title: event.title,
+            category: event.category,
+            startDate: event.startDate,
+            semesterId,
+            participants: [normalizedName],
+          };
+          void broadcastNotifications([notifItem], ownEndpointRef.current);
+        }
       },
     };
   }, [
     activeSemester,
     events,
+    eventsBySemester,
     friendNames,
     inboxEvents,
     isOffline,

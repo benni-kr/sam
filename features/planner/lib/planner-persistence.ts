@@ -142,7 +142,7 @@ export function eventToRow(
   };
 }
 
-function eventsBySemesterToRows(
+export function eventsBySemesterToRows(
   eventsBySemester: PlannerEventsBySemester,
   plannerScope: string,
 ): SupabaseEventRow[] {
