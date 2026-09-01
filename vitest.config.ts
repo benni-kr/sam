@@ -17,7 +17,7 @@ export default defineConfig({
     environment: "jsdom",
     // Patterns to locate test files across the feature-based directory structure.
     include: ["**/*.test.{ts,tsx}"],
-    // Optional: Setup file for global mocks (like matchMedia or ResizeObserver)
-    // setupFiles: ["./vitest.setup.ts"],
+    // Setup file for global mocks (like localStorage, matchMedia, etc.)
+    setupFiles: ["./vitest.setup.ts"],
   },
 });

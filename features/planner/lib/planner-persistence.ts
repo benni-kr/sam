@@ -27,7 +27,16 @@ export type PlannerEventsBySemester = Partial<
  */
 export type PlannerEventStore = {
   loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
-  saveEventsBySemester: (
+  insertEvent: (
+    event: PlannerEvent,
+    semesterId: PlannerSemesterId,
+  ) => Promise<void>;
+  updateEvent: (
+    eventId: string,
+    patch: Partial<PlannerEvent> & { semesterId?: PlannerSemesterId },
+  ) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
+  saveEventsBySemester?: (
     eventsBySemester: PlannerEventsBySemester,
   ) => Promise<void>;
 };
@@ -40,7 +49,7 @@ const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
  * The field names intentionally mirror the database schema so this adapter
  * can serialize and hydrate rows without an extra translation layer.
  */
-type SupabaseEventRow = {
+export type SupabaseEventRow = {
   planner_scope: string;
   semester_id: PlannerSemesterId | null;
   event_id: string;
@@ -71,7 +80,7 @@ function logPersistenceHealth(message: string) {
 // it without importing this adapter. Re-exported for existing consumers.
 export { getPlannerScope };
 
-function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
+export function isCategoryValue(value: unknown): value is PlannerEvent["category"] {
   return (
     typeof value === "string" &&
     plannerEventCategories.includes(value as PlannerEvent["category"])
@@ -89,7 +98,55 @@ export function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
-function eventsBySemesterToRows(
+export function rowToPlannerEvent(
+  row: SupabaseEventRow,
+): { semesterId: PlannerSemesterId; event: PlannerEvent } | null {
+  if (!row.event_id || !row.title) {
+    return null;
+  }
+
+  const category = isCategoryValue(row.category)
+    ? (row.category as PlannerEvent["category"])
+    : "Other";
+
+  const targetSemesterId =
+    row.semester_id && plannerSemesterIds.includes(row.semester_id)
+      ? row.semester_id
+      : defaultPlannerSemesterId;
+
+  return {
+    semesterId: targetSemesterId,
+    event: {
+      id: row.event_id,
+      title: row.title,
+      description: row.description ?? undefined,
+      category,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      participants: normalizeParticipants(row.participants),
+    },
+  };
+}
+
+export function eventToRow(
+  event: PlannerEvent,
+  semesterId: PlannerSemesterId,
+  plannerScope: string,
+): SupabaseEventRow {
+  return {
+    planner_scope: plannerScope,
+    semester_id: event.startDate ? semesterId : null,
+    event_id: event.id,
+    title: event.title,
+    description: event.description ?? null,
+    category: event.category,
+    start_date: event.startDate,
+    end_date: event.endDate,
+    participants: event.participants,
+  };
+}
+
+export function eventsBySemesterToRows(
   eventsBySemester: PlannerEventsBySemester,
   plannerScope: string,
 ): SupabaseEventRow[] {
@@ -99,19 +156,7 @@ function eventsBySemesterToRows(
     const semesterEvents = eventsBySemester[semesterId] ?? [];
 
     for (const event of semesterEvents) {
-      rows.push({
-        planner_scope: plannerScope,
-        // Strip the semester for undated Inbox events so they remain flexible
-        // in the database until the user explicitly schedules them.
-        semester_id: event.startDate ? semesterId : null,
-        event_id: event.id,
-        title: event.title,
-        description: event.description ?? null,
-        category: event.category,
-        start_date: event.startDate,
-        end_date: event.endDate,
-        participants: event.participants,
-      });
+      rows.push(eventToRow(event, semesterId, plannerScope));
     }
   }
 
@@ -126,33 +171,15 @@ export function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
   }
 
   for (const row of rows) {
-    if (!isCategoryValue(row.category)) {
+    const parsed = rowToPlannerEvent(row);
+    if (!parsed) {
       continue;
     }
 
-    const targetSemesterId =
-      row.semester_id && plannerSemesterIds.includes(row.semester_id)
-        ? row.semester_id
-        : defaultPlannerSemesterId;
-
-    eventsBySemester[targetSemesterId]?.push({
-      id: row.event_id,
-      title: row.title,
-      description: row.description ?? undefined,
-      category: row.category as PlannerEvent["category"],
-      startDate: row.start_date,
-      endDate: row.end_date,
-      participants: normalizeParticipants(row.participants),
-    });
+    eventsBySemester[parsed.semesterId]?.push(parsed.event);
   }
 
   return eventsBySemester;
-}
-
-function buildNotInFilter(values: string[]) {
-  return values.length > 0
-    ? `not.in.(${values.map(encodeURIComponent).join(",")})`
-    : "";
 }
 
 function getSupabaseConfig() {
@@ -192,10 +219,15 @@ function hasSupabaseConfig() {
   return Boolean(getSupabaseConfig());
 }
 
+function getAuthHeader(anonKey: string) {
+  const token = getClientAuthToken();
+  return `Bearer ${token || anonKey}`;
+}
+
 async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,description,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();
@@ -253,60 +285,101 @@ async function fetchSupabaseEventsBySemester(
   return rowsToEventsBySemester(rows);
 }
 
-async function upsertSupabaseEventsBySemester(
+export async function insertSupabaseEvent(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-  eventsBySemester: PlannerEventsBySemester,
+  event: PlannerEvent,
+  semesterId: PlannerSemesterId,
 ) {
-  const rows = eventsBySemesterToRows(eventsBySemester, config.plannerScope);
+  const row = eventToRow(event, semesterId, config.plannerScope);
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
 
-  if (rows.length > 0) {
-    // Upsert step: write the current calendar state into Supabase so the
-    // database reflects the client's latest event data.
-    const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify(rows),
-    });
-
-    if (!response.ok) {
-      const errorDetails = await response
-        .text()
-        .catch(() => "No details available");
-      throw new Error(
-        `Failed to save planner events to Supabase: ${response.status} ${errorDetails}`,
-      );
-    }
-  }
-
-  // Prune step: remove any rows from Supabase that are no longer present in
-  // the client's state, completing the two-way sync.
-  const eventIds = rows.map((row) => row.event_id);
-  const deleteFilter = buildNotInFilter(eventIds);
-  const categoryFilter = `&category=in.(${plannerEventCategories.map((c) => `"${c}"`).join(",")})`;
-  const deleteEndpoint = deleteFilter
-    ? `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=${deleteFilter}${categoryFilter}`
-    : `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}${categoryFilter}`;
-
-  const deleteResponse = await fetch(deleteEndpoint, {
-    method: "DELETE",
+  const response = await fetch(endpoint, {
+    method: "POST",
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${typeof window !== "undefined" ? window.localStorage.getItem("sam_auth_token") || config.anonKey : config.anonKey}`,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
     },
+    body: JSON.stringify(row),
   });
 
-  if (!deleteResponse.ok) {
-    const errorDetails = await deleteResponse
+  if (!response.ok) {
+    const errorDetails = await response
       .text()
       .catch(() => "No details available");
     throw new Error(
-      `Failed to prune planner events in Supabase: ${deleteResponse.status} ${errorDetails}`,
+      `Failed to insert planner event to Supabase: ${response.status} ${errorDetails}`,
+    );
+  }
+}
+
+export async function updateSupabaseEvent(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  eventId: string,
+  patch: Partial<PlannerEvent> & { semesterId?: PlannerSemesterId },
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=eq.${encodeURIComponent(eventId)}`;
+
+  const body: Record<string, unknown> = {};
+
+  if (patch.title !== undefined) body.title = patch.title;
+  if (patch.description !== undefined) body.description = patch.description ?? null;
+  if (patch.category !== undefined) body.category = patch.category;
+  if (patch.startDate !== undefined) {
+    body.start_date = patch.startDate;
+    if (patch.semesterId !== undefined) {
+      body.semester_id = patch.startDate ? patch.semesterId : null;
+    } else if (patch.startDate === null) {
+      body.semester_id = null;
+    }
+  } else if (patch.semesterId !== undefined) {
+    body.semester_id = patch.semesterId;
+  }
+  if (patch.endDate !== undefined) body.end_date = patch.endDate;
+  if (patch.participants !== undefined) body.participants = patch.participants;
+
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorDetails = await response
+      .text()
+      .catch(() => "No details available");
+    throw new Error(
+      `Failed to update planner event in Supabase: ${response.status} ${errorDetails}`,
+    );
+  }
+}
+
+export async function deleteSupabaseEvent(
+  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
+  eventId: string,
+) {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?planner_scope=eq.${encodeURIComponent(config.plannerScope)}&event_id=eq.${encodeURIComponent(eventId)}`;
+
+  const response = await fetch(endpoint, {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: getAuthHeader(config.anonKey),
+    },
+  });
+
+  if (!response.ok) {
+    const errorDetails = await response
+      .text()
+      .catch(() => "No details available");
+    throw new Error(
+      `Failed to delete planner event in Supabase: ${response.status} ${errorDetails}`,
     );
   }
 }
@@ -317,9 +390,19 @@ export const supabasePlannerEventStore: PlannerEventStore = {
     return fetchSupabaseEventsBySemester(config);
   },
 
-  async saveEventsBySemester(eventsBySemester) {
+  async insertEvent(event, semesterId) {
     const config = requireSupabaseConfig();
-    await upsertSupabaseEventsBySemester(config, eventsBySemester);
+    await insertSupabaseEvent(config, event, semesterId);
+  },
+
+  async updateEvent(eventId, patch) {
+    const config = requireSupabaseConfig();
+    await updateSupabaseEvent(config, eventId, patch);
+  },
+
+  async deleteEvent(eventId) {
+    const config = requireSupabaseConfig();
+    await deleteSupabaseEvent(config, eventId);
   },
 };
 
@@ -338,3 +421,4 @@ export function resolvePlannerEventStore(): PlannerEventStore {
   logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
   return supabasePlannerEventStore;
 }
+

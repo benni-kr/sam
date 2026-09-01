@@ -63,6 +63,36 @@ export type PlannerWeekAction =
         /** Event identifier from the weekly semester store. */
         eventId: string;
       };
+    }
+  | {
+      /** Handles remote upsert (insert or update) from Realtime broadcast. */
+      type: "REMOTE_UPSERT_WEEK_EVENT";
+      payload: {
+        semesterId: PlannerSemesterId;
+        event: PlannerWeekEvent;
+      };
+    }
+  | {
+      /** Handles remote deletion from Realtime broadcast. */
+      type: "REMOTE_DELETE_WEEK_EVENT";
+      payload: {
+        eventId: string;
+      };
+    }
+  | {
+      /** Renames a participant across all weekly events. */
+      type: "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS";
+      payload: {
+        currentName: string;
+        nextName: string;
+      };
+    }
+  | {
+      /** Removes a participant from all weekly events. */
+      type: "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS";
+      payload: {
+        participantName: string;
+      };
     };
 
 /**
@@ -178,6 +208,100 @@ export function plannerWeekStateReducer(
           (event) => event.id !== action.payload.eventId,
         ),
       };
+    }
+
+    case "REMOTE_UPSERT_WEEK_EVENT": {
+      const { semesterId, event } = action.payload;
+      const existingSemesterId = findSemesterForWeekEvent(state, event.id);
+
+      if (existingSemesterId && existingSemesterId !== semesterId) {
+        const sourceEvents = (state[existingSemesterId] ?? []).filter(
+          (item) => item.id !== event.id,
+        );
+        const targetEvents = state[semesterId] ?? [];
+        return {
+          ...state,
+          [existingSemesterId]: sourceEvents,
+          [semesterId]: [
+            ...targetEvents.filter((item) => item.id !== event.id),
+            event,
+          ],
+        };
+      }
+
+      const currentEvents = state[semesterId] ?? [];
+      const exists = currentEvents.some((item) => item.id === event.id);
+
+      return {
+        ...state,
+        [semesterId]: exists
+          ? currentEvents.map((item) => (item.id === event.id ? event : item))
+          : [...currentEvents, event],
+      };
+    }
+
+    case "REMOTE_DELETE_WEEK_EVENT": {
+      const semesterId = findSemesterForWeekEvent(
+        state,
+        action.payload.eventId,
+      );
+
+      if (!semesterId) {
+        return state;
+      }
+
+      const semesterEvents = state[semesterId] ?? [];
+
+      return {
+        ...state,
+        [semesterId]: semesterEvents.filter(
+          (event) => event.id !== action.payload.eventId,
+        ),
+      };
+    }
+
+    case "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS": {
+      const target = action.payload.participantName.toLocaleLowerCase();
+
+      return plannerSemesterIds.reduce((nextState, semesterId) => {
+        const semesterEvents = state[semesterId] ?? [];
+
+        nextState[semesterId] = semesterEvents.map((event) => ({
+          ...event,
+          participants: event.participants.filter(
+            (participant) => participant.toLocaleLowerCase() !== target,
+          ),
+        }));
+
+        return nextState;
+      }, {} as PlannerWeekEventsBySemester);
+    }
+
+    case "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS": {
+      const currentName = action.payload.currentName.toLocaleLowerCase();
+      const nextName = action.payload.nextName;
+
+      return plannerSemesterIds.reduce((nextState, semesterId) => {
+        const semesterEvents = state[semesterId] ?? [];
+
+        nextState[semesterId] = semesterEvents.map((event) => {
+          const uniqueByLower = new Map<string, string>();
+          for (const p of event.participants) {
+            const mapped = p.toLocaleLowerCase() === currentName ? nextName : p;
+            const trimmed = mapped.trim();
+            if (trimmed && !uniqueByLower.has(trimmed.toLocaleLowerCase())) {
+              uniqueByLower.set(trimmed.toLocaleLowerCase(), trimmed);
+            }
+          }
+
+          return {
+            ...event,
+            participants: Array.from(uniqueByLower.values()),
+          };
+        });
+
+        return nextState;
+      }, {} as PlannerWeekEventsBySemester);
     }
 
     default:

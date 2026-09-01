@@ -173,6 +173,80 @@ describe("plannerStateReducer", () => {
       ).toBeUndefined();
     });
   });
+
+  describe("Realtime Remote Sync", () => {
+    it("handles REMOTE_UPSERT_EVENT for a new event", () => {
+      const remoteEvent: PlannerEvent = {
+        id: "evt-remote-1",
+        title: "Remote Sync Event",
+        category: "Exam",
+        startDate: "2026-05-10",
+        endDate: "2026-05-10",
+        participants: ["Leo"],
+      };
+
+      const action = {
+        type: "REMOTE_UPSERT_EVENT" as const,
+        payload: { semesterId: semesterIds[0], event: remoteEvent },
+      };
+
+      const nextState = plannerStateReducer(testState, action);
+      const found = nextState[semesterIds[0]].find((e) => e.id === "evt-remote-1");
+      expect(found).toBeDefined();
+      expect(found?.title).toBe("Remote Sync Event");
+    });
+
+    it("handles REMOTE_UPSERT_EVENT updating an existing event", () => {
+      const updatedEvent: PlannerEvent = {
+        id: "evt-1",
+        title: "Active Picnic Updated",
+        category: "Group Event",
+        startDate: "2026-04-12",
+        endDate: "2026-04-12",
+        participants: ["Maya", "Leo", "Alex"],
+      };
+
+      const action = {
+        type: "REMOTE_UPSERT_EVENT" as const,
+        payload: { semesterId: semesterIds[0], event: updatedEvent },
+      };
+
+      const nextState = plannerStateReducer(testState, action);
+      const found = nextState[semesterIds[0]].find((e) => e.id === "evt-1");
+      expect(found?.title).toBe("Active Picnic Updated");
+      expect(found?.participants).toContain("Alex");
+    });
+
+    it("handles REMOTE_UPSERT_EVENT when an event was moved to another semester", () => {
+      const movedEvent: PlannerEvent = {
+        id: "evt-inbox-2", // Was originally in semesterIds[1]
+        title: "Winter Cabin",
+        category: "Group Event",
+        startDate: "2026-04-20",
+        endDate: "2026-04-20",
+        participants: ["Leo"],
+      };
+
+      const action = {
+        type: "REMOTE_UPSERT_EVENT" as const,
+        payload: { semesterId: semesterIds[0], event: movedEvent },
+      };
+
+      const nextState = plannerStateReducer(testState, action);
+      expect(nextState[semesterIds[1]].find((e) => e.id === "evt-inbox-2")).toBeUndefined();
+      expect(nextState[semesterIds[0]].find((e) => e.id === "evt-inbox-2")).toBeDefined();
+    });
+
+    it("handles REMOTE_DELETE_EVENT for an event", () => {
+      const action = {
+        type: "REMOTE_DELETE_EVENT" as const,
+        payload: { eventId: "evt-1" },
+      };
+
+      const nextState = plannerStateReducer(testState, action);
+      expect(nextState[semesterIds[0]].find((e) => e.id === "evt-1")).toBeUndefined();
+    });
+  });
 });
 
 describe("getInboxEventsFromState", () => {

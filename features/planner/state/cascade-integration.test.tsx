@@ -38,6 +38,11 @@ vi.mock("@/features/friends/lib/friends-persistence", () => ({
   }),
   loadFriends: mocks.loadFriends,
   saveFriends: vi.fn(async () => {}),
+  insertFriend: vi.fn(async () => {}),
+  updateFriendInStore: vi.fn(async () => {}),
+  deleteFriendFromStore: vi.fn(async () => {}),
+  rowToFriend: (row: { friend_name: string; birthday?: string | null }) => ({ name: row.friend_name, birthday: row.birthday ?? undefined }),
+  friendToRow: (friend: { name: string; birthday?: string }) => ({ planner_scope: "test", friend_name: friend.name, birthday: friend.birthday ?? null }),
 }));
 
 vi.mock("@/features/planner/lib/planner-persistence", () => ({
@@ -45,9 +50,15 @@ vi.mock("@/features/planner/lib/planner-persistence", () => ({
   resolvePlannerEventStore: () => ({
     loadEventsBySemester: mocks.loadPlanner,
     saveEventsBySemester: vi.fn(async () => {}),
+    insertEvent: vi.fn(async () => {}),
+    updateEvent: vi.fn(async () => {}),
+    deleteEvent: vi.fn(async () => {}),
   }),
   loadEventsBySemester: mocks.loadPlanner,
   saveEventsBySemester: vi.fn(async () => {}),
+  insertSupabaseEvent: vi.fn(async () => {}),
+  updateSupabaseEvent: vi.fn(async () => {}),
+  deleteSupabaseEvent: vi.fn(async () => {}),
 }));
 
 vi.mock("@/features/weekly-schedule/lib/week-persistence", () => ({
@@ -55,9 +66,15 @@ vi.mock("@/features/weekly-schedule/lib/week-persistence", () => ({
   resolveWeekEventStore: () => ({
     loadWeekEventsBySemester: mocks.loadWeek,
     saveWeekEventsBySemester: vi.fn(async () => {}),
+    insertWeekEvent: vi.fn(async () => {}),
+    updateWeekEvent: vi.fn(async () => {}),
+    deleteWeekEvent: vi.fn(async () => {}),
   }),
   loadWeekEventsBySemester: mocks.loadWeek,
   saveWeekEventsBySemester: vi.fn(async () => {}),
+  insertSupabaseWeekEvent: vi.fn(async () => {}),
+  updateSupabaseWeekEvent: vi.fn(async () => {}),
+  deleteSupabaseWeekEvent: vi.fn(async () => {}),
 }));
 
 const AllProviders = ({ children }: { children: ReactNode }) => (

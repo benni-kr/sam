@@ -211,6 +211,37 @@ export function getPlannerSemester(
 }
 
 /**
+ * Resolves which semester a YYYY-MM-DD date key belongs to based on the configured semester month timeline.
+ */
+export function getSemesterIdForDate(
+  dateKey: string | null | undefined,
+): PlannerSemesterId {
+  if (!dateKey) {
+    return defaultPlannerSemesterId;
+  }
+
+  const parts = dateKey.split("-");
+  if (parts.length < 2) {
+    return defaultPlannerSemesterId;
+  }
+
+  const year = parseInt(parts[0], 10);
+  const monthIndex = parseInt(parts[1], 10) - 1;
+
+  for (const semester of plannerSemesters) {
+    if (
+      semester.months.some(
+        (month) => month.year === year && month.monthIndex === monthIndex,
+      )
+    ) {
+      return semester.id;
+    }
+  }
+
+  return defaultPlannerSemesterId;
+}
+
+/**
  * Returns the events that begin on a specific calendar date.
  */
 export function getEventsForDate(

@@ -58,9 +58,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
+      <head suppressHydrationWarning>
         {/* Prevent flash of wrong theme: read localStorage before first paint */}
         <script
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=localStorage.getItem('sam-theme');if(t==='dark'||t==='light'){document.documentElement.classList.add(t);}})();`,
           }}

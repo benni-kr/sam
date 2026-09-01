@@ -21,7 +21,11 @@ import { SEMESTER_FRIENDS } from "@/features/planner/lib/planner";
 import {
   getDefaultFriends,
   loadFriends,
-  saveFriends,
+  insertFriend,
+  updateFriendInStore,
+  deleteFriendFromStore,
+  rowToFriend,
+  type SupabaseFriendRow,
 } from "@/features/friends/lib/friends-persistence";
 import type { Friend } from "@/features/friends/lib/friend";
 import {
@@ -29,6 +33,11 @@ import {
   readSnapshot,
   writeSnapshot,
 } from "@/features/planner/lib/offline-cache";
+import {
+  ensureRealtimeAuth,
+  getSupabaseBrowserClient,
+  getSupabaseConfig,
+} from "@/lib/supabase/client";
 
 /** Offline snapshot key; namespaced per planner scope by the cache module. */
 const FRIENDS_SNAPSHOT_KEY = "friends";
@@ -52,6 +61,7 @@ type FriendsStateContextValue = {
   friends: Friend[];
   friendNames: string[];
   isHydrated: boolean;
+  isOffline: boolean;
   addFriend: (name: string, birthday?: string) => void;
   updateFriend: (
     currentName: string,
@@ -80,7 +90,9 @@ type FriendAction =
       nextName: string;
       birthday?: string;
     }
-  | { type: "removeFriend"; name: string };
+  | { type: "removeFriend"; name: string }
+  | { type: "remoteUpsertFriend"; friend: Friend }
+  | { type: "remoteDeleteFriend"; name: string };
 
 const FriendsStateContext = createContext<FriendsStateContextValue | null>(
   null,
@@ -108,6 +120,9 @@ function dedupeFriends(friends: Friend[]) {
       continue;
     }
 
+    // Use the lower-cased string as the Map key to enforce case-insensitive
+    // uniqueness. This ensures "Alex" and "alex" are treated as the same
+    // participant rather than two separate entries.
     const key = normalizedName.toLocaleLowerCase();
 
     if (!uniqueByLowerCase.has(key)) {
@@ -267,6 +282,44 @@ function friendsReducer(state: FriendState, action: FriendAction): FriendState {
       };
     }
 
+    case "remoteUpsertFriend": {
+      const { friend } = action;
+      const normalized = normalizeFriendName(friend.name);
+      if (!normalized) {
+        return state;
+      }
+
+      const existingIndex = findFriendIndex(state.friends, normalized);
+      const updatedList =
+        existingIndex !== -1
+          ? state.friends.map((item, index) =>
+              index === existingIndex ? { ...item, ...friend } : item,
+            )
+          : [...state.friends, friend];
+
+      return {
+        ...state,
+        friends: dedupeFriends(updatedList).sort((left, right) =>
+          left.name.localeCompare(right.name),
+        ),
+      };
+    }
+
+    case "remoteDeleteFriend": {
+      const normalized = normalizeFriendName(action.name);
+      if (!normalized) {
+        return state;
+      }
+
+      return {
+        ...state,
+        friends: state.friends.filter(
+          (friend) =>
+            friend.name.toLocaleLowerCase() !== normalized.toLocaleLowerCase(),
+        ),
+      };
+    }
+
     default:
       return state;
   }
@@ -281,10 +334,6 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
     lastMutation: null,
   });
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
-  // Gates *saving*: true only once the server's own list is in state. Saving
-  // from the built-in defaults or from a cached snapshot would overwrite the
-  // real list, so this must never be set on a failed load.
-  const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   // Gates *waiting*: the load attempt finished, successfully or not. The planner
   // blocks its own hydration on this, so it has to flip in the offline case too
   // — otherwise a failed friends load leaves the calendar permanently empty.
@@ -307,10 +356,6 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
           return;
         }
 
-        // A null result means the adapter deferred the load — no usable auth
-        // token — not that the list is empty. Hydrating and arming the save
-        // from that would push the built-in defaults over the real list.
-        // hasSettled still flips so the planner is not blocked forever.
         if (!friendsFromStore) {
           setHasSettled(true);
           return;
@@ -324,7 +369,6 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
         writeSnapshot(FRIENDS_SNAPSHOT_KEY, hydratedFriends);
 
         setIsOffline(false);
-        setDidHydrateFromStorage(true);
         setHasSettled(true);
       },
       (error: unknown) => {
@@ -349,7 +393,6 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
           dispatch({ type: "hydrate", friends: cached.payload });
         }
 
-        // didHydrateFromStorage stays false on purpose: it gates the save below.
         setIsOffline(true);
         setHasSettled(true);
       },
@@ -360,33 +403,64 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
     };
   }, []);
 
+  // Subscribe to Realtime postgres_changes on planner_friends table
   useEffect(() => {
-    // Important: only persist after initial hydration. If we attempted to
-    // save before `didHydrateFromStorage` is true we might overwrite the
-    // remote database with the local default state (losing server-side data).
-    // isOffline covers losing the connection after a successful load.
-    if (!didHydrateFromStorage || isOffline) {
+    const client = getSupabaseBrowserClient();
+    const config = getSupabaseConfig();
+
+    if (!client || !config) {
       return;
     }
 
-    void saveFriends(state.friends).then(
-      () => {
-        writeSnapshot(FRIENDS_SNAPSHOT_KEY, state.friends);
-      },
-      (error: unknown) => {
-        if (isOfflineError(error)) {
-          setIsOffline(true);
-          return;
-        }
+    let isCancelled = false;
 
-        setPersistenceError(
-          error instanceof Error
-            ? error
-            : new Error("Failed to persist planner friends to Supabase."),
-        );
-      },
-    );
-  }, [didHydrateFromStorage, isOffline, state.friends]);
+    const channel = client
+      .channel(`realtime:friends:${config.plannerScope}:${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "planner_friends",
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const row = payload.new as SupabaseFriendRow;
+            if (
+              row &&
+              row.friend_name &&
+              (!row.planner_scope || row.planner_scope === config.plannerScope)
+            ) {
+              const friend = rowToFriend(row);
+              dispatch({ type: "remoteUpsertFriend", friend });
+            }
+          } else if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as Partial<SupabaseFriendRow>;
+            if (oldRow && oldRow.friend_name) {
+              dispatch({ type: "remoteDeleteFriend", name: oldRow.friend_name });
+            }
+          }
+        },
+      );
+
+    void (async () => {
+      await ensureRealtimeAuth(client);
+      if (isCancelled) return;
+
+      channel.subscribe((status, err) => {
+        if (status === "SUBSCRIBED") {
+          console.info("[SAM realtime] Subscribed to planner_friends changes.");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("[SAM realtime] Channel error on planner_friends:", err);
+        }
+      });
+    })();
+
+    return () => {
+      isCancelled = true;
+      void client.removeChannel(channel);
+    };
+  }, []);
 
   const value = useMemo<FriendsStateContextValue>(() => {
     return {
@@ -394,30 +468,98 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
       friendNames: state.friends.map((friend) => friend.name),
       // "The load finished", not "we have server data" — see hasSettled.
       isHydrated: hasSettled,
+      isOffline,
       lastMutation: state.lastMutation,
       addFriend: (name, birthday) => {
-        dispatch({ type: "addFriend", name, birthday });
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const friend: Friend = {
+          name: trimmed,
+          birthday: normalizeBirthday(birthday),
+        };
+        dispatch({ type: "addFriend", name: trimmed, birthday });
+
+        void insertFriend(friend).catch((error) => {
+          if (isOfflineError(error)) {
+            setIsOffline(true);
+            return;
+          }
+          console.error("Failed to persist new friend:", error);
+        });
       },
       updateFriend: (currentName, input) => {
+        const normalizedCurrent = currentName.trim();
+        const normalizedNext = input.name.trim();
+        if (!normalizedCurrent || !normalizedNext) return;
+
+        const nextFriend: Friend = {
+          name: normalizedNext,
+          birthday: normalizeBirthday(input.birthday),
+        };
+
         dispatch({
           type: "updateFriend",
-          currentName,
-          nextName: input.name,
+          currentName: normalizedCurrent,
+          nextName: normalizedNext,
           birthday: input.birthday,
         });
+
+        void updateFriendInStore(normalizedCurrent, nextFriend).catch(
+          (error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to update friend in store:", error);
+          },
+        );
       },
       renameFriend: (currentName, nextName) => {
+        const normalizedCurrent = currentName.trim();
+        const normalizedNext = nextName.trim();
+        if (!normalizedCurrent || !normalizedNext) return;
+
+        const existingFriend = state.friends.find(
+          (f) => f.name.toLowerCase() === normalizedCurrent.toLowerCase(),
+        );
+
+        const nextFriend: Friend = {
+          name: normalizedNext,
+          birthday: existingFriend?.birthday,
+        };
+
         dispatch({
           type: "updateFriend",
-          currentName,
-          nextName,
+          currentName: normalizedCurrent,
+          nextName: normalizedNext,
         });
+
+        void updateFriendInStore(normalizedCurrent, nextFriend).catch(
+          (error) => {
+            if (isOfflineError(error)) {
+              setIsOffline(true);
+              return;
+            }
+            console.error("Failed to rename friend in store:", error);
+          },
+        );
       },
       removeFriend: (name) => {
-        dispatch({ type: "removeFriend", name });
+        const trimmed = name.trim();
+        if (!trimmed) return;
+
+        dispatch({ type: "removeFriend", name: trimmed });
+
+        void deleteFriendFromStore(trimmed).catch((error) => {
+          if (isOfflineError(error)) {
+            setIsOffline(true);
+            return;
+          }
+          console.error("Failed to delete friend from store:", error);
+        });
       },
     };
-  }, [state.friends, state.lastMutation, hasSettled]);
+  }, [state.friends, state.lastMutation, hasSettled, isOffline]);
 
   return (
     <FriendsStateContext.Provider value={value}>
