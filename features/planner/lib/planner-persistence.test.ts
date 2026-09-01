@@ -3,6 +3,8 @@ import { type PlannerEvent } from "../lib/planner";
 import {
   rowsToEventsBySemester,
   normalizeParticipants,
+  eventToRow,
+  rowToPlannerEvent,
 } from "./planner-persistence";
 
 describe("Planner Persistence Data Integrity", () => {
@@ -75,26 +77,33 @@ describe("Planner Persistence Data Integrity", () => {
       ).toBe(true);
     });
 
-    it("correctly preserves descriptions when mapping database rows to events", () => {
-      const mockRows = [
-        {
-          planner_scope: "default",
-          semester_id: "spring-2026" as const,
-          event_id: "event-with-desc",
-          title: "Memmingen",
-          description: "Lieber Sam, bitte nicht verschlucken!",
-          category: "Private Event",
-          start_date: "2026-05-10",
-          end_date: "2026-05-10",
-          participants: ["Malte"],
-        },
-      ];
+    it("correctly converts eventToRow and rowToPlannerEvent bidirectionally", () => {
+      const event: PlannerEvent = {
+        id: "evt-123",
+        title: "Aachen Trip",
+        description: "Great trip",
+        category: "Group Event",
+        startDate: "2026-06-01",
+        endDate: "2026-06-03",
+        participants: ["Benjamin", "Malte"],
+      };
 
-      const result = rowsToEventsBySemester(mockRows);
+      const row = eventToRow(event, "spring-2026", "test-scope");
+      expect(row).toEqual({
+        planner_scope: "test-scope",
+        semester_id: "spring-2026",
+        event_id: "evt-123",
+        title: "Aachen Trip",
+        description: "Great trip",
+        category: "Group Event",
+        start_date: "2026-06-01",
+        end_date: "2026-06-03",
+        participants: ["Benjamin", "Malte"],
+      });
 
-      expect(result["spring-2026"]?.[0].description).toBe(
-        "Lieber Sam, bitte nicht verschlucken!",
-      );
+      const converted = rowToPlannerEvent(row);
+      expect(converted?.semesterId).toBe("spring-2026");
+      expect(converted?.event).toEqual(event);
     });
   });
 });
