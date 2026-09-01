@@ -195,7 +195,7 @@ function hasSupabaseConfig() {
 async function fetchSupabaseEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,description,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();

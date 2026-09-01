@@ -74,5 +74,27 @@ describe("Planner Persistence Data Integrity", () => {
         result["spring-2026"]?.some((e: PlannerEvent) => e.id === "orphan-1"),
       ).toBe(true);
     });
+
+    it("correctly preserves descriptions when mapping database rows to events", () => {
+      const mockRows = [
+        {
+          planner_scope: "default",
+          semester_id: "spring-2026" as const,
+          event_id: "event-with-desc",
+          title: "Memmingen",
+          description: "Lieber Sam, bitte nicht verschlucken!",
+          category: "Private Event",
+          start_date: "2026-05-10",
+          end_date: "2026-05-10",
+          participants: ["Malte"],
+        },
+      ];
+
+      const result = rowsToEventsBySemester(mockRows);
+
+      expect(result["spring-2026"]?.[0].description).toBe(
+        "Lieber Sam, bitte nicht verschlucken!",
+      );
+    });
   });
 });

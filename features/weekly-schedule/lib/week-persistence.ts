@@ -209,7 +209,7 @@ function hasSupabaseConfig() {
 async function fetchSupabaseWeekEventsBySemester(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,category,day,start_time,end_time,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_WEEK_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,description,category,day,start_time,end_time,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();
