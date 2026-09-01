@@ -68,3 +68,26 @@ describe("planner-utils", () => {
     });
   });
 });
+
+describe("getSemesterIdForDate", () => {
+  it("maps dates in April-September 2026 to spring-2026", async () => {
+    const { getSemesterIdForDate } = await import("./planner");
+    expect(getSemesterIdForDate("2026-04-01")).toBe("spring-2026");
+    expect(getSemesterIdForDate("2026-07-15")).toBe("spring-2026");
+    expect(getSemesterIdForDate("2026-09-30")).toBe("spring-2026");
+  });
+
+  it("maps dates in October 2026 - March 2027 to fall-2026", async () => {
+    const { getSemesterIdForDate } = await import("./planner");
+    expect(getSemesterIdForDate("2026-10-01")).toBe("fall-2026");
+    expect(getSemesterIdForDate("2026-12-25")).toBe("fall-2026");
+    expect(getSemesterIdForDate("2027-02-14")).toBe("fall-2026");
+  });
+
+  it("falls back to default semester for invalid or null dates", async () => {
+    const { getSemesterIdForDate, defaultPlannerSemesterId } = await import("./planner");
+    expect(getSemesterIdForDate(null)).toBe(defaultPlannerSemesterId);
+    expect(getSemesterIdForDate("")).toBe(defaultPlannerSemesterId);
+    expect(getSemesterIdForDate("invalid")).toBe(defaultPlannerSemesterId);
+  });
+});

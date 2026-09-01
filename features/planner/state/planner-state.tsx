@@ -50,6 +50,7 @@ import {
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
+  getSemesterIdForDate,
   plannerEventCategories,
   plannerSemesterIds,
   plannerSemesters,
@@ -361,17 +362,6 @@ function dedupeParticipantNames(participants: string[]) {
   }
 
   return Array.from(uniqueByLowerCase.values());
-}
-
-function filterParticipantsByFriends(
-  participants: string[],
-  friends: string[],
-) {
-  const allowed = new Set(friends.map((friend) => friend.toLocaleLowerCase()));
-
-  return dedupeParticipantNames(participants).filter((participant) =>
-    allowed.has(participant.toLocaleLowerCase()),
-  );
 }
 
 function buildEventsBySemesterSnapshot(
@@ -1290,20 +1280,21 @@ export function PlannerStateProvider({
         const event = sourceEvents.find((item) => item.id === eventId);
         if (!event) return;
 
+        const targetSemesterId = getSemesterIdForDate(dateKey);
         const duration = eventDurationInDays(event);
         const nextStartDate = dateKey;
         const nextEndDate = toDateKey(addDays(toDate(dateKey), duration - 1));
 
         dispatch({
           type: "MOVE_EVENT_TO_DATE",
-          payload: { eventId, dateKey, targetSemesterId: normalizedSemesterId },
+          payload: { eventId, dateKey, targetSemesterId },
         });
 
         void eventStore.current
           .updateEvent(eventId, {
             startDate: nextStartDate,
             endDate: nextEndDate,
-            semesterId: normalizedSemesterId,
+            semesterId: targetSemesterId,
           })
           .catch((error) => {
             if (isOfflineError(error)) {
@@ -1345,6 +1336,10 @@ export function PlannerStateProvider({
           input.endDate,
         );
 
+        const targetSemesterId = input.startDate
+          ? getSemesterIdForDate(input.startDate)
+          : normalizedSemesterId;
+
         const event: PlannerEvent = {
           id: `evt-${crypto.randomUUID()}`,
           title,
@@ -1352,25 +1347,19 @@ export function PlannerStateProvider({
           category: input.category,
           startDate: normalizedDates.startDate,
           endDate: normalizedDates.endDate,
-          // Sanitize the participant list against the active friends array at
-          // the exact moment of creation so we never persist ghost participants
-          // that no longer exist in the friends domain.
-          participants: filterParticipantsByFriends(
-            input.participants,
-            friendNames,
-          ),
+          participants: dedupeParticipantNames(input.participants),
         };
 
         dispatch({
           type: "CREATE_EVENT",
           payload: {
-            semesterId: normalizedSemesterId,
+            semesterId: targetSemesterId,
             event,
           },
         });
 
         void eventStore.current
-          .insertEvent(event, normalizedSemesterId)
+          .insertEvent(event, targetSemesterId)
           .catch((error) => {
             if (isOfflineError(error)) {
               setIsOffline(true);
@@ -1385,7 +1374,7 @@ export function PlannerStateProvider({
           title: event.title,
           category: event.category,
           startDate: event.startDate,
-          semesterId: normalizedSemesterId,
+          semesterId: targetSemesterId,
         };
         void broadcastNotifications([notifItem], ownEndpointRef.current);
       },
@@ -1402,10 +1391,11 @@ export function PlannerStateProvider({
           input.endDate,
         );
 
-        const participants = filterParticipantsByFriends(
-          input.participants,
-          friendNames,
-        );
+        const targetSemesterId = input.startDate
+          ? getSemesterIdForDate(input.startDate)
+          : normalizedSemesterId;
+
+        const participants = dedupeParticipantNames(input.participants);
 
         dispatch({
           type: "UPDATE_EVENT",
@@ -1428,7 +1418,7 @@ export function PlannerStateProvider({
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
             participants,
-            semesterId: normalizedSemesterId,
+            semesterId: targetSemesterId,
           })
           .catch((error) => {
             if (isOfflineError(error)) {
@@ -1468,10 +1458,7 @@ export function PlannerStateProvider({
           day: input.day,
           startTime: input.startTime,
           endTime: input.endTime,
-          participants: filterParticipantsByFriends(
-            input.participants,
-            friendNames,
-          ),
+          participants: dedupeParticipantNames(input.participants),
         };
 
         dispatchWeek({
@@ -1510,10 +1497,7 @@ export function PlannerStateProvider({
           return;
         }
 
-        const participants = filterParticipantsByFriends(
-          input.participants,
-          friendNames,
-        );
+        const participants = dedupeParticipantNames(input.participants);
 
         dispatchWeek({
           type: "UPDATE_WEEK_EVENT",

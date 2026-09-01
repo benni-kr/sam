@@ -330,7 +330,11 @@ export async function updateSupabaseEvent(
     body.start_date = patch.startDate;
     if (patch.semesterId !== undefined) {
       body.semester_id = patch.startDate ? patch.semesterId : null;
+    } else if (patch.startDate === null) {
+      body.semester_id = null;
     }
+  } else if (patch.semesterId !== undefined) {
+    body.semester_id = patch.semesterId;
   }
   if (patch.endDate !== undefined) body.end_date = patch.endDate;
   if (patch.participants !== undefined) body.participants = patch.participants;
