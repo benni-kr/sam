@@ -101,9 +101,13 @@ export function normalizeParticipants(value: unknown) {
 export function rowToPlannerEvent(
   row: SupabaseEventRow,
 ): { semesterId: PlannerSemesterId; event: PlannerEvent } | null {
-  if (!isCategoryValue(row.category)) {
+  if (!row.event_id || !row.title) {
     return null;
   }
+
+  const category = isCategoryValue(row.category)
+    ? (row.category as PlannerEvent["category"])
+    : "Other";
 
   const targetSemesterId =
     row.semester_id && plannerSemesterIds.includes(row.semester_id)
@@ -116,7 +120,7 @@ export function rowToPlannerEvent(
       id: row.event_id,
       title: row.title,
       description: row.description ?? undefined,
-      category: row.category as PlannerEvent["category"],
+      category,
       startDate: row.start_date,
       endDate: row.end_date,
       participants: normalizeParticipants(row.participants),

@@ -277,4 +277,44 @@ describe("plannerWeekStateReducer", () => {
       expect(nextState[plannerSemesterIds[0]]).toHaveLength(0);
     });
   });
+
+  describe("Participant Cascades", () => {
+    it("renames a participant across all weekly events in all semesters", () => {
+      const state = cloneState(
+        [makeEvent({ id: "w-1", participants: ["Maya", "Leo"] })],
+        [makeEvent({ id: "w-2", participants: ["Leo", "Alex"] })],
+      );
+
+      const action: PlannerWeekAction = {
+        type: "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS",
+        payload: { currentName: "Leo", nextName: "Leonardo" },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]![0].participants).toEqual([
+        "Maya",
+        "Leonardo",
+      ]);
+      expect(nextState[plannerSemesterIds[1]]![0].participants).toEqual([
+        "Leonardo",
+        "Alex",
+      ]);
+    });
+
+    it("removes a participant from all weekly events in all semesters", () => {
+      const state = cloneState(
+        [makeEvent({ id: "w-1", participants: ["Maya", "Leo"] })],
+        [makeEvent({ id: "w-2", participants: ["Leo"] })],
+      );
+
+      const action: PlannerWeekAction = {
+        type: "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS",
+        payload: { participantName: "Leo" },
+      };
+
+      const nextState = plannerWeekStateReducer(state, action);
+      expect(nextState[plannerSemesterIds[0]]![0].participants).toEqual(["Maya"]);
+      expect(nextState[plannerSemesterIds[1]]![0].participants).toEqual([]);
+    });
+  });
 });

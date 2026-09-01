@@ -813,6 +813,14 @@ export function PlannerStateProvider({
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
   const weekEventStore = useRef(resolveWeekEventStore());
+  const eventsBySemesterRef = useRef(eventsBySemester);
+  const weekEventsBySemesterRef = useRef(weekEventsBySemester);
+
+  useEffect(() => {
+    eventsBySemesterRef.current = eventsBySemester;
+    weekEventsBySemesterRef.current = weekEventsBySemester;
+  }, [eventsBySemester, weekEventsBySemester]);
+
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
   // Offline mode: the data on screen came from the local snapshot instead of
   // Supabase. While this is set the app is read-only — see the save effects.
@@ -979,23 +987,137 @@ export function PlannerStateProvider({
     }
 
     // Cross-domain listener: friend renames and deletions cascade into the
-    // planner store here without tightly coupling the friends and planner
-    // domains together.
+    // planner and weekly stores without tightly coupling the domains together.
     if (lastMutation.type === "rename") {
+      const { currentName, nextName } = lastMutation;
+      const targetLower = currentName.toLocaleLowerCase();
+
       dispatch({
         type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
         payload: {
-          currentName: lastMutation.currentName,
-          nextName: lastMutation.nextName,
+          currentName,
+          nextName,
         },
       });
+
+      dispatchWeek({
+        type: "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS",
+        payload: {
+          currentName,
+          nextName,
+        },
+      });
+
+      // Persist renamed participants in Supabase for all affected calendar events
+      for (const semesterId of plannerSemesterIds) {
+        for (const event of eventsBySemesterRef.current[semesterId] ?? []) {
+          if (
+            event.participants.some(
+              (p) => p.toLocaleLowerCase() === targetLower,
+            )
+          ) {
+            const nextParticipants = dedupeParticipantNames(
+              event.participants.map((p) =>
+                p.toLocaleLowerCase() === targetLower ? nextName : p,
+              ),
+            );
+            void eventStore.current
+              .updateEvent(event.id, {
+                participants: nextParticipants,
+                semesterId,
+              })
+              .catch((err) =>
+                console.error("Failed to cascade rename to event:", err),
+              );
+          }
+        }
+      }
+
+      // Persist renamed participants in Supabase for all affected weekly events
+      for (const semesterId of plannerSemesterIds) {
+        for (const weekEvent of weekEventsBySemesterRef.current[semesterId] ?? []) {
+          if (
+            weekEvent.participants.some(
+              (p) => p.toLocaleLowerCase() === targetLower,
+            )
+          ) {
+            const nextParticipants = dedupeParticipantNames(
+              weekEvent.participants.map((p) =>
+                p.toLocaleLowerCase() === targetLower ? nextName : p,
+              ),
+            );
+            void weekEventStore.current
+              .updateWeekEvent(weekEvent.id, {
+                participants: nextParticipants,
+                semesterId,
+              })
+              .catch((err) =>
+                console.error("Failed to cascade rename to week event:", err),
+              );
+          }
+        }
+      }
     }
 
     if (lastMutation.type === "remove") {
+      const { name } = lastMutation;
+      const targetLower = name.toLocaleLowerCase();
+
       dispatch({
         type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS",
-        payload: { participantName: lastMutation.name },
+        payload: { participantName: name },
       });
+
+      dispatchWeek({
+        type: "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS",
+        payload: { participantName: name },
+      });
+
+      // Persist removed participants in Supabase for all affected calendar events
+      for (const semesterId of plannerSemesterIds) {
+        for (const event of eventsBySemesterRef.current[semesterId] ?? []) {
+          if (
+            event.participants.some(
+              (p) => p.toLocaleLowerCase() === targetLower,
+            )
+          ) {
+            const nextParticipants = event.participants.filter(
+              (p) => p.toLocaleLowerCase() !== targetLower,
+            );
+            void eventStore.current
+              .updateEvent(event.id, {
+                participants: nextParticipants,
+                semesterId,
+              })
+              .catch((err) =>
+                console.error("Failed to cascade remove to event:", err),
+              );
+          }
+        }
+      }
+
+      // Persist removed participants in Supabase for all affected weekly events
+      for (const semesterId of plannerSemesterIds) {
+        for (const weekEvent of weekEventsBySemesterRef.current[semesterId] ?? []) {
+          if (
+            weekEvent.participants.some(
+              (p) => p.toLocaleLowerCase() === targetLower,
+            )
+          ) {
+            const nextParticipants = weekEvent.participants.filter(
+              (p) => p.toLocaleLowerCase() !== targetLower,
+            );
+            void weekEventStore.current
+              .updateWeekEvent(weekEvent.id, {
+                participants: nextParticipants,
+                semesterId,
+              })
+              .catch((err) =>
+                console.error("Failed to cascade remove to week event:", err),
+              );
+          }
+        }
+      }
     }
   }, [didHydrateFromStorage, lastMutation]);
 

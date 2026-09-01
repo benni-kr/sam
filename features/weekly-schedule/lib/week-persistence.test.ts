@@ -69,7 +69,7 @@ describe("Weekly Schedule Persistence Data Integrity", () => {
     expect(roundTrip?.event).toEqual(originalEvent);
   });
 
-  it("safely ignores rows with invalid categories, days, or missing times", () => {
+  it("defaults unknown categories to Other to prevent data loss", () => {
     const invalidCategoryRow: SupabaseWeekEventRow = {
       planner_scope: "test-scope",
       semester_id: plannerSemesterIds[0],
@@ -83,7 +83,26 @@ describe("Weekly Schedule Persistence Data Integrity", () => {
       participants: [],
     };
 
-    expect(rowToPlannerWeekEvent(invalidCategoryRow)).toBeNull();
+    const parsed = rowToPlannerWeekEvent(invalidCategoryRow);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.event.category).toBe("Other");
+  });
+
+  it("safely ignores rows with invalid days or missing times", () => {
+    const invalidDayRow: SupabaseWeekEventRow = {
+      planner_scope: "test-scope",
+      semester_id: plannerSemesterIds[0],
+      event_id: "wevt-bad-day",
+      title: "Bad Day",
+      description: null,
+      category: "University",
+      day: "InvalidDay",
+      start_time: "08:00",
+      end_time: "09:00",
+      participants: [],
+    };
+
+    expect(rowToPlannerWeekEvent(invalidDayRow)).toBeNull();
 
     const missingTimeRow: SupabaseWeekEventRow = {
       planner_scope: "test-scope",

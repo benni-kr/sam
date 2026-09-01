@@ -112,17 +112,17 @@ export function normalizeParticipants(value: unknown) {
 export function rowToPlannerWeekEvent(
   row: SupabaseWeekEventRow,
 ): { semesterId: PlannerSemesterId; event: PlannerWeekEvent } | null {
-  if (!isWeekCategoryValue(row.category) || !isWeekdayValue(row.day)) {
+  if (!row.event_id || !row.title || !isWeekdayValue(row.day) || !row.start_time || !row.end_time) {
     return null;
   }
+
+  const category = isWeekCategoryValue(row.category)
+    ? row.category
+    : "Other";
 
   const targetSemesterId = plannerSemesterIds.includes(row.semester_id)
     ? row.semester_id
     : defaultPlannerSemesterId;
-
-  if (!row.start_time || !row.end_time) {
-    return null;
-  }
 
   return {
     semesterId: targetSemesterId,
@@ -130,7 +130,7 @@ export function rowToPlannerWeekEvent(
       id: row.event_id,
       title: row.title,
       description: row.description ?? undefined,
-      category: row.category,
+      category,
       day: row.day,
       startTime: row.start_time,
       endTime: row.end_time,

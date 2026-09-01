@@ -78,6 +78,21 @@ export type PlannerWeekAction =
       payload: {
         eventId: string;
       };
+    }
+  | {
+      /** Renames a participant across all weekly events. */
+      type: "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS";
+      payload: {
+        currentName: string;
+        nextName: string;
+      };
+    }
+  | {
+      /** Removes a participant from all weekly events. */
+      type: "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS";
+      payload: {
+        participantName: string;
+      };
     };
 
 /**
@@ -243,6 +258,50 @@ export function plannerWeekStateReducer(
           (event) => event.id !== action.payload.eventId,
         ),
       };
+    }
+
+    case "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS": {
+      const target = action.payload.participantName.toLocaleLowerCase();
+
+      return plannerSemesterIds.reduce((nextState, semesterId) => {
+        const semesterEvents = state[semesterId] ?? [];
+
+        nextState[semesterId] = semesterEvents.map((event) => ({
+          ...event,
+          participants: event.participants.filter(
+            (participant) => participant.toLocaleLowerCase() !== target,
+          ),
+        }));
+
+        return nextState;
+      }, {} as PlannerWeekEventsBySemester);
+    }
+
+    case "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS": {
+      const currentName = action.payload.currentName.toLocaleLowerCase();
+      const nextName = action.payload.nextName;
+
+      return plannerSemesterIds.reduce((nextState, semesterId) => {
+        const semesterEvents = state[semesterId] ?? [];
+
+        nextState[semesterId] = semesterEvents.map((event) => {
+          const uniqueByLower = new Map<string, string>();
+          for (const p of event.participants) {
+            const mapped = p.toLocaleLowerCase() === currentName ? nextName : p;
+            const trimmed = mapped.trim();
+            if (trimmed && !uniqueByLower.has(trimmed.toLocaleLowerCase())) {
+              uniqueByLower.set(trimmed.toLocaleLowerCase(), trimmed);
+            }
+          }
+
+          return {
+            ...event,
+            participants: Array.from(uniqueByLower.values()),
+          };
+        });
+
+        return nextState;
+      }, {} as PlannerWeekEventsBySemester);
     }
 
     default:

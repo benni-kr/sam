@@ -222,9 +222,9 @@ export async function updateFriendInStore(
   const isRenaming = currentName.toLowerCase() !== nextFriend.name.toLowerCase();
 
   if (isRenaming) {
-    // Delete current and insert new
-    await deleteFriendFromStore(currentName);
+    // Insert new friend before deleting old to prevent data loss on network failure
     await insertFriend(nextFriend);
+    await deleteFriendFromStore(currentName);
     return;
   }
 

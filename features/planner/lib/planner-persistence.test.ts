@@ -22,7 +22,7 @@ describe("Planner Persistence Data Integrity", () => {
   });
 
   describe("rowsToEventsBySemester", () => {
-    it("gracefully ignores events with invalid categories from the database", () => {
+    it("defaults unknown categories from the database to Other rather than dropping the event", () => {
       const mockRows = [
         {
           planner_scope: "default",
@@ -37,9 +37,9 @@ describe("Planner Persistence Data Integrity", () => {
         {
           planner_scope: "default",
           semester_id: "spring-2026",
-          event_id: "invalid-1",
-          title: "Bad Category",
-          category: "Hacker-Attack-Category", // Invalid
+          event_id: "unknown-cat-1",
+          title: "Custom Category Event",
+          category: "Custom-Category", // Unknown
           start_date: null,
           end_date: null,
           participants: [],
@@ -49,8 +49,10 @@ describe("Planner Persistence Data Integrity", () => {
       // @ts-expect-error - intentional invalid input for testing
       const result = rowsToEventsBySemester(mockRows);
 
-      expect(result["spring-2026"]).toHaveLength(1);
+      expect(result["spring-2026"]).toHaveLength(2);
       expect(result["spring-2026"]?.[0].id).toBe("valid-1");
+      expect(result["spring-2026"]?.[1].id).toBe("unknown-cat-1");
+      expect(result["spring-2026"]?.[1].category).toBe("Other");
     });
 
     it("defaults events with missing semester_id to the default semester", () => {
