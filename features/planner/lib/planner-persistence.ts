@@ -2,12 +2,13 @@
  * Planner Event Persistence
  *
  * This module owns the calendar-event persistence adapter for the planner
- * bounded context. It converts semester state to and from the Supabase schema
+ * bounded context. It converts event state to and from the Supabase schema
  * and hides auth, scope, and row-shaping details from the rest of the app.
  */
 
 import {
   defaultPlannerSemesterId,
+  getSemesterIdForDate,
   plannerEventCategories,
   plannerSemesterIds,
   type PlannerEvent,
@@ -16,7 +17,7 @@ import {
 import { getPlannerScope } from "@/features/planner/lib/planner-scope";
 
 /**
- * Planner calendar events grouped by semester id for persistence and hydration.
+ * Planner calendar events grouped by semester id for backwards compatibility.
  */
 export type PlannerEventsBySemester = Partial<
   Record<PlannerSemesterId, PlannerEvent[]>
@@ -26,10 +27,11 @@ export type PlannerEventsBySemester = Partial<
  * The calendar-event persistence contract used by the planner state layer.
  */
 export type PlannerEventStore = {
+  loadEvents: () => Promise<PlannerEvent[] | null>;
   loadEventsBySemester: () => Promise<PlannerEventsBySemester | null>;
   insertEvent: (
     event: PlannerEvent,
-    semesterId: PlannerSemesterId,
+    semesterId?: PlannerSemesterId,
   ) => Promise<void>;
   updateEvent: (
     eventId: string,
@@ -51,7 +53,7 @@ const PERSISTENCE_LOG_PREFIX = "[SAM persistence]";
  */
 export type SupabaseEventRow = {
   planner_scope: string;
-  semester_id: PlannerSemesterId | null;
+  semester_id?: string | null;
   event_id: string;
   title: string;
   description: string | null;
@@ -98,9 +100,10 @@ export function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
-export function rowToPlannerEvent(
-  row: SupabaseEventRow,
-): { semesterId: PlannerSemesterId; event: PlannerEvent } | null {
+/**
+ * Deserializes a Supabase row into a domain PlannerEvent.
+ */
+export function rowToEvent(row: SupabaseEventRow): PlannerEvent | null {
   if (!row.event_id || !row.title) {
     return null;
   }
@@ -109,33 +112,48 @@ export function rowToPlannerEvent(
     ? (row.category as PlannerEvent["category"])
     : "Other";
 
-  const targetSemesterId =
-    row.semester_id && plannerSemesterIds.includes(row.semester_id)
-      ? row.semester_id
-      : defaultPlannerSemesterId;
-
   return {
-    semesterId: targetSemesterId,
-    event: {
-      id: row.event_id,
-      title: row.title,
-      description: row.description ?? undefined,
-      category,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      participants: normalizeParticipants(row.participants),
-    },
+    id: row.event_id,
+    title: row.title,
+    description: row.description ?? undefined,
+    category,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    participants: normalizeParticipants(row.participants),
   };
 }
 
+/**
+ * Deserializes a row with semester association for backwards-compatible consumers.
+ */
+export function rowToPlannerEvent(
+  row: SupabaseEventRow,
+): { semesterId: PlannerSemesterId; event: PlannerEvent } | null {
+  const event = rowToEvent(row);
+  if (!event) {
+    return null;
+  }
+
+  const targetSemesterId = event.startDate
+    ? getSemesterIdForDate(event.startDate)
+    : (row.semester_id ?? defaultPlannerSemesterId);
+
+  return {
+    semesterId: targetSemesterId,
+    event,
+  };
+}
+
+/**
+ * Converts a domain PlannerEvent into a Supabase row.
+ */
 export function eventToRow(
   event: PlannerEvent,
-  semesterId: PlannerSemesterId,
-  plannerScope: string,
+  _semesterId?: PlannerSemesterId,
+  plannerScope: string = getPlannerScope(),
 ): SupabaseEventRow {
   return {
     planner_scope: plannerScope,
-    semester_id: event.startDate ? semesterId : null,
     event_id: event.id,
     title: event.title,
     description: event.description ?? null,
@@ -146,13 +164,39 @@ export function eventToRow(
   };
 }
 
+/**
+ * Converts an array of rows to domain events.
+ */
+export function rowsToEvents(rows: SupabaseEventRow[]): PlannerEvent[] {
+  const events: PlannerEvent[] = [];
+
+  for (const row of rows) {
+    const event = rowToEvent(row);
+    if (event) {
+      events.push(event);
+    }
+  }
+
+  return events;
+}
+
+/**
+ * Converts an array of domain events to Supabase rows.
+ */
+export function eventsToRows(
+  events: PlannerEvent[],
+  plannerScope: string = getPlannerScope(),
+): SupabaseEventRow[] {
+  return events.map((event) => eventToRow(event, undefined, plannerScope));
+}
+
 export function eventsBySemesterToRows(
   eventsBySemester: PlannerEventsBySemester,
   plannerScope: string,
 ): SupabaseEventRow[] {
   const rows: SupabaseEventRow[] = [];
 
-  for (const semesterId of plannerSemesterIds) {
+  for (const semesterId of Object.keys(eventsBySemester)) {
     const semesterEvents = eventsBySemester[semesterId] ?? [];
 
     for (const event of semesterEvents) {
@@ -163,7 +207,7 @@ export function eventsBySemesterToRows(
   return rows;
 }
 
-export function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
+export function rowsToEventsBySemester(rows: SupabaseEventRow[]): PlannerEventsBySemester {
   const eventsBySemester: PlannerEventsBySemester = {};
 
   for (const semesterId of plannerSemesterIds) {
@@ -176,10 +220,22 @@ export function rowsToEventsBySemester(rows: SupabaseEventRow[]) {
       continue;
     }
 
+    if (!eventsBySemester[parsed.semesterId]) {
+      eventsBySemester[parsed.semesterId] = [];
+    }
+
     eventsBySemester[parsed.semesterId]?.push(parsed.event);
   }
 
   return eventsBySemester;
+}
+
+export function getDefaultEventsBySemester(): PlannerEventsBySemester {
+  const map: PlannerEventsBySemester = {};
+  for (const id of plannerSemesterIds) {
+    map[id] = [];
+  }
+  return map;
 }
 
 function getSupabaseConfig() {
@@ -224,10 +280,10 @@ function getAuthHeader(anonKey: string) {
   return `Bearer ${token || anonKey}`;
 }
 
-async function fetchSupabaseEventsBySemester(
+async function fetchSupabaseEventRows(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-) {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,semester_id,event_id,title,description,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+): Promise<SupabaseEventRow[] | null> {
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,event_id,title,description,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();
@@ -265,8 +321,7 @@ async function fetchSupabaseEventsBySemester(
       throw new Error("Failed to load planner events from Supabase.");
     }
 
-    const rows = (await response.json()) as SupabaseEventRow[];
-    return rowsToEventsBySemester(rows);
+    return (await response.json()) as SupabaseEventRow[];
   }
 
   const response = await fetch(endpoint, {
@@ -281,14 +336,13 @@ async function fetchSupabaseEventsBySemester(
     throw new Error("Failed to load planner events from Supabase.");
   }
 
-  const rows = (await response.json()) as SupabaseEventRow[];
-  return rowsToEventsBySemester(rows);
+  return (await response.json()) as SupabaseEventRow[];
 }
 
 export async function insertSupabaseEvent(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
   event: PlannerEvent,
-  semesterId: PlannerSemesterId,
+  semesterId?: PlannerSemesterId,
 ) {
   const row = eventToRow(event, semesterId, config.plannerScope);
   const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?on_conflict=planner_scope,event_id`;
@@ -326,16 +380,7 @@ export async function updateSupabaseEvent(
   if (patch.title !== undefined) body.title = patch.title;
   if (patch.description !== undefined) body.description = patch.description ?? null;
   if (patch.category !== undefined) body.category = patch.category;
-  if (patch.startDate !== undefined) {
-    body.start_date = patch.startDate;
-    if (patch.semesterId !== undefined) {
-      body.semester_id = patch.startDate ? patch.semesterId : null;
-    } else if (patch.startDate === null) {
-      body.semester_id = null;
-    }
-  } else if (patch.semesterId !== undefined) {
-    body.semester_id = patch.semesterId;
-  }
+  if (patch.startDate !== undefined) body.start_date = patch.startDate;
   if (patch.endDate !== undefined) body.end_date = patch.endDate;
   if (patch.participants !== undefined) body.participants = patch.participants;
 
@@ -385,9 +430,16 @@ export async function deleteSupabaseEvent(
 }
 
 export const supabasePlannerEventStore: PlannerEventStore = {
+  async loadEvents() {
+    const config = requireSupabaseConfig();
+    const rows = await fetchSupabaseEventRows(config);
+    return rows ? rowsToEvents(rows) : null;
+  },
+
   async loadEventsBySemester() {
     const config = requireSupabaseConfig();
-    return fetchSupabaseEventsBySemester(config);
+    const rows = await fetchSupabaseEventRows(config);
+    return rows ? rowsToEventsBySemester(rows) : null;
   },
 
   async insertEvent(event, semesterId) {
@@ -421,4 +473,3 @@ export function resolvePlannerEventStore(): PlannerEventStore {
   logPersistenceHealth(`Store mode: supabase only (scope: ${plannerScope}).`);
   return supabasePlannerEventStore;
 }
-

@@ -120,9 +120,7 @@ export function rowToPlannerWeekEvent(
     ? row.category
     : "Other";
 
-  const targetSemesterId = plannerSemesterIds.includes(row.semester_id)
-    ? row.semester_id
-    : defaultPlannerSemesterId;
+  const targetSemesterId = row.semester_id?.trim() || defaultPlannerSemesterId;
 
   return {
     semesterId: targetSemesterId,
@@ -164,7 +162,7 @@ export function weekEventsBySemesterToRows(
 ): SupabaseWeekEventRow[] {
   const rows: SupabaseWeekEventRow[] = [];
 
-  for (const semesterId of plannerSemesterIds) {
+  for (const semesterId of Object.keys(weekEventsBySemester)) {
     const semesterEvents = weekEventsBySemester[semesterId] ?? [];
 
     for (const event of semesterEvents) {
@@ -186,6 +184,10 @@ export function rowsToWeekEventsBySemester(rows: SupabaseWeekEventRow[]) {
     const parsed = rowToPlannerWeekEvent(row);
     if (!parsed) {
       continue;
+    }
+
+    if (!weekEventsBySemester[parsed.semesterId]) {
+      weekEventsBySemester[parsed.semesterId] = [];
     }
 
     weekEventsBySemester[parsed.semesterId]?.push(parsed.event);

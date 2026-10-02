@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { BaseEventForm } from "@/components/ui/base-event-form";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
+  MIN_PLANNER_DATE,
   plannerEventCategories,
   type PlannerEventCategory,
 } from "@/features/planner/lib/planner";
@@ -93,11 +94,13 @@ export function PlannerEventForm({
           value={startDate}
           onChange={onStartDateChange}
           placeholder="Start date"
+          minDate={MIN_PLANNER_DATE}
         />
         <DatePicker
           value={endDate}
           onChange={onEndDateChange}
           placeholder="End date"
+          minDate={MIN_PLANNER_DATE}
         />
       </div>
     </BaseEventForm>

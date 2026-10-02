@@ -5,6 +5,8 @@
  *
  * This module coordinates planner hydration, local reducer state, persistence
  * writes, and derived selectors for both calendar and weekly schedule views.
+ * Calendar events are maintained in a flat collection where semester inclusion
+ * is dynamically derived based on date range overlap.
  */
 
 import {
@@ -19,7 +21,7 @@ import {
 
 import {
   resolvePlannerEventStore,
-  rowToPlannerEvent,
+  rowToEvent,
   type PlannerEventsBySemester,
   type SupabaseEventRow,
 } from "@/features/planner/lib/planner-persistence";
@@ -48,12 +50,14 @@ import {
 } from "@/lib/supabase/client";
 
 import {
+  clampToMinDate,
   defaultPlannerSemesterId,
+  eventOverlapsSemester,
+  getAvailableSemesters,
   getPlannerSemester,
   getSemesterIdForDate,
+  normalizeDateRange,
   plannerEventCategories,
-  plannerSemesterIds,
-  plannerSemesters,
   type PlannerCategorySummary,
   type PlannerEventCategory,
   type PlannerEvent,
@@ -72,7 +76,7 @@ import {
 const EVENTS_SNAPSHOT_KEY = "planner-events";
 const WEEK_EVENTS_SNAPSHOT_KEY = "week-events";
 
-type EventsBySemester = Record<PlannerSemesterId, PlannerEvent[]>;
+type EventsBySemester = Record<string, PlannerEvent[]>;
 
 type PlannerStateContextValue = {
   /**
@@ -85,7 +89,9 @@ type PlannerStateContextValue = {
   lastSyncedAt: string | null;
   activeSemesterId: PlannerSemesterId;
   activeSemester: PlannerSemester;
+  availableSemesters: PlannerSemester[];
   months: PlannerMonth[];
+  allEvents: PlannerEvent[];
   events: PlannerEvent[];
   weekEvents: PlannerWeekEvent[];
   inboxEvents: PlannerEvent[];
@@ -146,70 +152,57 @@ type PlannerStateProviderProps = {
   children: React.ReactNode;
 };
 
-type PlannerAction =
+export type PlannerAction =
   | {
-      /** Hydrates the calendar semester map from persistence. */
+      /** Hydrates the calendar event state from persistence. */
       type: "HYDRATE_FROM_STORE";
       payload: {
-        /** Semester-keyed calendar events loaded from Supabase. */
-        eventsBySemester: PlannerEventsBySemester | null;
+        events: PlannerEvent[] | PlannerEventsBySemester | null;
       };
     }
   | {
-      /** Moves a calendar event from the inbox into a dated calendar slot. */
+      /** Moves a calendar event to a dated calendar slot. */
       type: "MOVE_EVENT_TO_DATE";
       payload: {
-        /** Event identifier from the semester store. */
         eventId: string;
-        /** Target date in YYYY-MM-DD format. */
-        dateKey: string;
-        /** Semester that should receive the updated event. */
-        targetSemesterId: PlannerSemesterId;
+        startDate?: string;
+        endDate?: string;
+        dateKey?: string;
+        targetSemesterId?: string;
       };
     }
   | {
       /** Returns a dated calendar event back to the inbox. */
       type: "MOVE_EVENT_TO_INBOX";
       payload: {
-        /** Event identifier from the semester store. */
         eventId: string;
       };
     }
   | {
-      /** Creates a new semester-scoped calendar event. */
+      /** Creates a new calendar event. */
       type: "CREATE_EVENT";
       payload: {
-        /** Semester that owns the new event. */
-        semesterId: PlannerSemesterId;
-        /** Fully formed event object ready for persistence. */
         event: PlannerEvent;
+        semesterId?: string;
       };
     }
   | {
       /** Updates an existing calendar event in place. */
       type: "UPDATE_EVENT";
       payload: {
-        /** Event identifier from the semester store. */
         eventId: string;
-        /** Updated display title. */
         title: string;
-        /** Updated optional description shown in previews and details. */
         description?: string;
-        /** Updated planner category used for theming and filtering. */
         category: PlannerEventCategory;
-        /** Updated inclusive start date in YYYY-MM-DD format, or null for inbox items. */
         startDate: string | null;
-        /** Updated inclusive end date in YYYY-MM-DD format, or null for inbox items. */
         endDate: string | null;
-        /** Updated participant list, normalized against the friends domain. */
         participants: string[];
       };
     }
   | {
-      /** Deletes an event from the current semester store. */
+      /** Deletes an event from the store. */
       type: "DELETE_EVENT";
       payload: {
-        /** Event identifier from the semester store. */
         eventId: string;
       };
     }
@@ -217,9 +210,7 @@ type PlannerAction =
       /** Toggles a participant name on a calendar event. */
       type: "TOGGLE_PARTICIPANT";
       payload: {
-        /** Event identifier from the semester store. */
         eventId: string;
-        /** Participant name as entered by the user. */
         participantName: string;
       };
     }
@@ -227,7 +218,6 @@ type PlannerAction =
       /** Removes one participant from every calendar event. */
       type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS";
       payload: {
-        /** Participant name to remove case-insensitively. */
         participantName: string;
       };
     }
@@ -235,9 +225,7 @@ type PlannerAction =
       /** Renames one participant across the entire calendar store. */
       type: "RENAME_PARTICIPANT_IN_ALL_EVENTS";
       payload: {
-        /** Existing participant name to replace case-insensitively. */
         currentName: string;
-        /** Replacement participant name stored in normalized form. */
         nextName: string;
       };
     }
@@ -245,8 +233,8 @@ type PlannerAction =
       /** Handles remote upsert (insert or update) from Realtime broadcast. */
       type: "REMOTE_UPSERT_EVENT";
       payload: {
-        semesterId: PlannerSemesterId;
         event: PlannerEvent;
+        semesterId?: string;
       };
     }
   | {
@@ -256,8 +244,6 @@ type PlannerAction =
         eventId: string;
       };
     };
-
-type WeekEventsBySemester = PlannerWeekEventsBySemester;
 
 const PlannerStateContext = createContext<PlannerStateContextValue | null>(
   null,
@@ -284,30 +270,6 @@ function addDays(date: Date, days: number) {
   return result;
 }
 
-function normalizeDateRange(startDate: string | null, endDate: string | null) {
-  // Prevent invalid time-travel states: if the user picks an end date before
-  // the start date, we force the range to collapse to the start date so the
-  // event always remains a valid forward-moving interval.
-  if (!startDate) {
-    return {
-      startDate: null,
-      endDate: null,
-    };
-  }
-
-  if (!endDate || endDate < startDate) {
-    return {
-      startDate,
-      endDate: startDate,
-    };
-  }
-
-  return {
-    startDate,
-    endDate,
-  };
-}
-
 function eventDurationInDays(event: PlannerEvent) {
   if (!event.startDate || !event.endDate) {
     return 1;
@@ -318,26 +280,6 @@ function eventDurationInDays(event: PlannerEvent) {
   const durationMs = end.getTime() - start.getTime();
 
   return Math.max(1, Math.floor(durationMs / (1000 * 60 * 60 * 24)) + 1);
-}
-
-function initializeEventsBySemester(): EventsBySemester {
-  return plannerSemesters.reduce((acc, semester) => {
-    acc[semester.id] = semester.events.map((event) => ({
-      ...event,
-      participants: [...event.participants],
-    }));
-    return acc;
-  }, {} as EventsBySemester);
-}
-
-function initializeWeekEventsBySemester(): WeekEventsBySemester {
-  return plannerSemesters.reduce((acc, semester) => {
-    acc[semester.id] = semester.weekEvents.map((event) => ({
-      ...event,
-      participants: [...event.participants],
-    }));
-    return acc;
-  }, {} as WeekEventsBySemester);
 }
 
 function normalizeFriendName(name: string) {
@@ -364,222 +306,319 @@ function dedupeParticipantNames(participants: string[]) {
   return Array.from(uniqueByLowerCase.values());
 }
 
-function buildEventsBySemesterSnapshot(
-  eventsBySemester: EventsBySemester,
-): PlannerEventsBySemester {
-  return plannerSemesterIds.reduce((acc, semesterId) => {
-    const semesterEvents = eventsBySemester[semesterId] ?? [];
-
-    acc[semesterId] = semesterEvents.map((event) => ({
-      ...event,
-      participants: [...event.participants],
-    }));
-
-    return acc;
-  }, {} as PlannerEventsBySemester);
-}
-
 function buildWeekEventsBySemesterSnapshot(
   weekEventsBySemester: PlannerWeekEventsBySemester,
 ): PlannerWeekEventsBySemester {
-  return plannerSemesterIds.reduce((acc, semesterId) => {
-    const semesterEvents = weekEventsBySemester[semesterId] ?? [];
+  const snapshot: PlannerWeekEventsBySemester = {};
 
-    acc[semesterId] = semesterEvents.map((event) => ({
+  for (const semesterId of Object.keys(weekEventsBySemester)) {
+    const semesterEvents = weekEventsBySemester[semesterId] ?? [];
+    snapshot[semesterId] = semesterEvents.map((event) => ({
       ...event,
       participants: [...event.participants],
     }));
+  }
 
-    return acc;
-  }, {} as PlannerWeekEventsBySemester);
+  return snapshot;
 }
 
 function toPlannerPersistenceError(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error : new Error(fallbackMessage);
 }
 
-function findSemesterForEvent(
-  eventsBySemester: EventsBySemester,
-  eventId: string,
-): PlannerSemesterId | null {
-  for (const semesterId of plannerSemesterIds) {
-    const semesterEvents = eventsBySemester[semesterId] ?? [];
-
-    if (semesterEvents.some((event) => event.id === eventId)) {
-      return semesterId;
-    }
-  }
-
-  return null;
-}
-
 /**
  * Extracts and sorts all undated events across semesters for the inbox view.
+ * Accepts either flat PlannerEvent[] or legacy Record<string, PlannerEvent[]>.
  */
-export function getInboxEventsFromState(eventsBySemester: EventsBySemester) {
-  return plannerSemesterIds
-    .flatMap((semesterId) => eventsBySemester[semesterId] ?? [])
+export function getInboxEventsFromState(
+  events: PlannerEvent[] | EventsBySemester,
+): PlannerEvent[] {
+  const flatEvents: PlannerEvent[] = Array.isArray(events)
+    ? events
+    : Object.values(events).flat();
+
+  return flatEvents
     .filter((event) => !event.startDate)
     .sort((left, right) => left.title.localeCompare(right.title));
 }
 
 /**
- * Applies planner calendar mutations to the semester-scoped event state tree.
+ * Normalizes input events that might be in flat array or legacy dict shape into a flat array.
  */
+function normalizeEventsPayload(
+  payload: PlannerEvent[] | PlannerEventsBySemester | null | undefined,
+): PlannerEvent[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  return Object.values(payload)
+    .flat()
+    .filter((e): e is PlannerEvent => Boolean(e));
+}
+
+/**
+ * Applies planner calendar mutations to the event state tree.
+ * Supports both flat PlannerEvent[] and legacy EventsBySemester for testing compatibility.
+ */
+export function plannerStateReducer(
+  state: PlannerEvent[],
+  action: PlannerAction,
+): PlannerEvent[];
 export function plannerStateReducer(
   state: EventsBySemester,
   action: PlannerAction,
-): EventsBySemester {
+): EventsBySemester;
+export function plannerStateReducer(
+  state: PlannerEvent[] | EventsBySemester,
+  action: PlannerAction,
+): PlannerEvent[] | EventsBySemester {
+  // Support legacy dictionary state if passed by older unit tests
+  const isLegacyDict = !Array.isArray(state);
+
+  if (isLegacyDict) {
+    const dictState = state as EventsBySemester;
+
+    switch (action.type) {
+      case "HYDRATE_FROM_STORE": {
+        const events = normalizeEventsPayload(action.payload.events);
+        const nextState: EventsBySemester = {};
+        for (const ev of events) {
+          const sId = ev.startDate ? getSemesterIdForDate(ev.startDate) : defaultPlannerSemesterId;
+          if (!nextState[sId]) nextState[sId] = [];
+          nextState[sId].push(ev);
+        }
+        return nextState;
+      }
+      case "MOVE_EVENT_TO_DATE": {
+        const { eventId, targetSemesterId } = action.payload;
+        let foundEvent: PlannerEvent | undefined;
+        let sourceSemesterId: string | undefined;
+
+        for (const sId of Object.keys(dictState)) {
+          const ev = dictState[sId]?.find((e) => e.id === eventId);
+          if (ev) {
+            foundEvent = ev;
+            sourceSemesterId = sId;
+            break;
+          }
+        }
+
+        if (!foundEvent || !sourceSemesterId) return dictState;
+
+        const dateKey = action.payload.dateKey ?? action.payload.startDate!;
+        const duration = eventDurationInDays(foundEvent);
+        const nextStartDate = clampToMinDate(dateKey)!;
+        const nextEndDate =
+          action.payload.endDate ??
+          toDateKey(addDays(toDate(nextStartDate), duration - 1));
+
+        const updatedEvent: PlannerEvent = {
+          ...foundEvent,
+          startDate: nextStartDate,
+          endDate: nextEndDate,
+        };
+
+        const targetId = targetSemesterId ?? getSemesterIdForDate(nextStartDate);
+        const nextState: EventsBySemester = { ...dictState };
+
+        if (sourceSemesterId !== targetId) {
+          nextState[sourceSemesterId] = (nextState[sourceSemesterId] ?? []).filter(
+            (e) => e.id !== eventId,
+          );
+          nextState[targetId] = [...(nextState[targetId] ?? []), updatedEvent];
+        } else {
+          nextState[targetId] = (nextState[targetId] ?? []).map((e) =>
+            e.id === eventId ? updatedEvent : e,
+          );
+        }
+        return nextState;
+      }
+      case "MOVE_EVENT_TO_INBOX": {
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).map((e) =>
+            e.id === action.payload.eventId
+              ? { ...e, startDate: null, endDate: null }
+              : e,
+          );
+        }
+        return nextState;
+      }
+      case "CREATE_EVENT": {
+        const sId = action.payload.semesterId ?? (action.payload.event.startDate ? getSemesterIdForDate(action.payload.event.startDate) : defaultPlannerSemesterId);
+        return {
+          ...dictState,
+          [sId]: [...(dictState[sId] ?? []), action.payload.event],
+        };
+      }
+      case "UPDATE_EVENT": {
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).map((e) =>
+            e.id === action.payload.eventId
+              ? {
+                  ...e,
+                  title: action.payload.title,
+                  description: action.payload.description,
+                  category: action.payload.category,
+                  startDate: action.payload.startDate,
+                  endDate: action.payload.endDate,
+                  participants: action.payload.participants,
+                }
+              : e,
+          );
+        }
+        return nextState;
+      }
+      case "DELETE_EVENT": {
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).filter(
+            (e) => e.id !== action.payload.eventId,
+          );
+        }
+        return nextState;
+      }
+      case "TOGGLE_PARTICIPANT": {
+        const { eventId, participantName } = action.payload;
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).map((e) => {
+            if (e.id !== eventId) return e;
+            const hasParticipant = e.participants.includes(participantName);
+            return {
+              ...e,
+              participants: hasParticipant
+                ? e.participants.filter((p) => p !== participantName)
+                : [...e.participants, participantName],
+            };
+          });
+        }
+        return nextState;
+      }
+      case "REMOVE_PARTICIPANT_FROM_ALL_EVENTS": {
+        const target = action.payload.participantName.toLocaleLowerCase();
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).map((e) => ({
+            ...e,
+            participants: e.participants.filter(
+              (p) => p.toLocaleLowerCase() !== target,
+            ),
+          }));
+        }
+        return nextState;
+      }
+      case "RENAME_PARTICIPANT_IN_ALL_EVENTS": {
+        const currentName = action.payload.currentName.toLocaleLowerCase();
+        const nextName = action.payload.nextName;
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).map((e) => ({
+            ...e,
+            participants: dedupeParticipantNames(
+              e.participants.map((p) =>
+                p.toLocaleLowerCase() === currentName ? nextName : p,
+              ),
+            ),
+          }));
+        }
+        return nextState;
+      }
+      case "REMOTE_UPSERT_EVENT": {
+        const event = action.payload.event;
+        const sId = action.payload.semesterId ?? (event.startDate ? getSemesterIdForDate(event.startDate) : defaultPlannerSemesterId);
+        const nextState: EventsBySemester = {};
+        for (const key of Object.keys(dictState)) {
+          nextState[key] = (dictState[key] ?? []).filter((e) => e.id !== event.id);
+        }
+        nextState[sId] = [...(nextState[sId] ?? []), event];
+        return nextState;
+      }
+      case "REMOTE_DELETE_EVENT": {
+        const nextState: EventsBySemester = {};
+        for (const sId of Object.keys(dictState)) {
+          nextState[sId] = (dictState[sId] ?? []).filter(
+            (e) => e.id !== action.payload.eventId,
+          );
+        }
+        return nextState;
+      }
+      default:
+        return dictState;
+    }
+  }
+
+  // Canonical Flat State Implementation
+  const flatState = state as PlannerEvent[];
+
   switch (action.type) {
     case "HYDRATE_FROM_STORE": {
-      const { eventsBySemester } = action.payload;
-
-      if (!eventsBySemester) {
-        return state;
-      }
-
-      const nextState: EventsBySemester = { ...state };
-
-      for (const semesterId of plannerSemesterIds) {
-        const semesterEvents = eventsBySemester[semesterId] ?? [];
-        nextState[semesterId] = semesterEvents.map((event) => ({
-          ...event,
-          participants: [...event.participants],
-        }));
-      }
-
-      return nextState;
+      const events = normalizeEventsPayload(action.payload.events);
+      return events.map((event) => ({
+        ...event,
+        participants: [...event.participants],
+      }));
     }
 
     case "MOVE_EVENT_TO_DATE": {
-      const { eventId, dateKey, targetSemesterId } = action.payload;
-      const sourceSemesterId = findSemesterForEvent(state, eventId);
+      const { eventId } = action.payload;
+      const event = flatState.find((item) => item.id === eventId);
+      if (!event) return flatState;
 
-      if (!sourceSemesterId) {
-        return state;
-      }
-
-      const sourceEvents = state[sourceSemesterId] ?? [];
-      const targetEvents = state[targetSemesterId] ?? [];
-      const event = sourceEvents.find((item) => item.id === eventId);
-
-      if (!event) {
-        return state;
-      }
-
+      const dateKey = action.payload.dateKey ?? action.payload.startDate!;
+      const clampedDateKey = clampToMinDate(dateKey)!;
       const duration = eventDurationInDays(event);
-      const nextStartDate = dateKey;
-      const nextEndDate = toDateKey(addDays(toDate(dateKey), duration - 1));
-      const updatedEvent: PlannerEvent = {
-        ...event,
-        startDate: nextStartDate,
-        endDate: nextEndDate,
-      };
+      const nextStartDate = clampedDateKey;
+      const nextEndDate =
+        action.payload.endDate ??
+        toDateKey(addDays(toDate(clampedDateKey), duration - 1));
 
-      // If an inbox event is scheduled from another semester, rehome it into the
-      // currently active semester so it appears in the visible calendar.
-      if (sourceSemesterId !== targetSemesterId) {
+      return flatState.map((item) => {
+        if (item.id !== eventId) return item;
         return {
-          ...state,
-          [sourceSemesterId]: sourceEvents.filter(
-            (item) => item.id !== eventId,
-          ),
-          [targetSemesterId]: [...targetEvents, updatedEvent],
+          ...item,
+          startDate: nextStartDate,
+          endDate: nextEndDate,
         };
-      }
-
-      return {
-        ...state,
-        [targetSemesterId]: targetEvents.map((item) => {
-          if (item.id !== eventId) {
-            return item;
-          }
-
-          return updatedEvent;
-        }),
-      };
+      });
     }
 
     case "MOVE_EVENT_TO_INBOX": {
       const { eventId } = action.payload;
-      const semesterId = findSemesterForEvent(state, eventId);
-
-      if (!semesterId) {
-        return state;
-      }
-
-      const semesterEvents = state[semesterId] ?? [];
-
-      return {
-        ...state,
-        [semesterId]: semesterEvents.map((event) => {
-          if (event.id !== eventId) {
-            return event;
-          }
-
-          return {
-            ...event,
-            startDate: null,
-            endDate: null,
-          };
-        }),
-      };
+      return flatState.map((event) => {
+        if (event.id !== eventId) return event;
+        return {
+          ...event,
+          startDate: null,
+          endDate: null,
+        };
+      });
     }
 
     case "CREATE_EVENT": {
-      const { semesterId, event } = action.payload;
-      const semesterEvents = state[semesterId] ?? [];
-
-      return {
-        ...state,
-        [semesterId]: [...semesterEvents, event],
-      };
+      return [...flatState, action.payload.event];
     }
 
     case "UPDATE_EVENT": {
-      const semesterId = findSemesterForEvent(state, action.payload.eventId);
+      return flatState.map((event) => {
+        if (event.id !== action.payload.eventId) {
+          return event;
+        }
 
-      if (!semesterId) {
-        return state;
-      }
-
-      const semesterEvents = state[semesterId] ?? [];
-
-      return {
-        ...state,
-        [semesterId]: semesterEvents.map((event) => {
-          if (event.id !== action.payload.eventId) {
-            return event;
-          }
-
-          return {
-            ...event,
-            title: action.payload.title,
-            description: action.payload.description,
-            category: action.payload.category,
-            startDate: action.payload.startDate,
-            endDate: action.payload.endDate,
-            participants: action.payload.participants,
-          };
-        }),
-      };
+        return {
+          ...event,
+          title: action.payload.title,
+          description: action.payload.description,
+          category: action.payload.category,
+          startDate: action.payload.startDate,
+          endDate: action.payload.endDate,
+          participants: action.payload.participants,
+        };
+      });
     }
 
     case "DELETE_EVENT": {
-      const semesterId = findSemesterForEvent(state, action.payload.eventId);
-
-      if (!semesterId) {
-        return state;
-      }
-
-      const semesterEvents = state[semesterId] ?? [];
-
-      return {
-        ...state,
-        [semesterId]: semesterEvents.filter(
-          (event) => event.id !== action.payload.eventId,
-        ),
-      };
+      return flatState.filter((event) => event.id !== action.payload.eventId);
     }
 
     case "TOGGLE_PARTICIPANT": {
@@ -587,124 +626,65 @@ export function plannerStateReducer(
       const trimmedName = participantName.trim();
 
       if (!trimmedName) {
-        return state;
+        return flatState;
       }
 
-      const semesterId = findSemesterForEvent(state, eventId);
+      return flatState.map((event) => {
+        if (event.id !== eventId) {
+          return event;
+        }
 
-      if (!semesterId) {
-        return state;
-      }
+        const hasParticipant = event.participants.includes(trimmedName);
 
-      const semesterEvents = state[semesterId] ?? [];
-
-      return {
-        ...state,
-        [semesterId]: semesterEvents.map((event) => {
-          if (event.id !== eventId) {
-            return event;
-          }
-
-          const hasParticipant = event.participants.includes(trimmedName);
-
-          return {
-            ...event,
-            participants: hasParticipant
-              ? event.participants.filter((name) => name !== trimmedName)
-              : [...event.participants, trimmedName],
-          };
-        }),
-      };
+        return {
+          ...event,
+          participants: hasParticipant
+            ? event.participants.filter((name) => name !== trimmedName)
+            : [...event.participants, trimmedName],
+        };
+      });
     }
 
     case "REMOVE_PARTICIPANT_FROM_ALL_EVENTS": {
       const target = action.payload.participantName.toLocaleLowerCase();
 
-      return plannerSemesterIds.reduce((nextState, semesterId) => {
-        const semesterEvents = state[semesterId] ?? [];
-
-        nextState[semesterId] = semesterEvents.map((event) => ({
-          ...event,
-          participants: event.participants.filter(
-            (participant) => participant.toLocaleLowerCase() !== target,
-          ),
-        }));
-
-        return nextState;
-      }, {} as EventsBySemester);
+      return flatState.map((event) => ({
+        ...event,
+        participants: event.participants.filter(
+          (participant) => participant.toLocaleLowerCase() !== target,
+        ),
+      }));
     }
 
     case "RENAME_PARTICIPANT_IN_ALL_EVENTS": {
       const currentName = action.payload.currentName.toLocaleLowerCase();
       const nextName = action.payload.nextName;
 
-      return plannerSemesterIds.reduce((nextState, semesterId) => {
-        const semesterEvents = state[semesterId] ?? [];
-
-        nextState[semesterId] = semesterEvents.map((event) => ({
-          ...event,
-          participants: dedupeParticipantNames(
-            event.participants.map((participant) =>
-              participant.toLocaleLowerCase() === currentName
-                ? nextName
-                : participant,
-            ),
+      return flatState.map((event) => ({
+        ...event,
+        participants: dedupeParticipantNames(
+          event.participants.map((participant) =>
+            participant.toLocaleLowerCase() === currentName ? nextName : participant,
           ),
-        }));
-
-        return nextState;
-      }, {} as EventsBySemester);
+        ),
+      }));
     }
 
     case "REMOTE_UPSERT_EVENT": {
-      const { semesterId, event } = action.payload;
-      const existingSemesterId = findSemesterForEvent(state, event.id);
+      const { event } = action.payload;
+      const exists = flatState.some((item) => item.id === event.id);
 
-      if (existingSemesterId && existingSemesterId !== semesterId) {
-        const sourceEvents = (state[existingSemesterId] ?? []).filter(
-          (item) => item.id !== event.id,
-        );
-        const targetEvents = state[semesterId] ?? [];
-        return {
-          ...state,
-          [existingSemesterId]: sourceEvents,
-          [semesterId]: [
-            ...targetEvents.filter((item) => item.id !== event.id),
-            event,
-          ],
-        };
-      }
-
-      const currentEvents = state[semesterId] ?? [];
-      const exists = currentEvents.some((item) => item.id === event.id);
-
-      return {
-        ...state,
-        [semesterId]: exists
-          ? currentEvents.map((item) => (item.id === event.id ? event : item))
-          : [...currentEvents, event],
-      };
+      return exists
+        ? flatState.map((item) => (item.id === event.id ? event : item))
+        : [...flatState, event];
     }
 
     case "REMOTE_DELETE_EVENT": {
-      const semesterId = findSemesterForEvent(state, action.payload.eventId);
-
-      if (!semesterId) {
-        return state;
-      }
-
-      const semesterEvents = state[semesterId] ?? [];
-
-      return {
-        ...state,
-        [semesterId]: semesterEvents.filter(
-          (event) => event.id !== action.payload.eventId,
-        ),
-      };
+      return flatState.filter((event) => event.id !== action.payload.eventId);
     }
 
     default:
-      return state;
+      return flatState;
   }
 }
 
@@ -725,7 +705,7 @@ function buildCategorySummaries(
       category,
       count: categoryEvents.length,
       participants,
-      events: categoryEvents,
+      events,
     };
   });
 }
@@ -790,35 +770,30 @@ export function PlannerStateProvider({
   activeSemesterId,
   children,
 }: PlannerStateProviderProps) {
-  const [eventsBySemester, dispatch] = useReducer(
+  const [allEvents, dispatch] = useReducer<PlannerEvent[], [PlannerAction]>(
     plannerStateReducer,
-    undefined,
-    initializeEventsBySemester,
+    [],
   );
   const [weekEventsBySemester, dispatchWeek] = useReducer(
     plannerWeekStateReducer,
     undefined,
-    initializeWeekEventsBySemester,
+    () => ({ [defaultPlannerSemesterId]: [] }),
   );
   const [didHydrateFromStorage, setDidHydrateFromStorage] = useState(false);
   const eventStore = useRef(resolvePlannerEventStore());
   const weekEventStore = useRef(resolveWeekEventStore());
-  const eventsBySemesterRef = useRef(eventsBySemester);
+  const allEventsRef = useRef(allEvents);
   const weekEventsBySemesterRef = useRef(weekEventsBySemester);
 
   useEffect(() => {
-    eventsBySemesterRef.current = eventsBySemester;
+    allEventsRef.current = allEvents;
     weekEventsBySemesterRef.current = weekEventsBySemester;
-  }, [eventsBySemester, weekEventsBySemester]);
+  }, [allEvents, weekEventsBySemester]);
 
   const [persistenceError, setPersistenceError] = useState<Error | null>(null);
-  // Offline mode: the data on screen came from the local snapshot instead of
-  // Supabase. While this is set the app is read-only — see the save effects.
   const [isOffline, setIsOffline] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  // Bumped by the `online` event to re-run the load effect after reconnecting.
   const [reloadToken, setReloadToken] = useState(0);
-  // This device's own push endpoint, excluded from its own broadcasts.
   const ownEndpointRef = useRef<string | null>(null);
   const {
     friendNames,
@@ -837,43 +812,38 @@ export function PlannerStateProvider({
 
     let cancelled = false;
 
-    // Two-argument then, deliberately not .then().catch(): a chained catch also
-    // swallows anything thrown by the success handler, and a TypeError from a
-    // bug in our own code would then be misread as "offline" and quietly
-    // replace live data with the snapshot. This way only the load itself can
-    // trigger the offline path.
     void Promise.all([
-      eventStore.current.loadEventsBySemester(),
+      eventStore.current.loadEvents
+        ? eventStore.current.loadEvents()
+        : eventStore.current.loadEventsBySemester(),
       weekEventStore.current.loadWeekEventsBySemester(),
     ]).then(
-      ([eventsBySemester, weekEventsBySemester]) => {
+      ([rawLoadedEvents, loadedWeekEvents]) => {
         if (cancelled) {
           return;
         }
 
-        if (eventsBySemester) {
+        if (rawLoadedEvents) {
+          const events = normalizeEventsPayload(rawLoadedEvents);
+
           dispatch({
             type: "HYDRATE_FROM_STORE",
-            payload: { eventsBySemester },
+            payload: { events },
           });
 
-          writeSnapshot(EVENTS_SNAPSHOT_KEY, eventsBySemester);
+          writeSnapshot(EVENTS_SNAPSHOT_KEY, events);
         }
 
-        if (weekEventsBySemester) {
+        if (loadedWeekEvents) {
           dispatchWeek({
             type: "HYDRATE_WEEK_FROM_STORE",
-            payload: { weekEventsBySemester },
+            payload: { weekEventsBySemester: loadedWeekEvents },
           });
 
-          writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, weekEventsBySemester);
+          writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, loadedWeekEvents);
         }
 
-        // A null result means the adapter deferred the load — no usable auth
-        // token — not that the database is empty. Marking this as hydrated
-        // would arm the save effects, which would then push the local default
-        // state over the real rows and prune everything else away.
-        if (!eventsBySemester || !weekEventsBySemester) {
+        if (!rawLoadedEvents || !loadedWeekEvents) {
           return;
         }
 
@@ -886,9 +856,6 @@ export function PlannerStateProvider({
           return;
         }
 
-        // A rejected request only means "offline" when the host was actually
-        // unreachable. A 4xx/5xx or a missing config must still surface, so it
-        // keeps the original throwing behaviour.
         if (!isOfflineError(error)) {
           setPersistenceError(
             toPlannerPersistenceError(
@@ -899,16 +866,19 @@ export function PlannerStateProvider({
           return;
         }
 
-        const cachedEvents =
-          readSnapshot<PlannerEventsBySemester>(EVENTS_SNAPSHOT_KEY);
+        const cachedEvents = readSnapshot<PlannerEvent[] | PlannerEventsBySemester>(
+          EVENTS_SNAPSHOT_KEY,
+        );
         const cachedWeekEvents = readSnapshot<PlannerWeekEventsBySemester>(
           WEEK_EVENTS_SNAPSHOT_KEY,
         );
 
         if (cachedEvents) {
+          const events = normalizeEventsPayload(cachedEvents.payload);
+
           dispatch({
             type: "HYDRATE_FROM_STORE",
-            payload: { eventsBySemester: cachedEvents.payload },
+            payload: { events },
           });
         }
 
@@ -919,9 +889,6 @@ export function PlannerStateProvider({
           });
         }
 
-        // Deliberately leave didHydrateFromStorage false: it gates the save
-        // effects, whose prune step deletes every row missing from state. A
-        // save from cache-hydrated state could therefore erase real data.
         setLastSyncedAt(cachedEvents?.savedAt ?? null);
         setIsOffline(true);
       },
@@ -930,12 +897,8 @@ export function PlannerStateProvider({
     return () => {
       cancelled = true;
     };
-    // Re-runs when friends finish loading and whenever connectivity returns;
-    // other friend changes are handled by the RENAME/REMOVE effects below.
   }, [friendsHydrated, reloadToken]);
 
-  // Reconnecting re-runs the load, which replaces cached data with live rows
-  // and lifts the read-only state.
   useEffect(() => {
     const handleOnline = () => setReloadToken((token) => token + 1);
     const handleOffline = () => setIsOffline(true);
@@ -949,8 +912,6 @@ export function PlannerStateProvider({
     };
   }, []);
 
-  // Track this device's push subscription so it can be excluded from its own
-  // broadcasts. Refreshed whenever the toggle changes subscription state.
   useEffect(() => {
     let cancelled = false;
 
@@ -976,55 +937,42 @@ export function PlannerStateProvider({
       return;
     }
 
-    // Cross-domain listener: friend renames and deletions cascade into the
-    // planner and weekly stores without tightly coupling the domains together.
     if (lastMutation.type === "rename") {
       const { currentName, nextName } = lastMutation;
       const targetLower = currentName.toLocaleLowerCase();
 
       dispatch({
         type: "RENAME_PARTICIPANT_IN_ALL_EVENTS",
-        payload: {
-          currentName,
-          nextName,
-        },
+        payload: { currentName, nextName },
       });
 
       dispatchWeek({
         type: "RENAME_PARTICIPANT_IN_ALL_WEEK_EVENTS",
-        payload: {
-          currentName,
-          nextName,
-        },
+        payload: { currentName, nextName },
       });
 
-      // Persist renamed participants in Supabase for all affected calendar events
-      for (const semesterId of plannerSemesterIds) {
-        for (const event of eventsBySemesterRef.current[semesterId] ?? []) {
-          if (
-            event.participants.some(
-              (p) => p.toLocaleLowerCase() === targetLower,
-            )
-          ) {
-            const nextParticipants = dedupeParticipantNames(
-              event.participants.map((p) =>
-                p.toLocaleLowerCase() === targetLower ? nextName : p,
-              ),
+      for (const event of allEventsRef.current) {
+        if (
+          event.participants.some(
+            (p) => p.toLocaleLowerCase() === targetLower,
+          )
+        ) {
+          const nextParticipants = dedupeParticipantNames(
+            event.participants.map((p) =>
+              p.toLocaleLowerCase() === targetLower ? nextName : p,
+            ),
+          );
+          void eventStore.current
+            .updateEvent(event.id, {
+              participants: nextParticipants,
+            })
+            .catch((err) =>
+              console.error("Failed to cascade rename to event:", err),
             );
-            void eventStore.current
-              .updateEvent(event.id, {
-                participants: nextParticipants,
-                semesterId,
-              })
-              .catch((err) =>
-                console.error("Failed to cascade rename to event:", err),
-              );
-          }
         }
       }
 
-      // Persist renamed participants in Supabase for all affected weekly events
-      for (const semesterId of plannerSemesterIds) {
+      for (const semesterId of Object.keys(weekEventsBySemesterRef.current)) {
         for (const weekEvent of weekEventsBySemesterRef.current[semesterId] ?? []) {
           if (
             weekEvent.participants.some(
@@ -1063,31 +1011,26 @@ export function PlannerStateProvider({
         payload: { participantName: name },
       });
 
-      // Persist removed participants in Supabase for all affected calendar events
-      for (const semesterId of plannerSemesterIds) {
-        for (const event of eventsBySemesterRef.current[semesterId] ?? []) {
-          if (
-            event.participants.some(
-              (p) => p.toLocaleLowerCase() === targetLower,
-            )
-          ) {
-            const nextParticipants = event.participants.filter(
-              (p) => p.toLocaleLowerCase() !== targetLower,
+      for (const event of allEventsRef.current) {
+        if (
+          event.participants.some(
+            (p) => p.toLocaleLowerCase() === targetLower,
+          )
+        ) {
+          const nextParticipants = event.participants.filter(
+            (p) => p.toLocaleLowerCase() !== targetLower,
+          );
+          void eventStore.current
+            .updateEvent(event.id, {
+              participants: nextParticipants,
+            })
+            .catch((err) =>
+              console.error("Failed to cascade remove to event:", err),
             );
-            void eventStore.current
-              .updateEvent(event.id, {
-                participants: nextParticipants,
-                semesterId,
-              })
-              .catch((err) =>
-                console.error("Failed to cascade remove to event:", err),
-              );
-          }
         }
       }
 
-      // Persist removed participants in Supabase for all affected weekly events
-      for (const semesterId of plannerSemesterIds) {
+      for (const semesterId of Object.keys(weekEventsBySemesterRef.current)) {
         for (const weekEvent of weekEventsBySemesterRef.current[semesterId] ?? []) {
           if (
             weekEvent.participants.some(
@@ -1111,7 +1054,7 @@ export function PlannerStateProvider({
     }
   }, [didHydrateFromStorage, lastMutation]);
 
-  // Subscribe to Realtime postgres_changes on planner_events and planner_week_events
+  // Subscribe to Realtime postgres_changes
   useEffect(() => {
     const client = getSupabaseBrowserClient();
     const config = getSupabaseConfig();
@@ -1139,9 +1082,12 @@ export function PlannerStateProvider({
               row.event_id &&
               (!row.planner_scope || row.planner_scope === config.plannerScope)
             ) {
-              const parsed = rowToPlannerEvent(row);
-              if (parsed) {
-                dispatch({ type: "REMOTE_UPSERT_EVENT", payload: parsed });
+              const parsedEvent = rowToEvent(row);
+              if (parsedEvent) {
+                dispatch({
+                  type: "REMOTE_UPSERT_EVENT",
+                  payload: { event: parsedEvent },
+                });
               }
             }
           } else if (payload.eventType === "DELETE") {
@@ -1226,9 +1172,8 @@ export function PlannerStateProvider({
       return;
     }
 
-    const snapshot = buildEventsBySemesterSnapshot(eventsBySemester);
-    writeSnapshot(EVENTS_SNAPSHOT_KEY, snapshot);
-  }, [didHydrateFromStorage, isOffline, eventsBySemester]);
+    writeSnapshot(EVENTS_SNAPSHOT_KEY, allEvents);
+  }, [didHydrateFromStorage, isOffline, allEvents]);
 
   useEffect(() => {
     if (!didHydrateFromStorage || isOffline) {
@@ -1239,18 +1184,29 @@ export function PlannerStateProvider({
     writeSnapshot(WEEK_EVENTS_SNAPSHOT_KEY, snapshot);
   }, [didHydrateFromStorage, isOffline, weekEventsBySemester]);
 
-  const normalizedSemesterId = (
-    plannerSemesters.some((semester) => semester.id === activeSemesterId)
-      ? activeSemesterId
-      : defaultPlannerSemesterId
-  ) as PlannerSemesterId;
+  const normalizedSemesterId = activeSemesterId || defaultPlannerSemesterId;
+  const activeSemester = useMemo(
+    () => getPlannerSemester(normalizedSemesterId),
+    [normalizedSemesterId],
+  );
 
-  const activeSemester = getPlannerSemester(normalizedSemesterId);
-  const events =
-    eventsBySemester[normalizedSemesterId] ?? activeSemester.events;
+  const availableSemesters = useMemo(
+    () => getAvailableSemesters(allEvents),
+    [allEvents],
+  );
+
+  const events = useMemo(
+    () => allEvents.filter((event) => eventOverlapsSemester(event, activeSemester)),
+    [allEvents, activeSemester],
+  );
+
   const weekEvents =
     weekEventsBySemester[normalizedSemesterId] ?? activeSemester.weekEvents;
-  const inboxEvents = getInboxEventsFromState(eventsBySemester);
+
+  const inboxEvents = useMemo(
+    () => getInboxEventsFromState(allEvents),
+    [allEvents],
+  );
 
   const value = useMemo<PlannerStateContextValue>(() => {
     const categorySummaries = buildCategorySummaries(events);
@@ -1261,7 +1217,9 @@ export function PlannerStateProvider({
       lastSyncedAt,
       activeSemesterId: normalizedSemesterId,
       activeSemester,
+      availableSemesters,
       months: activeSemester.months,
+      allEvents,
       events,
       weekEvents,
       inboxEvents,
@@ -1274,27 +1232,23 @@ export function PlannerStateProvider({
       categorySummaries,
       chronologicalEvents,
       moveEventToDate: (eventId, dateKey) => {
-        const sourceSemesterId = findSemesterForEvent(eventsBySemester, eventId);
-        if (!sourceSemesterId) return;
-        const sourceEvents = eventsBySemester[sourceSemesterId] ?? [];
-        const event = sourceEvents.find((item) => item.id === eventId);
+        const event = allEvents.find((item) => item.id === eventId);
         if (!event) return;
 
-        const targetSemesterId = getSemesterIdForDate(dateKey);
+        const clampedDateKey = clampToMinDate(dateKey)!;
         const duration = eventDurationInDays(event);
-        const nextStartDate = dateKey;
-        const nextEndDate = toDateKey(addDays(toDate(dateKey), duration - 1));
+        const nextStartDate = clampedDateKey;
+        const nextEndDate = toDateKey(addDays(toDate(clampedDateKey), duration - 1));
 
         dispatch({
           type: "MOVE_EVENT_TO_DATE",
-          payload: { eventId, dateKey, targetSemesterId },
+          payload: { eventId, startDate: nextStartDate, endDate: nextEndDate },
         });
 
         void eventStore.current
           .updateEvent(eventId, {
             startDate: nextStartDate,
             endDate: nextEndDate,
-            semesterId: targetSemesterId,
           })
           .catch((error) => {
             if (isOfflineError(error)) {
@@ -1336,10 +1290,6 @@ export function PlannerStateProvider({
           input.endDate,
         );
 
-        const targetSemesterId = input.startDate
-          ? getSemesterIdForDate(input.startDate)
-          : normalizedSemesterId;
-
         const event: PlannerEvent = {
           id: `evt-${crypto.randomUUID()}`,
           title,
@@ -1352,14 +1302,11 @@ export function PlannerStateProvider({
 
         dispatch({
           type: "CREATE_EVENT",
-          payload: {
-            semesterId: targetSemesterId,
-            event,
-          },
+          payload: { event },
         });
 
         void eventStore.current
-          .insertEvent(event, targetSemesterId)
+          .insertEvent(event)
           .catch((error) => {
             if (isOfflineError(error)) {
               setIsOffline(true);
@@ -1374,7 +1321,7 @@ export function PlannerStateProvider({
           title: event.title,
           category: event.category,
           startDate: event.startDate,
-          semesterId: targetSemesterId,
+          semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : undefined,
         };
         void broadcastNotifications([notifItem], ownEndpointRef.current);
       },
@@ -1390,10 +1337,6 @@ export function PlannerStateProvider({
           input.startDate,
           input.endDate,
         );
-
-        const targetSemesterId = input.startDate
-          ? getSemesterIdForDate(input.startDate)
-          : normalizedSemesterId;
 
         const participants = dedupeParticipantNames(input.participants);
 
@@ -1418,7 +1361,6 @@ export function PlannerStateProvider({
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
             participants,
-            semesterId: targetSemesterId,
           })
           .catch((error) => {
             if (isOfflineError(error)) {
@@ -1559,11 +1501,7 @@ export function PlannerStateProvider({
           return;
         }
 
-        const semesterId = findSemesterForEvent(eventsBySemester, eventId);
-        if (!semesterId) return;
-        const event = (eventsBySemester[semesterId] ?? []).find(
-          (e) => e.id === eventId,
-        );
+        const event = allEvents.find((e) => e.id === eventId);
         if (!event) return;
 
         const hasParticipant = event.participants.includes(normalizedName);
@@ -1593,7 +1531,7 @@ export function PlannerStateProvider({
             title: event.title,
             category: event.category,
             startDate: event.startDate,
-            semesterId,
+            semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : undefined,
             participants: [normalizedName],
           };
           void broadcastNotifications([notifItem], ownEndpointRef.current);
@@ -1602,8 +1540,9 @@ export function PlannerStateProvider({
     };
   }, [
     activeSemester,
+    allEvents,
+    availableSemesters,
     events,
-    eventsBySemester,
     friendNames,
     inboxEvents,
     isOffline,
@@ -1621,9 +1560,6 @@ export function PlannerStateProvider({
 
 /**
  * Accessor hook for planner state and actions.
- */
-/**
- * Returns the active planner state context for consumer components.
  */
 export function usePlannerState() {
   const context = useContext(PlannerStateContext);

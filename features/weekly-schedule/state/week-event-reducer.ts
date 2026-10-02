@@ -106,7 +106,7 @@ function findSemesterForWeekEvent(
   weekEventsBySemester: PlannerWeekEventsBySemester,
   eventId: string,
 ): PlannerSemesterId | null {
-  for (const semesterId of plannerSemesterIds) {
+  for (const semesterId of Object.keys(weekEventsBySemester)) {
     const semesterEvents = weekEventsBySemester[semesterId] ?? [];
 
     if (semesterEvents.some((event) => event.id === eventId)) {
@@ -133,8 +133,11 @@ export function plannerWeekStateReducer(
       }
 
       const nextState: PlannerWeekEventsBySemester = { ...state };
+      const allSemesterKeys = Array.from(
+        new Set([...plannerSemesterIds, ...Object.keys(weekEventsBySemester)]),
+      );
 
-      for (const semesterId of plannerSemesterIds) {
+      for (const semesterId of allSemesterKeys) {
         const semesterEvents = weekEventsBySemester[semesterId] ?? [];
         nextState[semesterId] = semesterEvents.map((event) => ({
           ...event,
@@ -263,7 +266,7 @@ export function plannerWeekStateReducer(
     case "REMOVE_PARTICIPANT_FROM_ALL_WEEK_EVENTS": {
       const target = action.payload.participantName.toLocaleLowerCase();
 
-      return plannerSemesterIds.reduce((nextState, semesterId) => {
+      return Object.keys(state).reduce((nextState, semesterId) => {
         const semesterEvents = state[semesterId] ?? [];
 
         nextState[semesterId] = semesterEvents.map((event) => ({
@@ -281,7 +284,7 @@ export function plannerWeekStateReducer(
       const currentName = action.payload.currentName.toLocaleLowerCase();
       const nextName = action.payload.nextName;
 
-      return plannerSemesterIds.reduce((nextState, semesterId) => {
+      return Object.keys(state).reduce((nextState, semesterId) => {
         const semesterEvents = state[semesterId] ?? [];
 
         nextState[semesterId] = semesterEvents.map((event) => {

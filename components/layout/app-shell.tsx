@@ -47,7 +47,6 @@ import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker"
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
-  plannerSemesters,
   type PlannerEventCategory,
   type PlannerEvent,
 } from "@/features/planner/lib/planner";
@@ -231,12 +230,13 @@ function AppShellFrame({
   children: React.ReactNode;
 }) {
   const {
-    events,
+    allEvents,
     isOffline,
     moveEventToInbox,
     moveEventToDate,
     createEvent,
     createWeekEvent,
+    availableSemesters,
   } = usePlannerState();
   const { friendNames } = useFriendsState();
 
@@ -269,7 +269,7 @@ function AppShellFrame({
   );
 
   const activeEvent: PlannerEvent | null = activeEventId
-    ? (events.find((event: PlannerEvent) => event.id === activeEventId) ?? null)
+    ? (allEvents.find((event: PlannerEvent) => event.id === activeEventId) ?? null)
     : null;
 
   useEffect(() => {
@@ -530,8 +530,9 @@ function AppShellFrame({
 
                   {semesterMenuOpen ? (
                     <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-xl border border-sam-border bg-sam-surface p-1 shadow-[0_16px_40px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
-                      {plannerSemesters.map((semester) => {
+                      {availableSemesters.map((semester) => {
                         const isActive = semester.id === semesterId;
+                        const isCurrent = semester.id === defaultPlannerSemesterId;
                         const href = buildSemesterHref(semester.id);
 
                         return (
@@ -540,13 +541,18 @@ function AppShellFrame({
                             href={href}
                             aria-current={isActive ? "true" : undefined}
                             onClick={() => setSemesterMenuOpen(false)}
-                            className={`block rounded-lg px-3 py-2 text-left transition-colors ${
+                            className={`flex items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
                               isActive
                                 ? "bg-sam-surface-3 text-sam-text-1 font-semibold"
                                 : "text-sam-text-2 hover:bg-sam-surface-2"
                             }`}
                           >
                             <span className="text-sm">{semester.label}</span>
+                            {isCurrent && (
+                              <span className="ml-2 rounded-md border border-sam-border bg-sam-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-sam-text-3">
+                                Current
+                              </span>
+                            )}
                           </a>
                         );
                       })}

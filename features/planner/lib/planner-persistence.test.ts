@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type PlannerEvent } from "../lib/planner";
+import { defaultPlannerSemesterId, type PlannerEvent } from "../lib/planner";
 import {
   rowsToEventsBySemester,
   normalizeParticipants,
@@ -72,10 +72,10 @@ describe("Planner Persistence Data Integrity", () => {
 
       const result = rowsToEventsBySemester(mockRows);
 
-      // Should land in Spring 2026 (default)
-      expect(result["spring-2026"]).toBeDefined();
+      // Should land in default semester
+      expect(result[defaultPlannerSemesterId]).toBeDefined();
       expect(
-        result["spring-2026"]?.some((e: PlannerEvent) => e.id === "orphan-1"),
+        result[defaultPlannerSemesterId]?.some((e: PlannerEvent) => e.id === "orphan-1"),
       ).toBe(true);
     });
 
@@ -90,10 +90,9 @@ describe("Planner Persistence Data Integrity", () => {
         participants: ["Benjamin", "Malte"],
       };
 
-      const row = eventToRow(event, "spring-2026", "test-scope");
+      const row = eventToRow(event, undefined, "test-scope");
       expect(row).toEqual({
         planner_scope: "test-scope",
-        semester_id: "spring-2026",
         event_id: "evt-123",
         title: "Aachen Trip",
         description: "Great trip",

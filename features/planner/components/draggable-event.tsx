@@ -8,7 +8,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { EventPreviewModal } from "@/components/ui/event-preview";
@@ -76,7 +75,7 @@ export function DraggableEvent({
     touchDeviceStore.getServerSnapshot,
   );
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: `event:${event.id}`,
       data: {
@@ -108,12 +107,6 @@ export function DraggableEvent({
     };
   }, [isPreviewOpen]);
 
-  const style = compact
-    ? {
-        transform: CSS.Translate.toString(transform),
-      }
-    : undefined;
-
   function openPreview() {
     if (isDragging) {
       return;
@@ -127,7 +120,6 @@ export function DraggableEvent({
       <>
         <div
           ref={setNodeRef}
-          style={style}
           {...listeners}
           {...attributes}
           onClick={openPreview}
@@ -156,7 +148,6 @@ export function DraggableEvent({
     <>
       <div
         ref={setNodeRef}
-        style={style}
         {...listeners}
         {...attributes}
         onClick={openPreview}

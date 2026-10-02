@@ -23,7 +23,7 @@ const STORAGE_PREFIX = "sam:offline";
  * longer read — a stale shape would surface as corrupted events rather than as
  * a clean "no offline data" state.
  */
-const SNAPSHOT_VERSION = 1;
+export const SNAPSHOT_VERSION = 2;
 
 export type OfflineSnapshot<T> = {
   version: number;
