@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "next/navigation";
 
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
 import { WeekDayColumn, WeekEventContent } from "@/features/weekly-schedule/components/week-event-block";
@@ -31,13 +32,45 @@ import { useMeasuredHeight } from "@/features/weekly-schedule/hooks/use-measured
 import { useDragInteraction } from "@/features/weekly-schedule/hooks/use-drag-interaction";
 
 export function WeekView() {
-  const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
+  const {
+    weekEvents,
+    activeSemesterId,
+    findWeekEventById,
+    updateWeekEvent,
+    deleteWeekEvent,
+  } = usePlannerState();
   const { applyWeekFilters } = useFilterState();
   const { friendNames } = useFriendsState();
   const visibleWeekEvents = applyWeekFilters(weekEvents);
   const { ref: bodyRef, height: bodyHeight } = useMeasuredHeight<HTMLDivElement>();
-  const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(null);
+  const [selectedPreviewEvent, setSelectedPreviewEvent] = useState<PlannerWeekEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(null);
+  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const eventIdFromQuery = searchParams.get("event");
+
+  const deepLinkedEvent =
+    eventIdFromQuery && eventIdFromQuery !== dismissedEventId
+      ? (weekEvents.find((event) => event.id === eventIdFromQuery) ??
+         findWeekEventById(eventIdFromQuery)?.event ??
+         null)
+      : null;
+
+  const previewEvent = selectedPreviewEvent ?? deepLinkedEvent;
+
+  const handleClosePreview = useCallback(() => {
+    setSelectedPreviewEvent(null);
+    if (eventIdFromQuery) {
+      setDismissedEventId(eventIdFromQuery);
+    }
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("event")) {
+        url.searchParams.delete("event");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, [eventIdFromQuery]);
 
   // Compute the visible time range: default 08:00–18:00, expanded to the
   // nearest hour boundary whenever events fall outside that window.
@@ -107,17 +140,17 @@ export function WeekView() {
       visibleDays,
       eventsByDay,
       updateWeekEvent,
-      onEventClick: setPreviewEvent,
+      onEventClick: setSelectedPreviewEvent,
     });
 
   useEffect(() => {
     if (!previewEvent) return;
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setPreviewEvent(null);
+      if (event.key === "Escape") handleClosePreview();
     }
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [previewEvent]);
+  }, [previewEvent, handleClosePreview]);
 
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,7 +171,7 @@ export function WeekView() {
       participants: editingEvent.participants,
     });
 
-    setPreviewEvent(editingEvent);
+    setSelectedPreviewEvent(editingEvent);
     setEditingEvent(null);
   }
 
@@ -221,17 +254,22 @@ export function WeekView() {
       {previewEvent && typeof document !== "undefined"
         ? createPortal(
             <EventPreviewModal
-              heading="Weekly appointment details"
-              event={previewEvent}
+              heading="Appointment details"
+              event={{
+                ...previewEvent,
+                semesterId:
+                  findWeekEventById(previewEvent.id)?.semesterId ??
+                  activeSemesterId,
+              }}
               onEdit={() => {
                 setEditingEvent(previewEvent);
-                setPreviewEvent(null);
+                handleClosePreview();
               }}
               onDelete={() => {
                 deleteWeekEvent(previewEvent.id);
-                setPreviewEvent(null);
+                handleClosePreview();
               }}
-              onClose={() => setPreviewEvent(null)}
+              onClose={handleClosePreview}
             />,
             document.body,
           )

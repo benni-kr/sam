@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 
 import { BaseEventForm } from "@/components/ui/base-event-form";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   MIN_PLANNER_DATE,
   plannerEventCategories,
@@ -18,6 +19,8 @@ type PlannerEventFormProps = {
   category: PlannerEventCategory;
   startDate: string;
   endDate: string;
+  startTime?: string;
+  endTime?: string;
   participants: string[];
   availableParticipants: string[];
   onTitleChange: (value: string) => void;
@@ -25,6 +28,8 @@ type PlannerEventFormProps = {
   onCategoryChange: (value: PlannerEventCategory) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
+  onStartTimeChange?: (value: string) => void;
+  onEndTimeChange?: (value: string) => void;
   onParticipantsChange: (value: string[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
@@ -45,6 +50,8 @@ export function PlannerEventForm({
   category,
   startDate,
   endDate,
+  startTime,
+  endTime,
   participants,
   availableParticipants,
   onTitleChange,
@@ -52,6 +59,8 @@ export function PlannerEventForm({
   onCategoryChange,
   onStartDateChange,
   onEndDateChange,
+  onStartTimeChange,
+  onEndTimeChange,
   onParticipantsChange,
   onSubmit,
   onCancel,
@@ -103,6 +112,30 @@ export function PlannerEventForm({
           minDate={MIN_PLANNER_DATE}
         />
       </div>
+
+      {onStartTimeChange && onEndTimeChange ? (
+        <div className="grid grid-cols-2 gap-2">
+          <TimePicker
+            value={startTime ?? ""}
+            onChange={onStartTimeChange}
+            placeholder="Start time"
+            earliestHour={0}
+            latestHour={24}
+            clearable
+            disabled={!startDate}
+          />
+          <TimePicker
+            value={endTime ?? ""}
+            onChange={onEndTimeChange}
+            placeholder="End time"
+            earliestHour={0}
+            latestHour={24}
+            excludeBefore={startDate === endDate ? startTime : undefined}
+            clearable
+            disabled={!startDate || !startTime}
+          />
+        </div>
+      ) : null}
     </BaseEventForm>
   );
 }

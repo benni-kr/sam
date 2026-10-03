@@ -23,7 +23,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationToggle } from "@/features/notifications/components/notification-toggle";
 import { Logo } from "@/components/ui/logo";
@@ -35,6 +35,7 @@ import { FilterStateProvider } from "@/features/planner/state/filter-state";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { CreateEventModal } from "@/components/layout/create-event-modal";
+import { EventDetailsModal } from "@/features/planner/components/draggable-event";
 import { AddEventFab } from "@/components/layout/add-event-fab";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 import { CreateWeekEventModal } from "@/components/layout/create-week-event-modal";
@@ -47,6 +48,7 @@ import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker"
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
+  getSemesterIdForDate,
   type PlannerEventCategory,
   type PlannerEvent,
 } from "@/features/planner/lib/planner";
@@ -235,10 +237,16 @@ function AppShellFrame({
     moveEventToInbox,
     moveEventToDate,
     createEvent,
+    updateEvent,
+    deleteEvent,
     createWeekEvent,
     availableSemesters,
+    findWeekEventById,
   } = usePlannerState();
   const { friendNames } = useFriendsState();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -248,6 +256,8 @@ function AppShellFrame({
   const [category, setCategory] = useState<PlannerEventCategory>("Exam");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [weekTitle, setWeekTitle] = useState("");
   const [weekDescription, setWeekDescription] = useState("");
@@ -258,6 +268,55 @@ function AppShellFrame({
   const [weekEndTime, setWeekEndTime] = useState("");
   const [weekParticipants, setWeekParticipants] = useState<string[]>([]);
   const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
+  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+
+  const eventIdFromQuery = searchParams.get("event");
+  const deepLinkedEventId =
+    eventIdFromQuery && eventIdFromQuery !== dismissedEventId
+      ? eventIdFromQuery
+      : null;
+
+  const deepLinkedEvent = deepLinkedEventId
+    ? (allEvents.find((event: PlannerEvent) => event.id === deepLinkedEventId) ?? null)
+    : null;
+
+  useEffect(() => {
+    if (!eventIdFromQuery) return;
+
+    if (deepLinkedEvent?.startDate) {
+      const targetSemesterId = getSemesterIdForDate(deepLinkedEvent.startDate);
+      if (targetSemesterId && targetSemesterId !== semesterId) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.set("semester", targetSemesterId);
+        router.replace(`${pathname}?${nextParams.toString()}`);
+      }
+      return;
+    }
+
+    const weekMatch = findWeekEventById(eventIdFromQuery);
+    if (weekMatch) {
+      const shouldSwitchSemester = weekMatch.semesterId !== semesterId;
+      const shouldSwitchToWeek = pathname !== "/week";
+      if (shouldSwitchSemester || shouldSwitchToWeek) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.set("semester", weekMatch.semesterId);
+        router.replace(`/week?${nextParams.toString()}`);
+      }
+    }
+  }, [deepLinkedEvent, eventIdFromQuery, findWeekEventById, semesterId, searchParams, pathname, router]);
+
+  function handleCloseDeepLinkedEvent() {
+    if (eventIdFromQuery) {
+      setDismissedEventId(eventIdFromQuery);
+    }
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("event")) {
+        url.searchParams.delete("event");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -352,6 +411,8 @@ function AppShellFrame({
     setCategory("Exam");
     setStartDate(dateKey ?? "");
     setEndDate(dateKey ?? "");
+    setStartTime("");
+    setEndTime("");
     setParticipants([]);
     setIsCreateModalOpen(true);
   }
@@ -363,6 +424,8 @@ function AppShellFrame({
     setCategory("Exam");
     setStartDate("");
     setEndDate("");
+    setStartTime("");
+    setEndTime("");
     setParticipants([]);
   }
 
@@ -422,12 +485,16 @@ function AppShellFrame({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
+      startTime: startTime || null,
+      endTime: endTime || null,
       participants,
     });
 
     setTitle("");
     setStartDate("");
     setEndDate("");
+    setStartTime("");
+    setEndTime("");
     setParticipants([]);
     setIsCreateModalOpen(false);
   }
@@ -598,6 +665,8 @@ function AppShellFrame({
           category={category}
           startDate={startDate}
           endDate={endDate}
+          startTime={startTime}
+          endTime={endTime}
           participants={participants}
           availableParticipants={friendNames}
           onTitleChange={setTitle}
@@ -607,6 +676,8 @@ function AppShellFrame({
           }
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
+          onStartTimeChange={setStartTime}
+          onEndTimeChange={setEndTime}
           onParticipantsChange={setParticipants}
           onSubmit={handleCreateEvent}
           onCancel={closeCreateEvent}
@@ -639,6 +710,16 @@ function AppShellFrame({
           isOpen={isManageFriendsOpen}
           onClose={() => setIsManageFriendsOpen(false)}
         />
+
+        {deepLinkedEvent ? (
+          <EventDetailsModal
+            event={deepLinkedEvent}
+            availableParticipants={friendNames}
+            onSave={updateEvent}
+            onDelete={deleteEvent}
+            onClose={handleCloseDeepLinkedEvent}
+          />
+        ) : null}
       </DndContext>
     </CreateEventProvider>
   );

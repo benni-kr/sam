@@ -14,6 +14,8 @@ type CreateEventModalProps = {
   category: PlannerEventCategory;
   startDate: string;
   endDate: string;
+  startTime?: string;
+  endTime?: string;
   participants: string[];
   availableParticipants: string[];
   onTitleChange: (value: string) => void;
@@ -21,6 +23,8 @@ type CreateEventModalProps = {
   onCategoryChange: (value: PlannerEventCategory) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
+  onStartTimeChange?: (value: string) => void;
+  onEndTimeChange?: (value: string) => void;
   onParticipantsChange: (value: string[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
@@ -35,6 +39,8 @@ export function CreateEventModal({
   category,
   startDate,
   endDate,
+  startTime,
+  endTime,
   participants,
   availableParticipants,
   onTitleChange,
@@ -42,6 +48,8 @@ export function CreateEventModal({
   onCategoryChange,
   onStartDateChange,
   onEndDateChange,
+  onStartTimeChange,
+  onEndTimeChange,
   onParticipantsChange,
   onSubmit,
   onCancel,
@@ -59,6 +67,8 @@ export function CreateEventModal({
       category={category}
       startDate={startDate}
       endDate={endDate}
+      startTime={startTime}
+      endTime={endTime}
       participants={participants}
       availableParticipants={availableParticipants}
       onTitleChange={onTitleChange}
@@ -66,6 +76,8 @@ export function CreateEventModal({
       onCategoryChange={onCategoryChange}
       onStartDateChange={onStartDateChange}
       onEndDateChange={onEndDateChange}
+      onStartTimeChange={onStartTimeChange}
+      onEndTimeChange={onEndTimeChange}
       onParticipantsChange={onParticipantsChange}
       onSubmit={onSubmit}
       onCancel={onCancel}

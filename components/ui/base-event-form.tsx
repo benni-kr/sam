@@ -68,6 +68,8 @@ export function BaseEventForm({
             className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 dark:placeholder:text-slate-500"
           />
 
+          {children}
+
           <textarea
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
@@ -75,8 +77,6 @@ export function BaseEventForm({
             rows={3}
             className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-2 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 dark:placeholder:text-slate-500"
           />
-
-          {children}
 
           <div className="rounded-md border border-sam-border bg-sam-surface p-2 dark:bg-sam-surface-2">
             <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sam-text-3">

@@ -11,7 +11,10 @@
 import { format, parseISO } from "date-fns";
 import { enGB } from "date-fns/locale";
 
-import { defaultPlannerSemesterId } from "@/features/planner/lib/planner";
+import {
+  defaultPlannerSemesterId,
+  getSemesterIdForDate,
+} from "@/features/planner/lib/planner";
 
 /**
  * The minimal event shape the diff needs. Both calendar and weekly events are
@@ -175,18 +178,25 @@ function formatParticipants(participants: string[]) {
 }
 
 /**
- * The click target. There is no per-event deep link in the app, so this gets the
- * reader as close as the routes allow: the right view, and the semester the
- * event belongs to. The default semester needs no query string.
+ * The click target. Directs the user to the exact view and semester the
+ * event lives in, always specifying semester explicitly.
  */
 function buildUrl(item: NotificationContext) {
   const path = item.day ? "/week" : "/";
+  const params = new URLSearchParams();
 
-  if (!item.semesterId || item.semesterId === defaultPlannerSemesterId) {
-    return path;
+  const semesterId =
+    item.semesterId ??
+    (item.startDate ? getSemesterIdForDate(item.startDate) : defaultPlannerSemesterId);
+
+  params.set("semester", semesterId);
+
+  if (item.eventId) {
+    params.set("event", item.eventId);
   }
 
-  return `${path}?semester=${encodeURIComponent(item.semesterId)}`;
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }
 
 /**

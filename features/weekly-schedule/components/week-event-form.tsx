@@ -92,7 +92,7 @@ export function PlannerWeekEventForm({
       heading={heading}
       submitLabel={submitLabel}
       title={title}
-      titlePlaceholder="Weekly appointment"
+      titlePlaceholder="Appointment name"
       description={description}
       onDescriptionChange={onDescriptionChange}
       participants={participants}
@@ -118,20 +118,20 @@ export function PlannerWeekEventForm({
         ))}
       </select>
 
-      <select
-        value={day}
-        onChange={(event) => onDayChange(event.target.value as PlannerWeekday)}
-        required
-        className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600"
-      >
-        {plannerWeekdays.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <div className="grid grid-cols-3 gap-2">
+        <select
+          value={day}
+          onChange={(event) => onDayChange(event.target.value as PlannerWeekday)}
+          required
+          className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-xs text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600"
+        >
+          {plannerWeekdays.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
 
-      <div className="grid grid-cols-2 gap-2">
         <TimePicker
           value={normalizedTimeRange.startTime}
           onChange={handleStartTimeChange}

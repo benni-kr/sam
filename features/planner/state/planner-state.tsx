@@ -94,6 +94,9 @@ type PlannerStateContextValue = {
   allEvents: PlannerEvent[];
   events: PlannerEvent[];
   weekEvents: PlannerWeekEvent[];
+  findWeekEventById: (
+    eventId: string,
+  ) => { semesterId: PlannerSemesterId; event: PlannerWeekEvent } | null;
   inboxEvents: PlannerEvent[];
   getEventsForDate: (dateKey: string) => PlannerEvent[];
   getEventsCoveringDate: (dateKey: string) => PlannerEvent[];
@@ -108,6 +111,8 @@ type PlannerStateContextValue = {
     category: PlannerEventCategory;
     startDate: string | null;
     endDate: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
     participants: string[];
   }) => void;
   updateEvent: (
@@ -118,6 +123,8 @@ type PlannerStateContextValue = {
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
+      startTime?: string | null;
+      endTime?: string | null;
       participants: string[];
     },
   ) => void;
@@ -196,6 +203,8 @@ export type PlannerAction =
         category: PlannerEventCategory;
         startDate: string | null;
         endDate: string | null;
+        startTime?: string | null;
+        endTime?: string | null;
         participants: string[];
       };
     }
@@ -437,7 +446,7 @@ export function plannerStateReducer(
         for (const sId of Object.keys(dictState)) {
           nextState[sId] = (dictState[sId] ?? []).map((e) =>
             e.id === action.payload.eventId
-              ? { ...e, startDate: null, endDate: null }
+              ? { ...e, startDate: null, endDate: null, startTime: null, endTime: null }
               : e,
           );
         }
@@ -462,6 +471,8 @@ export function plannerStateReducer(
                   category: action.payload.category,
                   startDate: action.payload.startDate,
                   endDate: action.payload.endDate,
+                  startTime: action.payload.startTime,
+                  endTime: action.payload.endTime,
                   participants: action.payload.participants,
                 }
               : e,
@@ -591,6 +602,8 @@ export function plannerStateReducer(
           ...event,
           startDate: null,
           endDate: null,
+          startTime: null,
+          endTime: null,
         };
       });
     }
@@ -612,6 +625,8 @@ export function plannerStateReducer(
           category: action.payload.category,
           startDate: action.payload.startDate,
           endDate: action.payload.endDate,
+          startTime: action.payload.startTime,
+          endTime: action.payload.endTime,
           participants: action.payload.participants,
         };
       });
@@ -1222,6 +1237,23 @@ export function PlannerStateProvider({
       allEvents,
       events,
       weekEvents,
+      findWeekEventById: (eventId) => {
+        for (const semId of Object.keys(weekEventsBySemester)) {
+          const match = (weekEventsBySemester[semId] ?? []).find(
+            (item) => item.id === eventId,
+          );
+          if (match) {
+            return { semesterId: semId, event: match };
+          }
+        }
+        for (const sem of availableSemesters) {
+          const match = sem.weekEvents.find((item) => item.id === eventId);
+          if (match) {
+            return { semesterId: sem.id, event: match };
+          }
+        }
+        return null;
+      },
       inboxEvents,
       getEventsForDate: (dateKey) =>
         events.filter((event) => event.startDate === dateKey),
@@ -1268,6 +1300,8 @@ export function PlannerStateProvider({
           .updateEvent(eventId, {
             startDate: null,
             endDate: null,
+            startTime: null,
+            endTime: null,
           })
           .catch((error) => {
             if (isOfflineError(error)) {
@@ -1297,6 +1331,8 @@ export function PlannerStateProvider({
           category: input.category,
           startDate: normalizedDates.startDate,
           endDate: normalizedDates.endDate,
+          startTime: input.startTime || undefined,
+          endTime: input.endTime || undefined,
           participants: dedupeParticipantNames(input.participants),
         };
 
@@ -1321,7 +1357,7 @@ export function PlannerStateProvider({
           title: event.title,
           category: event.category,
           startDate: event.startDate,
-          semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : undefined,
+          semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : normalizedSemesterId,
         };
         void broadcastNotifications([notifItem], ownEndpointRef.current);
       },
@@ -1349,6 +1385,8 @@ export function PlannerStateProvider({
             category: input.category,
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
+            startTime: input.startTime ?? null,
+            endTime: input.endTime ?? null,
             participants,
           },
         });
@@ -1360,6 +1398,8 @@ export function PlannerStateProvider({
             category: input.category,
             startDate: normalizedDates.startDate,
             endDate: normalizedDates.endDate,
+            startTime: input.startTime ?? null,
+            endTime: input.endTime ?? null,
             participants,
           })
           .catch((error) => {
@@ -1531,7 +1571,7 @@ export function PlannerStateProvider({
             title: event.title,
             category: event.category,
             startDate: event.startDate,
-            semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : undefined,
+            semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : normalizedSemesterId,
             participants: [normalizedName],
           };
           void broadcastNotifications([notifItem], ownEndpointRef.current);
@@ -1549,6 +1589,7 @@ export function PlannerStateProvider({
     lastSyncedAt,
     normalizedSemesterId,
     weekEvents,
+    weekEventsBySemester,
   ]);
 
   return (

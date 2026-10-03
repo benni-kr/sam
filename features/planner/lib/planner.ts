@@ -57,6 +57,10 @@ export type PlannerEvent = {
   startDate: string | null;
   /** Inclusive end date in YYYY-MM-DD format, or null when the event is undated. */
   endDate: string | null;
+  /** Optional start time in HH:MM 24-hour format. */
+  startTime?: string | null;
+  /** Optional end time in HH:MM 24-hour format. */
+  endTime?: string | null;
   /** Participant names are stored as display strings and matched case-insensitively. */
   participants: string[];
 };

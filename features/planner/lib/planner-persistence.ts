@@ -60,6 +60,8 @@ export type SupabaseEventRow = {
   category: string;
   start_date: string | null;
   end_date: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
   participants: unknown;
 };
 
@@ -119,6 +121,8 @@ export function rowToEvent(row: SupabaseEventRow): PlannerEvent | null {
     category,
     startDate: row.start_date,
     endDate: row.end_date,
+    startTime: row.start_time ?? undefined,
+    endTime: row.end_time ?? undefined,
     participants: normalizeParticipants(row.participants),
   };
 }
@@ -160,6 +164,8 @@ export function eventToRow(
     category: event.category,
     start_date: event.startDate,
     end_date: event.endDate,
+    start_time: event.startTime ?? null,
+    end_time: event.endTime ?? null,
     participants: event.participants,
   };
 }
@@ -283,7 +289,7 @@ function getAuthHeader(anonKey: string) {
 async function fetchSupabaseEventRows(
   config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
 ): Promise<SupabaseEventRow[] | null> {
-  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,event_id,title,description,category,start_date,end_date,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
+  const endpoint = `${config.url}/rest/v1/${SUPABASE_EVENTS_TABLE}?select=planner_scope,event_id,title,description,category,start_date,end_date,start_time,end_time,participants&planner_scope=eq.${encodeURIComponent(config.plannerScope)}`;
 
   if (typeof window !== "undefined") {
     const token = getClientAuthToken();
@@ -382,6 +388,8 @@ export async function updateSupabaseEvent(
   if (patch.category !== undefined) body.category = patch.category;
   if (patch.startDate !== undefined) body.start_date = patch.startDate;
   if (patch.endDate !== undefined) body.end_date = patch.endDate;
+  if (patch.startTime !== undefined) body.start_time = patch.startTime ?? null;
+  if (patch.endTime !== undefined) body.end_time = patch.endTime ?? null;
   if (patch.participants !== undefined) body.participants = patch.participants;
 
   const response = await fetch(endpoint, {

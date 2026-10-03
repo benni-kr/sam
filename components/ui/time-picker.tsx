@@ -1,6 +1,5 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
+import { X } from "lucide-react";
 
 /**
  * Props for `TimePicker`.
@@ -17,6 +16,8 @@ type TimePickerProps = {
   latestHour?: number;
   minuteStep?: number;
   excludeBefore?: string;
+  clearable?: boolean;
+  disabled?: boolean;
 };
 
 function pad(value: number) {
@@ -80,10 +81,12 @@ export function TimePicker({
   value,
   onChange,
   placeholder = "Select time",
-  earliestHour = 6,
+  earliestHour = 0,
   latestHour = 24,
   minuteStep = 15,
   excludeBefore,
+  clearable = false,
+  disabled = false,
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -104,6 +107,12 @@ export function TimePicker({
   }, [excludeBefore, options]);
 
   const selectedValue = deriveSelection(availableOptions, value);
+
+  useEffect(() => {
+    if (value && excludeBefore && timeToMinutes(value) <= timeToMinutes(excludeBefore)) {
+      onChange("");
+    }
+  }, [value, excludeBefore, onChange]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -136,22 +145,59 @@ export function TimePicker({
 
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center justify-between rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-xs text-sam-text-2 outline-none ring-slate-300 transition-colors hover:bg-sam-surface-2 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600 dark:hover:bg-slate-700"
+      <div
+        className={`flex w-full items-center justify-between rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-xs text-sam-text-2 outline-none transition-colors dark:bg-sam-surface-2 ${
+          disabled
+            ? "cursor-not-allowed opacity-50"
+            : "hover:bg-sam-surface-2 focus-within:ring focus-within:ring-slate-300 dark:hover:bg-slate-700 dark:focus-within:ring-slate-600"
+        }`}
       >
-        <span className={selectedValue ? "text-sam-text-1" : "text-sam-text-4"}>
-          {selectedValue || placeholder}
-        </span>
-      </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => !disabled && setIsOpen((current) => !current)}
+          className={`flex-1 text-left outline-none ${disabled ? "cursor-not-allowed" : ""}`}
+        >
+          <span className={selectedValue ? "text-sam-text-1" : "text-sam-text-4"}>
+            {selectedValue || placeholder}
+          </span>
+        </button>
 
-      {isOpen ? (
+        {clearable && selectedValue && !disabled ? (
+          <button
+            type="button"
+            title="Clear time"
+            aria-label="Clear time"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setIsOpen(false);
+            }}
+            className="ml-1 rounded p-0.5 text-sam-text-4 hover:bg-sam-surface-3 hover:text-sam-text-1"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        ) : null}
+      </div>
+
+      {isOpen && !disabled ? (
         <div className="absolute left-0 top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-sam-border bg-sam-surface shadow-lg">
           <div className="border-b border-sam-border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sam-text-4 dark:border-slate-800">
             Time
           </div>
           <div className="max-h-56 overflow-y-auto p-1">
+            {clearable && selectedValue ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                }}
+                className="mb-1 flex w-full items-center justify-between rounded-md border-b border-sam-border px-2 py-1.5 text-left text-xs text-rose-500 transition-colors hover:bg-rose-500/10"
+              >
+                <span>Clear time</span>
+              </button>
+            ) : null}
             {availableOptions.map((option) => {
               const isSelected = option === selectedValue;
 

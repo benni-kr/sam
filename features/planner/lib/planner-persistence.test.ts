@@ -99,12 +99,35 @@ describe("Planner Persistence Data Integrity", () => {
         category: "Group Event",
         start_date: "2026-06-01",
         end_date: "2026-06-03",
+        start_time: null,
+        end_time: null,
         participants: ["Benjamin", "Malte"],
       });
 
       const converted = rowToPlannerEvent(row);
       expect(converted?.semesterId).toBe("spring-2026");
       expect(converted?.event).toEqual(event);
+    });
+
+    it("correctly preserves startTime and endTime during conversion", () => {
+      const timedEvent: PlannerEvent = {
+        id: "evt-timed",
+        title: "Lecture",
+        category: "Exam",
+        startDate: "2026-05-10",
+        endDate: "2026-05-10",
+        startTime: "10:15",
+        endTime: "11:45",
+        participants: [],
+      };
+
+      const row = eventToRow(timedEvent, undefined, "test-scope");
+      expect(row.start_time).toBe("10:15");
+      expect(row.end_time).toBe("11:45");
+
+      const converted = rowToPlannerEvent(row);
+      expect(converted?.event.startTime).toBe("10:15");
+      expect(converted?.event.endTime).toBe("11:45");
     });
   });
 });

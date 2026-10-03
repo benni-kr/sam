@@ -7,7 +7,7 @@
  * grouped timeline focused on upcoming priorities.
  */
 
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Clock } from "lucide-react";
 import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { EventPreviewModal } from "@/components/ui/event-preview";
@@ -125,6 +125,14 @@ export function ListView() {
         return (left.startDate ?? "").localeCompare(right.startDate ?? "");
       }
 
+      const leftTime = left.startTime ?? "";
+      const rightTime = right.startTime ?? "";
+      if (leftTime !== rightTime) {
+        if (!leftTime) return -1;
+        if (!rightTime) return 1;
+        return leftTime.localeCompare(rightTime);
+      }
+
       if (left.endDate !== right.endDate) {
         return (left.endDate ?? "").localeCompare(right.endDate ?? "");
       }
@@ -157,12 +165,18 @@ export function ListView() {
           ) : (
             <section className="space-y-3 p-2 sm:p-3">
               {sortedEvents.map((event, idx) => {
-                const scheduledLabel =
+                const multiDayLabel =
                   event.startDate &&
                   event.endDate &&
                   event.endDate !== event.startDate
                     ? `to ${formatDate(event.endDate)}`
                     : null;
+
+                const timeLabel = event.startTime
+                  ? event.endTime
+                    ? `${event.startTime} – ${event.endTime}`
+                    : event.startTime
+                  : null;
 
                 const badgeDate = event.startDate
                   ? formatDateBadge(event.startDate)
@@ -249,10 +263,23 @@ export function ListView() {
                               >
                                 {event.title}
                               </button>
-                              {scheduledLabel ? (
-                                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-sam-text-3">
-                                  {scheduledLabel}
-                                </p>
+                              {multiDayLabel || timeLabel ? (
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-sam-text-3">
+                                  {multiDayLabel ? (
+                                    <span className="uppercase tracking-[0.16em] font-medium">
+                                      {multiDayLabel}
+                                    </span>
+                                  ) : null}
+                                  {multiDayLabel && timeLabel ? (
+                                    <span className="text-sam-text-4">·</span>
+                                  ) : null}
+                                  {timeLabel ? (
+                                    <span className="inline-flex items-center gap-1 font-medium tracking-wide">
+                                      <Clock className="h-3 w-3 text-sam-text-4" aria-hidden="true" />
+                                      {timeLabel}
+                                    </span>
+                                  ) : null}
+                                </div>
                               ) : null}
                             </div>
 
@@ -333,6 +360,8 @@ function EventEditModal({
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
+      startTime?: string | null;
+      endTime?: string | null;
       participants: string[];
     },
   ) => void;
@@ -346,6 +375,8 @@ function EventEditModal({
   );
   const [startDate, setStartDate] = useState(event.startDate ?? "");
   const [endDate, setEndDate] = useState(event.endDate ?? "");
+  const [startTime, setStartTime] = useState(event.startTime ?? "");
+  const [endTime, setEndTime] = useState(event.endTime ?? "");
   const [participants, setParticipants] = useState(event.participants);
 
   useEffect(() => {
@@ -367,6 +398,8 @@ function EventEditModal({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
+      startTime: startTime || null,
+      endTime: endTime || null,
       participants,
     });
 
@@ -374,37 +407,28 @@ function EventEditModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Edit event: ${event.title}`}
-    >
-      <section
-        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-4 shadow-2xl"
-        onClick={(nextEvent) => nextEvent.stopPropagation()}
-      >
-        <PlannerEventForm
-          heading="Edit event"
-          submitLabel="Save changes"
-          title={title}
-          description={description}
-          category={category}
-          startDate={startDate}
-          endDate={endDate}
-          participants={participants}
-          availableParticipants={availableParticipants}
-          onTitleChange={setTitle}
-          onDescriptionChange={setDescription}
-          onCategoryChange={setCategory}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onParticipantsChange={setParticipants}
-          onSubmit={handleSubmit}
-          onCancel={onClose}
-        />
-      </section>
-    </div>
+    <PlannerEventForm
+      heading="Edit event"
+      submitLabel="Save changes"
+      title={title}
+      description={description}
+      category={category}
+      startDate={startDate}
+      endDate={endDate}
+      startTime={startTime}
+      endTime={endTime}
+      participants={participants}
+      availableParticipants={availableParticipants}
+      onTitleChange={setTitle}
+      onDescriptionChange={setDescription}
+      onCategoryChange={setCategory}
+      onStartDateChange={setStartDate}
+      onEndDateChange={setEndDate}
+      onStartTimeChange={setStartTime}
+      onEndTimeChange={setEndTime}
+      onParticipantsChange={setParticipants}
+      onSubmit={handleSubmit}
+      onCancel={onClose}
+    />
   );
 }
