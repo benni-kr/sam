@@ -123,9 +123,9 @@ export function DraggableEvent({
           {...listeners}
           {...attributes}
           onClick={openPreview}
-          className={`${isTouchDevice ? "touch-auto" : "touch-none"} cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
+          className={`${isTouchDevice ? "touch-auto" : "touch-none"} inline-flex max-w-full cursor-grab items-center rounded-lg border px-2 py-0.5 text-[11px] font-medium leading-4 shadow-xs transition-transform active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
         >
-          {event.title}
+          <span className="truncate">{event.title}</span>
         </div>
 
         {canUsePortal && isPreviewOpen

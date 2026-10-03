@@ -35,22 +35,34 @@ export type DiffableEvent = {
 };
 
 /** Fields every notification carries, regardless of what triggered it. */
-type NotificationContext = {
+export type NotificationContext = {
   eventId: string;
   title: string;
   category?: string;
   startDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   day?: string;
   semesterId?: string;
 };
 
 /**
- * A single notification to broadcast. `new-event` fires once per created event;
- * `new-participant` fires once per event where one or more participants were added.
+ * A single notification to broadcast.
+ * - `new-event`: fires when a new group event is created.
+ * - `new-participant`: fires when participants join or leave a group event.
+ * - `schedule-changed`: fires when date or time changes, or moved to/from inbox.
  */
 export type NotificationItem =
   | ({ kind: "new-event" } & NotificationContext)
-  | ({ kind: "new-participant"; participants: string[] } & NotificationContext);
+  | ({
+      kind: "new-participant";
+      participants: string[];
+      action?: "joined" | "left";
+    } & NotificationContext)
+  | ({
+      kind: "schedule-changed";
+      changeType: "scheduled" | "rescheduled" | "unscheduled";
+    } & NotificationContext);
 
 function toEventMap(events: DiffableEvent[]): Map<string, DiffableEvent> {
   const map = new Map<string, DiffableEvent>();
@@ -127,8 +139,14 @@ export function diffForNotifications(
  * which is the case for anything still sitting in the inbox.
  */
 function formatWhen(item: NotificationContext) {
+  const timeStr = item.startTime
+    ? item.endTime
+      ? `; ${item.startTime} – ${item.endTime}`
+      : `; ${item.startTime}`
+    : "";
+
   if (item.day) {
-    return item.day;
+    return `${item.day}${timeStr}`;
   }
 
   if (!item.startDate) {
@@ -136,7 +154,8 @@ function formatWhen(item: NotificationContext) {
   }
 
   try {
-    return format(parseISO(item.startDate), "d MMM", { locale: enGB });
+    const dateStr = format(parseISO(item.startDate), "d MMM", { locale: enGB });
+    return `${dateStr}${timeStr}`;
   } catch {
     return null;
   }
@@ -218,12 +237,44 @@ export function toPushPayload(item: NotificationItem, url?: string) {
     };
   }
 
+  if (item.kind === "schedule-changed") {
+    const when = formatWhen(item);
+
+    if (item.changeType === "unscheduled") {
+      return {
+        title: "Group event unscheduled",
+        body: `${item.title} moved to inbox`,
+        tag: `event:${item.eventId}`,
+        url: target,
+      };
+    }
+
+    if (item.changeType === "scheduled") {
+      return {
+        title: "Group event scheduled",
+        body: when ? `${item.title} scheduled for ${when}` : item.title,
+        tag: `event:${item.eventId}`,
+        url: target,
+      };
+    }
+
+    return {
+      title: "Group event rescheduled",
+      body: when ? `${item.title} moved to ${when}` : item.title,
+      tag: `event:${item.eventId}`,
+      url: target,
+    };
+  }
+
   const isMultiple = item.participants.length > 1;
   const participantNames = formatParticipants(item.participants);
+  const isLeft = item.action === "left";
 
   return {
-    title: isMultiple ? "New participants" : "New participant",
-    body: `${participantNames} joined ${item.title}`,
+    title: isLeft
+      ? (isMultiple ? "Participants left" : "Participant left")
+      : (isMultiple ? "New participants" : "New participant"),
+    body: `${participantNames} ${isLeft ? "left" : "joined"} ${item.title}`,
     tag: `participant:${item.eventId}`,
     url: target,
   };

@@ -255,4 +255,86 @@ describe("toPushPayload", () => {
       ).url,
     ).toBe("/list");
   });
+
+  it("renders schedule-changed payloads for scheduled, rescheduled, and unscheduled", () => {
+    expect(
+      toPushPayload({
+        kind: "schedule-changed",
+        eventId: "a",
+        title: "Study session",
+        startDate: "2026-05-15",
+        startTime: "14:00",
+        endTime: "16:30",
+        changeType: "scheduled",
+      }),
+    ).toEqual({
+      title: "Group event scheduled",
+      body: "Study session scheduled for 15 May; 14:00 – 16:30",
+      tag: "event:a",
+      url: `/?semester=spring-2026&event=a`,
+    });
+
+    expect(
+      toPushPayload({
+        kind: "schedule-changed",
+        eventId: "a",
+        title: "Study session",
+        startDate: "2026-05-16",
+        startTime: "10:00",
+        changeType: "rescheduled",
+      }),
+    ).toEqual({
+      title: "Group event rescheduled",
+      body: "Study session moved to 16 May; 10:00",
+      tag: "event:a",
+      url: `/?semester=spring-2026&event=a`,
+    });
+
+    expect(
+      toPushPayload({
+        kind: "schedule-changed",
+        eventId: "a",
+        title: "Study session",
+        startDate: null,
+        changeType: "unscheduled",
+      }),
+    ).toEqual({
+      title: "Group event unscheduled",
+      body: "Study session moved to inbox",
+      tag: "event:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
+  });
+
+  it("renders participant left payloads correctly", () => {
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Study session",
+        participants: ["Mia"],
+        action: "left",
+      }),
+    ).toEqual({
+      title: "Participant left",
+      body: "Mia left Study session",
+      tag: "participant:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
+
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Study session",
+        participants: ["Mia", "Leo"],
+        action: "left",
+      }),
+    ).toEqual({
+      title: "Participants left",
+      body: "Mia and Leo left Study session",
+      tag: "participant:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
+  });
 });

@@ -1272,6 +1272,10 @@ export function PlannerStateProvider({
         const nextStartDate = clampedDateKey;
         const nextEndDate = toDateKey(addDays(toDate(clampedDateKey), duration - 1));
 
+        const isGroup = event.category === "Group Event";
+        const wasInInbox = !event.startDate;
+        const dateChanged = wasInInbox || event.startDate !== nextStartDate || event.endDate !== nextEndDate;
+
         dispatch({
           type: "MOVE_EVENT_TO_DATE",
           payload: { eventId, startDate: nextStartDate, endDate: nextEndDate },
@@ -1289,8 +1293,29 @@ export function PlannerStateProvider({
             }
             console.error("Failed to move event to date:", error);
           });
+
+        if (isGroup && dateChanged) {
+          const notifItem: NotificationItem = {
+            kind: "schedule-changed",
+            eventId: event.id,
+            title: event.title,
+            category: event.category,
+            startDate: nextStartDate,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            semesterId: getSemesterIdForDate(nextStartDate),
+            changeType: wasInInbox ? "scheduled" : "rescheduled",
+          };
+          void broadcastNotifications([notifItem], ownEndpointRef.current);
+        }
       },
       moveEventToInbox: (eventId) => {
+        const event = allEvents.find((item) => item.id === eventId);
+        if (!event) return;
+
+        const isGroup = event.category === "Group Event";
+        const wasDated = Boolean(event.startDate);
+
         dispatch({
           type: "MOVE_EVENT_TO_INBOX",
           payload: { eventId },
@@ -1310,6 +1335,19 @@ export function PlannerStateProvider({
             }
             console.error("Failed to move event to inbox:", error);
           });
+
+        if (isGroup && wasDated) {
+          const notifItem: NotificationItem = {
+            kind: "schedule-changed",
+            eventId: event.id,
+            title: event.title,
+            category: event.category,
+            startDate: null,
+            semesterId: normalizedSemesterId,
+            changeType: "unscheduled",
+          };
+          void broadcastNotifications([notifItem], ownEndpointRef.current);
+        }
       },
       createEvent: (input) => {
         const title = input.title.trim();
@@ -1351,15 +1389,19 @@ export function PlannerStateProvider({
             console.error("Failed to insert event:", error);
           });
 
-        const notifItem: NotificationItem = {
-          kind: "new-event",
-          eventId: event.id,
-          title: event.title,
-          category: event.category,
-          startDate: event.startDate,
-          semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : normalizedSemesterId,
-        };
-        void broadcastNotifications([notifItem], ownEndpointRef.current);
+        if (event.category === "Group Event" && event.startDate) {
+          const notifItem: NotificationItem = {
+            kind: "new-event",
+            eventId: event.id,
+            title: event.title,
+            category: event.category,
+            startDate: event.startDate,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            semesterId: getSemesterIdForDate(event.startDate),
+          };
+          void broadcastNotifications([notifItem], ownEndpointRef.current);
+        }
       },
       updateEvent: (eventId, input) => {
         const title = input.title.trim();
@@ -1368,6 +1410,8 @@ export function PlannerStateProvider({
         if (!title || !plannerEventCategories.includes(input.category)) {
           return;
         }
+
+        const oldEvent = allEvents.find((item) => item.id === eventId);
 
         const normalizedDates = normalizeDateRange(
           input.startDate,
@@ -1409,6 +1453,104 @@ export function PlannerStateProvider({
             }
             console.error("Failed to update event:", error);
           });
+
+        if (
+          oldEvent &&
+          (oldEvent.category === "Group Event" || input.category === "Group Event")
+        ) {
+          const notifs: NotificationItem[] = [];
+          const oldHasDate = Boolean(oldEvent.startDate);
+          const newHasDate = Boolean(normalizedDates.startDate);
+          const dateChanged =
+            oldEvent.startDate !== normalizedDates.startDate ||
+            oldEvent.endDate !== normalizedDates.endDate;
+          const timeChanged =
+            (oldEvent.startTime ?? null) !== (input.startTime ?? null) ||
+            (oldEvent.endTime ?? null) !== (input.endTime ?? null);
+
+          if (!oldHasDate && newHasDate) {
+            notifs.push({
+              kind: "schedule-changed",
+              eventId,
+              title,
+              category: input.category,
+              startDate: normalizedDates.startDate,
+              startTime: input.startTime ?? null,
+              endTime: input.endTime ?? null,
+              semesterId: getSemesterIdForDate(normalizedDates.startDate!),
+              changeType: "scheduled",
+            });
+          } else if (oldHasDate && !newHasDate) {
+            notifs.push({
+              kind: "schedule-changed",
+              eventId,
+              title,
+              category: input.category,
+              startDate: null,
+              semesterId: oldEvent.startDate
+                ? getSemesterIdForDate(oldEvent.startDate)
+                : normalizedSemesterId,
+              changeType: "unscheduled",
+            });
+          } else if (oldHasDate && newHasDate && (dateChanged || timeChanged)) {
+            notifs.push({
+              kind: "schedule-changed",
+              eventId,
+              title,
+              category: input.category,
+              startDate: normalizedDates.startDate,
+              startTime: input.startTime ?? null,
+              endTime: input.endTime ?? null,
+              semesterId: getSemesterIdForDate(normalizedDates.startDate!),
+              changeType: "rescheduled",
+            });
+          }
+
+          const added = participants.filter(
+            (p) => !oldEvent.participants.includes(p),
+          );
+          const removed = oldEvent.participants.filter(
+            (p) => !participants.includes(p),
+          );
+          const targetSemesterId = normalizedDates.startDate
+            ? getSemesterIdForDate(normalizedDates.startDate)
+            : oldEvent.startDate
+              ? getSemesterIdForDate(oldEvent.startDate)
+              : normalizedSemesterId;
+
+          if (added.length > 0) {
+            notifs.push({
+              kind: "new-participant",
+              eventId,
+              title,
+              category: input.category,
+              startDate: normalizedDates.startDate,
+              startTime: input.startTime ?? null,
+              endTime: input.endTime ?? null,
+              semesterId: targetSemesterId,
+              participants: added,
+              action: "joined",
+            });
+          }
+          if (removed.length > 0) {
+            notifs.push({
+              kind: "new-participant",
+              eventId,
+              title,
+              category: input.category,
+              startDate: normalizedDates.startDate,
+              startTime: input.startTime ?? null,
+              endTime: input.endTime ?? null,
+              semesterId: targetSemesterId,
+              participants: removed,
+              action: "left",
+            });
+          }
+
+          if (notifs.length > 0) {
+            void broadcastNotifications(notifs, ownEndpointRef.current);
+          }
+        }
       },
       deleteEvent: (eventId) => {
         dispatch({
@@ -1460,16 +1602,6 @@ export function PlannerStateProvider({
             }
             console.error("Failed to insert week event:", error);
           });
-
-        const notifItem: NotificationItem = {
-          kind: "new-event",
-          eventId: weekEvent.id,
-          title: weekEvent.title,
-          category: weekEvent.category,
-          day: weekEvent.day,
-          semesterId: normalizedSemesterId,
-        };
-        void broadcastNotifications([notifItem], ownEndpointRef.current);
       },
       updateWeekEvent: (eventId, input) => {
         const title = input.title.trim();
@@ -1564,15 +1696,20 @@ export function PlannerStateProvider({
             console.error("Failed to toggle participant:", error);
           });
 
-        if (!hasParticipant) {
+        if (event.category === "Group Event") {
           const notifItem: NotificationItem = {
             kind: "new-participant",
             eventId: event.id,
             title: event.title,
             category: event.category,
             startDate: event.startDate,
-            semesterId: event.startDate ? getSemesterIdForDate(event.startDate) : normalizedSemesterId,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            semesterId: event.startDate
+              ? getSemesterIdForDate(event.startDate)
+              : normalizedSemesterId,
             participants: [normalizedName],
+            action: hasParticipant ? "left" : "joined",
           };
           void broadcastNotifications([notifItem], ownEndpointRef.current);
         }

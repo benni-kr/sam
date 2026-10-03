@@ -46,7 +46,7 @@ export function SidebarInbox() {
         </p>
       </div>
 
-      <div className="space-y-2 overflow-hidden">
+      <div className="flex flex-wrap gap-1.5 overflow-hidden">
         {visibleInboxEvents.map((event) => (
           <DraggableEvent key={event.id} event={event} compact />
         ))}
