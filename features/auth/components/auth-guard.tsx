@@ -75,9 +75,14 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     setError("");
+
+    if (!email.trim() || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -95,7 +100,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
           apikey: anonKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       if (!response.ok) {
@@ -129,6 +134,12 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col items-center justify-center bg-page p-4 text-sam-text-1">
       <form
         onSubmit={handleLogin}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void handleLogin();
+          }
+        }}
         className="w-full max-w-sm bg-sam-surface p-8 rounded-[1.5rem] shadow-xl border border-sam-border"
       >
         <h1 className="text-xl font-bold mb-6 text-center tracking-tight">
@@ -168,6 +179,10 @@ export function AuthGuard({ children }: { children: ReactNode }) {
           </div>
           <button
             type="submit"
+            onClick={(e) => {
+              e.preventDefault();
+              void handleLogin();
+            }}
             className="w-full bg-sam-solid text-sam-solid-fg font-medium p-2.5 rounded-lg hover:bg-slate-800 transition-colors mt-2 dark:hover:bg-slate-200"
           >
             Enter Planner

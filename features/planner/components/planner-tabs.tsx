@@ -42,7 +42,7 @@ function PlannerViewLink({
       href={href}
       aria-current={isActive ? "page" : undefined}
       aria-label={label}
-      className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+      className={`flex flex-1 min-w-0 items-center justify-center rounded-full border py-2 text-sm transition-colors ${
         isActive
           ? "border-sam-solid bg-sam-solid text-sam-solid-fg shadow-sm"
           : "border-sam-border bg-sam-surface text-sam-text-3 hover:border-sam-border-2 hover:text-sam-text-1 dark:bg-sam-surface-2 dark:hover:border-slate-500 dark:hover:text-slate-200"
@@ -91,35 +91,37 @@ export function PlannerTabs({ activeSemesterId }: PlannerTabsProps) {
   return (
     <nav
       aria-label="Planner views"
-      className="flex items-center justify-between gap-2"
+      className="flex w-full items-center gap-1.5"
     >
-      <div className="flex flex-wrap gap-2">
-        {regularViews.map((view) => {
-          const isActive = pathname === view.href;
-          const href = buildViewHref(view.href);
-          const ViewIcon = iconByViewKey[view.key];
+      {regularViews.map((view) => {
+        const isActive = pathname === view.href;
+        const href = buildViewHref(view.href);
+        const ViewIcon = iconByViewKey[view.key];
 
-          return (
-            <PlannerViewLink
-              key={view.key}
-              href={href}
-              label={view.label}
-              icon={ViewIcon}
-              isActive={isActive}
-            />
-          );
-        })}
-      </div>
+        return (
+          <PlannerViewLink
+            key={view.key}
+            href={href}
+            label={view.label}
+            icon={ViewIcon}
+            isActive={isActive}
+          />
+        );
+      })}
 
       {weekView ? (
-        <div className="ml-auto flex flex-wrap gap-2">
+        <>
+          <div
+            className="h-5 w-px shrink-0 bg-sam-border/80 mx-1 dark:bg-slate-700/80"
+            aria-hidden="true"
+          />
           <PlannerViewLink
             href={buildViewHref(weekView.href)}
             label={weekView.label}
             icon={iconByViewKey[weekView.key]}
             isActive={pathname === weekView.href}
           />
-        </div>
+        </>
       ) : null}
     </nav>
   );

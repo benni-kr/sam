@@ -107,7 +107,6 @@ export function CrosstablesView() {
               className="h-7 w-7 text-sam-text-4"
               aria-hidden="true"
             />
-            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
           </div>
           <h3 className="text-lg font-semibold text-sam-text-1">
             No events found

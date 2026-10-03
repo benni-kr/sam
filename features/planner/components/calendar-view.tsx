@@ -12,13 +12,14 @@ import { useSearchParams } from "next/navigation";
 
 import { MonthCard } from "@/features/planner/components/month-card";
 import { usePlannerState } from "@/features/planner/state/planner-state";
+import { formatDateKey } from "@/features/planner/lib/planner-utils";
 
 /**
  * Renders the semester calendar as a vertical stack of month cards.
  *
  * This view relies on `PlannerStateProvider` for the active semester's data,
  * keeping the grid in sync when the user switches semesters in the App Shell.
- * Auto-scrolls to the deep-linked event or current month on mount.
+ * Auto-scrolls to the deep-linked event or current week/month on mount.
  */
 export function CalendarView() {
   const { months, allEvents } = usePlannerState();
@@ -68,20 +69,42 @@ export function CalendarView() {
       }
     }
 
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonthIndex = now.getMonth();
+    const scrollToCurrentWeekOrMonth = () => {
+      const now = new Date();
+      const todayKey = formatDateKey(now);
+      const todayElement = document.querySelector(
+        `[data-date-key="${todayKey}"]`,
+      );
 
-    // Find the element corresponding to the current month
-    const currentMonthElement = document.querySelector(
-      `[data-month-year="${currentYear}"][data-month-index="${currentMonthIndex}"]`,
-    );
+      if (todayElement) {
+        const weekRow = todayElement.closest("[data-week-row]") ?? todayElement;
+        weekRow.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        return true;
+      }
 
-    if (currentMonthElement && containerRef.current) {
-      currentMonthElement.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      const currentYear = now.getFullYear();
+      const currentMonthIndex = now.getMonth();
+      const currentMonthElement = document.querySelector(
+        `[data-month-year="${currentYear}"][data-month-index="${currentMonthIndex}"]`,
+      );
+
+      if (currentMonthElement) {
+        currentMonthElement.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        return true;
+      }
+
+      return false;
+    };
+
+    if (!scrollToCurrentWeekOrMonth()) {
+      const timer = setTimeout(scrollToCurrentWeekOrMonth, 120);
+      return () => clearTimeout(timer);
     }
   }, [allEvents, searchParams]);
 

@@ -9,7 +9,7 @@
 
 // Bumping the version drops every older cache in the activate handler, which is
 // how stale icons get evicted from installed copies.
-const CACHE_VERSION = "sam-cache-v4";
+const CACHE_VERSION = "sam-cache-v5";
 const APP_SHELL = ["/", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {

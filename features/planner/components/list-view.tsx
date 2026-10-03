@@ -103,6 +103,10 @@ export function ListView() {
     [events, editingEventId],
   );
   const todayDateKey = getTodayDateKey();
+  const todayBirthdays = useMemo(
+    () => getBirthdaysForDate(todayDateKey, friends),
+    [todayDateKey, friends],
+  );
   const searchParams = useSearchParams();
   const hideFinished = searchParams.get("hideFinished") !== "0"; // default on
 
@@ -145,6 +149,15 @@ export function ListView() {
     <section className="h-full overflow-y-auto pb-4 pr-1">
       <div className="rounded-[2rem] border border-sam-border bg-sam-surface/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="mt-4 space-y-4">
+          {todayBirthdays.length > 0 ? (
+            <div className="px-2 pb-2">
+              <BirthdayBanner
+                dateStr={todayDateKey}
+                birthdays={todayBirthdays}
+              />
+            </div>
+          ) : null}
+
           {sortedEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
               <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm dark:bg-sam-surface-2">
@@ -152,7 +165,6 @@ export function ListView() {
                   className="h-7 w-7 text-sam-text-4"
                   aria-hidden="true"
                 />
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
               </div>
               <h3 className="text-lg font-semibold text-sam-text-1">
                 No events found
@@ -164,6 +176,7 @@ export function ListView() {
             </div>
           ) : (
             <section className="space-y-3 p-2 sm:p-3">
+
               {sortedEvents.map((event, idx) => {
                 const multiDayLabel =
                   event.startDate &&
@@ -181,19 +194,13 @@ export function ListView() {
                 const badgeDate = event.startDate
                   ? formatDateBadge(event.startDate)
                   : null;
-                const birthdays = event.startDate
-                  ? getBirthdaysForDate(event.startDate, friends)
-                  : [];
 
                 const prev = sortedEvents[idx - 1];
-                const prevDateKey = prev?.startDate ?? null;
                 // On-the-fly Grouping: this month comparison lets us insert
                 // separators into a flat list without pre-processing the data
                 // into nested arrays.
                 const prevMonth = prev?.startDate?.slice(0, 7) ?? null; // YYYY-MM
                 const thisMonth = event.startDate?.slice(0, 7) ?? null;
-                const showBirthdayBanner =
-                  birthdays.length > 0 && event.startDate !== prevDateKey;
 
                 const isActive =
                   getEventStatus(event, todayDateKey) === "Active";
@@ -212,15 +219,6 @@ export function ListView() {
                             year: "numeric",
                           })}
                         </span>
-                      </div>
-                    ) : null}
-
-                    {showBirthdayBanner ? (
-                      <div className="px-2 pb-2">
-                        <BirthdayBanner
-                          dateStr={event.startDate ?? todayDateKey}
-                          birthdays={birthdays}
-                        />
                       </div>
                     ) : null}
 

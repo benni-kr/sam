@@ -535,7 +535,7 @@ function AppShellFrame({
           <div className="mx-auto grid min-h-screen w-full max-w-350 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
             <aside className="flex flex-col overflow-hidden rounded-3xl border border-sam-border bg-sam-surface p-4 shadow-xl dark:shadow-none lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
               {/* PINNED HEADER */}
-              <div className="flex-none flex flex-col gap-3 pb-4 mb-2 border-b border-sam-border/60 dark:border-slate-700/60">
+              <div className="flex-none flex flex-col gap-3 pb-2 mb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Logo className="h-8 w-auto" />
@@ -634,7 +634,7 @@ function AppShellFrame({
 
               {/* SCROLLING CONTENT */}
               <div className="min-h-0 flex-1">
-                <div className="h-full space-y-5 overflow-y-auto pb-4 scrollbar-slim pr-2">
+                <div className="h-full space-y-5 overflow-y-auto pb-4 scrollbar-slim">
                   {sidebarContent ? sidebarContent : null}
                 </div>
               </div>
