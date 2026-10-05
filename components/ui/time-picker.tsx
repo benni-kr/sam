@@ -18,6 +18,7 @@ type TimePickerProps = {
   excludeBefore?: string;
   clearable?: boolean;
   disabled?: boolean;
+  align?: "left" | "right";
 };
 
 function pad(value: number) {
@@ -87,6 +88,7 @@ export function TimePicker({
   excludeBefore,
   clearable = false,
   disabled = false,
+  align = "left",
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -181,7 +183,11 @@ export function TimePicker({
       </div>
 
       {isOpen && !disabled ? (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-sam-border bg-sam-surface shadow-lg">
+        <div
+          className={`absolute top-full z-30 mt-1 w-[11rem] overflow-hidden rounded-lg border border-sam-border bg-sam-surface shadow-lg ${
+            align === "right" ? "right-0" : "left-0"
+          }`}
+        >
           <div className="border-b border-sam-border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sam-text-4 dark:border-slate-800">
             Time
           </div>

@@ -49,7 +49,7 @@ export function BaseEventForm({
       onClick={onCancel}
     >
       <section
-        className={`flex w-full max-w-md flex-col overflow-y-auto border border-sam-border bg-sam-surface shadow-2xl max-h-[90vh] ${panelClassName}`}
+        className={`flex w-full max-w-md flex-col overflow-y-auto overflow-x-hidden border border-sam-border bg-sam-surface shadow-2xl max-h-[90vh] ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
       >
         <form onSubmit={onSubmit} className="space-y-3">

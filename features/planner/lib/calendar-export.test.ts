@@ -4,6 +4,7 @@ import {
   buildExportDescription,
   buildGoogleCalendarUrl,
   buildICalendarEvent,
+  buildICalendarFeed,
   addDaysToDateKey,
 } from "./calendar-export";
 
@@ -178,6 +179,72 @@ describe("calendar-export utilities", () => {
       expect(ics).toContain("DTEND:20260701T141500");
       expect(ics).toContain("END:VEVENT");
       expect(ics).toContain("END:VCALENDAR");
+    });
+  });
+
+  describe("buildICalendarFeed", () => {
+    it("produces a valid multi-event feed with VTIMEZONE and filters", () => {
+      const events = [
+        {
+          id: "evt-1",
+          title: "Team Meeting",
+          category: "Group Event",
+          description: "Discuss architecture",
+          startDate: "2026-10-10",
+          endDate: "2026-10-10",
+          startTime: "14:00",
+          endTime: "15:30",
+        },
+        {
+          id: "evt-2",
+          title: "Final Exam",
+          category: "Exam",
+          startDate: "2026-10-15",
+          endDate: "2026-10-15",
+        },
+        {
+          id: "evt-3",
+          title: "Personal Gym",
+          category: "Private Event",
+          startDate: "2026-10-12",
+          endDate: "2026-10-12",
+        },
+        {
+          id: "evt-inbox",
+          title: "Unscheduled Idea",
+          category: "Other",
+          startDate: null,
+          endDate: null,
+        },
+      ];
+
+      const feed = buildICalendarFeed(events, {
+        calendarName: "SAM Subscription",
+        timeZone: "Europe/Berlin",
+        originUrl: "https://sam.app",
+        categories: ["Group Event", "Exam"],
+      });
+
+      expect(feed).toContain("BEGIN:VCALENDAR");
+      expect(feed).toContain("X-WR-CALNAME:SAM Subscription");
+      expect(feed).toContain("BEGIN:VTIMEZONE");
+      expect(feed).toContain("TZID:Europe/Berlin");
+
+      // Should include Group Event and Exam
+      expect(feed).toContain("SUMMARY:Team Meeting");
+      expect(feed).toContain("CATEGORIES:Group Event");
+      expect(feed).toContain("DTSTART;TZID=Europe/Berlin:20261010T140000");
+      expect(feed).toContain("DTEND;TZID=Europe/Berlin:20261010T153000");
+
+      expect(feed).toContain("SUMMARY:Final Exam");
+      expect(feed).toContain("DTSTART;VALUE=DATE:20261015");
+      expect(feed).toContain("DTEND;VALUE=DATE:20261016"); // exclusive end date
+
+      // Should filter out Private Event and undated inbox item
+      expect(feed).not.toContain("SUMMARY:Personal Gym");
+      expect(feed).not.toContain("SUMMARY:Unscheduled Idea");
+
+      expect(feed).toContain("END:VCALENDAR");
     });
   });
 });

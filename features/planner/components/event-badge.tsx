@@ -14,7 +14,7 @@ export function EventBadge({ event }: { event: PlannerEvent }) {
     <div className={`rounded-xl border px-3 py-2 shadow-sm ${theme.badge}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-5">{event.title}</p>
-        <span className="rounded-full border border-current/10 bg-white/70 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-current/70">
+        <span className="shrink-0 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-900 shadow-xs">
           {event.category}
         </span>
       </div>

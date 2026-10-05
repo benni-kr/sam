@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationToggle } from "@/features/notifications/components/notification-toggle";
+import { CalendarFeedButton } from "@/components/layout/calendar-feed-button";
 import { Logo } from "@/components/ui/logo";
 
 import { PlannerTabs } from "@/features/planner/components/planner-tabs";
@@ -560,6 +561,7 @@ function AppShellFrame({
                     </a>
 
                     <NotificationToggle />
+                    <CalendarFeedButton />
                     <ThemeToggle />
                   </div>
                 </div>

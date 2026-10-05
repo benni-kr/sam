@@ -312,7 +312,7 @@ export function EventPreviewModal({
               {isShareMenuOpen ? (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-lg border border-sam-border bg-sam-surface p-1 shadow-xl"
+                  className="absolute right-0 top-full z-30 mt-1 w-60 overflow-hidden rounded-lg border border-sam-border bg-sam-surface p-1 shadow-xl"
                 >
                   <button
                     type="button"
@@ -347,7 +347,7 @@ export function EventPreviewModal({
                         className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
                       >
                         <CalendarPlus className="h-3.5 w-3.5 text-sam-text-3" />
-                        <span>Add to Apple Cal</span>
+                        <span>Download .ics (Apple / Outlook)</span>
                       </button>
                     </>
                   ) : null}

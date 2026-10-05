@@ -274,3 +274,105 @@ export function downloadIcsFile(filename: string, icsContent: string) {
   document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 }
+
+export type CalendarFeedOptions = {
+  calendarName?: string;
+  timeZone?: string;
+  originUrl?: string;
+  categories?: string[];
+};
+
+/**
+ * Standard VTIMEZONE component for Europe/Berlin (handles CET / CEST daylight saving shifts).
+ * Used when events specify TZID=Europe/Berlin.
+ */
+export const VTIMEZONE_BERLIN = [
+  "BEGIN:VTIMEZONE",
+  "TZID:Europe/Berlin",
+  "X-LIC-LOCATION:Europe/Berlin",
+  "BEGIN:DAYLIGHT",
+  "TZOFFSETFROM:+0100",
+  "TZOFFSETTO:+0200",
+  "TZNAME:CEST",
+  "DTSTART:19700329T020000",
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
+  "END:DAYLIGHT",
+  "BEGIN:STANDARD",
+  "TZOFFSETFROM:+0200",
+  "TZOFFSETTO:+0100",
+  "TZNAME:CET",
+  "DTSTART:19701025T030000",
+  "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+];
+
+/**
+ * Generates an RFC 5545 compliant iCalendar (.ics) subscription feed containing
+ * multiple events, standard VTIMEZONE definition, and category filtering.
+ */
+export function buildICalendarFeed(
+  events: CalendarExportableEvent[],
+  options: CalendarFeedOptions = {},
+): string {
+  const calendarName = options.calendarName || "SAM Planner";
+  const timeZone = options.timeZone || "Europe/Berlin";
+  const now = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+
+  const allowedCategories =
+    options.categories && options.categories.length > 0
+      ? new Set(options.categories.map((c) => c.toLowerCase()))
+      : null;
+
+  const validEvents = events.filter((event) => {
+    if (!event.startDate) return false;
+    if (allowedCategories && !allowedCategories.has(event.category.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
+  const lines: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//SAM//Semester Activity Manager//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
+    `X-WR-TIMEZONE:${timeZone}`,
+    ...VTIMEZONE_BERLIN,
+  ];
+
+  for (const event of validEvents) {
+    const dateTimes = calculateExportDateTimes(event);
+    const description = buildExportDescription(event, options.originUrl);
+    const uid = `${event.id || `event-${event.startDate}-${event.title}`}@sam.app`;
+
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      `DTSTAMP:${now}`,
+      `SUMMARY:${escapeIcsText(event.title)}`,
+      `CATEGORIES:${escapeIcsText(event.category)}`,
+      `DESCRIPTION:${escapeIcsText(description)}`,
+      "STATUS:CONFIRMED",
+    );
+
+    if (dateTimes.isAllDay) {
+      lines.push(`DTSTART;VALUE=DATE:${dateTimes.startDateString}`);
+      lines.push(`DTEND;VALUE=DATE:${dateTimes.endDateString}`);
+    } else {
+      lines.push(`DTSTART;TZID=${timeZone}:${dateTimes.startDateTimeString}`);
+      lines.push(`DTEND;TZID=${timeZone}:${dateTimes.endDateTimeString}`);
+    }
+
+    lines.push("END:VEVENT");
+  }
+
+  lines.push("END:VCALENDAR");
+
+  return lines.map(foldLine).join("\r\n");
+}

@@ -133,6 +133,7 @@ export function PlannerEventForm({
             excludeBefore={startDate === endDate ? startTime : undefined}
             clearable
             disabled={!startDate || !startTime}
+            align="right"
           />
         </div>
       ) : null}

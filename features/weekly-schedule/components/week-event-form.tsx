@@ -148,6 +148,7 @@ export function PlannerWeekEventForm({
           latestHour={24}
           minuteStep={15}
           excludeBefore={normalizedTimeRange.startTime}
+          align="right"
         />
       </div>
     </BaseEventForm>

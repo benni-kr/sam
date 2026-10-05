@@ -20,31 +20,44 @@ import { useCreateEvent } from "@/features/planner/components/create-event-conte
 import { usePlannerState } from "@/features/planner/state/planner-state";
 
 /**
- * True only when SAM runs as an installed PWA (standalone display mode), false
- * in a normal browser tab. Starts false so the button never flashes in-browser
- * during SSR/hydration; flips true after the client check if we're standalone.
+ * True when SAM runs on mobile screens (where the sidebar add button is scrolled
+ * away) or when installed as a standalone PWA.
  */
-function useIsStandalone() {
-  const [standalone, setStandalone] = useState(false);
+function useIsMobileOrStandalone() {
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    const mobileQuery = window.matchMedia("(max-width: 1023px)");
 
-    const evaluate = () =>
-      // `navigator.standalone` covers iOS Safari, which reports home-screen
-      // installs there rather than via the display-mode media query.
-      setStandalone(
-        mediaQuery.matches ||
-          (window.navigator as { standalone?: boolean }).standalone === true,
-      );
+    const evaluate = () => {
+      const isStandalone =
+        standaloneQuery.matches ||
+        (window.navigator as { standalone?: boolean }).standalone === true;
+      const isMobile = mobileQuery.matches;
+      setIsVisible(isStandalone || isMobile);
+    };
 
     evaluate();
-    mediaQuery.addEventListener("change", evaluate);
 
-    return () => mediaQuery.removeEventListener("change", evaluate);
+    if (standaloneQuery?.addEventListener) {
+      standaloneQuery.addEventListener("change", evaluate);
+    }
+    if (mobileQuery?.addEventListener) {
+      mobileQuery.addEventListener("change", evaluate);
+    }
+
+    return () => {
+      if (standaloneQuery?.removeEventListener) {
+        standaloneQuery.removeEventListener("change", evaluate);
+      }
+      if (mobileQuery?.removeEventListener) {
+        mobileQuery.removeEventListener("change", evaluate);
+      }
+    };
   }, []);
 
-  return standalone;
+  return isVisible;
 }
 
 export function AddEventFab() {
@@ -52,11 +65,11 @@ export function AddEventFab() {
   const { isOffline } = usePlannerState();
   const pathname = usePathname();
   const isWeekView = pathname?.startsWith("/week") ?? false;
-  const isStandalone = useIsStandalone();
+  const isVisible = useIsMobileOrStandalone();
 
-  // Only surface the floating action on the installed PWA; in a browser tab the
-  // sidebar "add" controls are the intended entry point.
-  if (!isStandalone) {
+  // Surface the floating action on mobile screens and installed PWA; in desktop
+  // browsers the sticky sidebar "add" controls are the intended entry point.
+  if (!isVisible) {
     return null;
   }
 
