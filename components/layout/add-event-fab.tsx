@@ -61,11 +61,16 @@ function useIsMobileOrStandalone() {
 }
 
 export function AddEventFab() {
-  const { openCreateEvent, openCreateWeekEvent } = useCreateEvent();
+  const { openCreateEvent } = useCreateEvent();
   const { isOffline } = usePlannerState();
   const pathname = usePathname();
-  const isWeekView = pathname?.startsWith("/week") ?? false;
   const isVisible = useIsMobileOrStandalone();
+
+  // The floating action button should only exist in the calendar view ("/"),
+  // and is explicitly hidden on crosstables (table) and list views.
+  if (!pathname || pathname !== "/") {
+    return null;
+  }
 
   // Surface the floating action on mobile screens and installed PWA; in desktop
   // browsers the sticky sidebar "add" controls are the intended entry point.
@@ -82,9 +87,9 @@ export function AddEventFab() {
   return (
     <button
       type="button"
-      onClick={() => (isWeekView ? openCreateWeekEvent() : openCreateEvent())}
-      aria-label={isWeekView ? "Add weekly appointment" : "Add event"}
-      title={isWeekView ? "Add weekly appointment" : "Add event"}
+      onClick={() => openCreateEvent()}
+      aria-label="Add event"
+      title="Add event"
       // Respect the device safe area so the button never hides behind the
       // home indicator / rounded corners on installed phones.
       style={{

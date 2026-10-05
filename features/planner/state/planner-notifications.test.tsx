@@ -386,7 +386,7 @@ describe("Planner Push Notification Dispatching", () => {
       result.current.planner.toggleParticipant(event!.id, "Alice");
     });
 
-    expect(mocks.broadcastNotifications).toHaveBeenCalledWith(
+      expect(mocks.broadcastNotifications).toHaveBeenCalledWith(
       [
         expect.objectContaining({
           kind: "new-participant",
@@ -396,5 +396,50 @@ describe("Planner Push Notification Dispatching", () => {
       ],
       null,
     );
+  });
+
+  it("handles toggling participants on undated group events without crashing even if broadcast rejects", async () => {
+    mocks.broadcastNotifications.mockRejectedValueOnce(
+      new Error("Network failure"),
+    );
+
+    const { result } = renderHook(
+      () => ({
+        planner: usePlannerState(),
+      }),
+      { wrapper: AllProviders },
+    );
+
+    await waitFor(() => expect(mocks.loadPlanner).toHaveBeenCalled());
+
+    // Create undated group event in inbox
+    await act(async () => {
+      result.current.planner.createEvent({
+        title: "Undated Group Hangout",
+        category: "Group Event",
+        startDate: null,
+        endDate: null,
+        participants: [],
+      });
+    });
+
+    const event = result.current.planner.inboxEvents.find(
+      (e) => e.title === "Undated Group Hangout",
+    );
+    expect(event).toBeDefined();
+
+    // Toggle participant in and verify no crash occurs even with rejected broadcast
+    await act(async () => {
+      expect(() => {
+        result.current.planner.toggleParticipant(event!.id, "Bob");
+      }).not.toThrow();
+    });
+
+    // Toggle participant out
+    await act(async () => {
+      expect(() => {
+        result.current.planner.toggleParticipant(event!.id, "Bob");
+      }).not.toThrow();
+    });
   });
 });

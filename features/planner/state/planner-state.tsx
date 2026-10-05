@@ -491,16 +491,22 @@ export function plannerStateReducer(
       }
       case "TOGGLE_PARTICIPANT": {
         const { eventId, participantName } = action.payload;
+        const trimmedName = participantName.trim();
+        if (!trimmedName) return dictState;
+
         const nextState: EventsBySemester = {};
         for (const sId of Object.keys(dictState)) {
           nextState[sId] = (dictState[sId] ?? []).map((e) => {
             if (e.id !== eventId) return e;
-            const hasParticipant = e.participants.includes(participantName);
+            const currentParticipants = Array.isArray(e.participants)
+              ? e.participants
+              : [];
+            const hasParticipant = currentParticipants.includes(trimmedName);
             return {
               ...e,
               participants: hasParticipant
-                ? e.participants.filter((p) => p !== participantName)
-                : [...e.participants, participantName],
+                ? currentParticipants.filter((p) => p !== trimmedName)
+                : [...currentParticipants, trimmedName],
             };
           });
         }
@@ -649,13 +655,16 @@ export function plannerStateReducer(
           return event;
         }
 
-        const hasParticipant = event.participants.includes(trimmedName);
+        const currentParticipants = Array.isArray(event.participants)
+          ? event.participants
+          : [];
+        const hasParticipant = currentParticipants.includes(trimmedName);
 
         return {
           ...event,
           participants: hasParticipant
-            ? event.participants.filter((name) => name !== trimmedName)
-            : [...event.participants, trimmedName],
+            ? currentParticipants.filter((name) => name !== trimmedName)
+            : [...currentParticipants, trimmedName],
         };
       });
     }
@@ -1661,57 +1670,72 @@ export function PlannerStateProvider({
         });
       },
       toggleParticipant: (eventId, participantName) => {
-        const normalizedName = normalizeFriendName(participantName);
+        try {
+          const normalizedName = normalizeFriendName(participantName);
 
-        if (
-          !normalizedName ||
-          !friendNames.some(
-            (friend) =>
-              friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
-          )
-        ) {
-          return;
-        }
+          if (
+            !normalizedName ||
+            !friendNames.some(
+              (friend) =>
+                friend.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
+            )
+          ) {
+            return;
+          }
 
-        const event = allEvents.find((e) => e.id === eventId);
-        if (!event) return;
+          const event = allEvents.find((e) => e.id === eventId);
+          if (!event) return;
 
-        const hasParticipant = event.participants.includes(normalizedName);
-        const nextParticipants = hasParticipant
-          ? event.participants.filter((name) => name !== normalizedName)
-          : [...event.participants, normalizedName];
+          const currentParticipants = Array.isArray(event.participants)
+            ? event.participants
+            : [];
+          const hasParticipant = currentParticipants.includes(normalizedName);
+          const nextParticipants = hasParticipant
+            ? currentParticipants.filter((name) => name !== normalizedName)
+            : [...currentParticipants, normalizedName];
 
-        dispatch({
-          type: "TOGGLE_PARTICIPANT",
-          payload: { eventId, participantName: normalizedName },
-        });
-
-        void eventStore.current
-          .updateEvent(eventId, { participants: nextParticipants })
-          .catch((error) => {
-            if (isOfflineError(error)) {
-              setIsOffline(true);
-              return;
-            }
-            console.error("Failed to toggle participant:", error);
+          dispatch({
+            type: "TOGGLE_PARTICIPANT",
+            payload: { eventId, participantName: normalizedName },
           });
 
-        if (event.category === "Group Event") {
-          const notifItem: NotificationItem = {
-            kind: "new-participant",
-            eventId: event.id,
-            title: event.title,
-            category: event.category,
-            startDate: event.startDate,
-            startTime: event.startTime,
-            endTime: event.endTime,
-            semesterId: event.startDate
-              ? getSemesterIdForDate(event.startDate)
-              : normalizedSemesterId,
-            participants: [normalizedName],
-            action: hasParticipant ? "left" : "joined",
-          };
-          void broadcastNotifications([notifItem], ownEndpointRef.current);
+          void eventStore.current
+            .updateEvent(eventId, { participants: nextParticipants })
+            .catch((error) => {
+              if (isOfflineError(error)) {
+                setIsOffline(true);
+                return;
+              }
+              console.error("Failed to toggle participant:", error);
+            });
+
+          if (event.category === "Group Event") {
+            try {
+              const notifItem: NotificationItem = {
+                kind: "new-participant",
+                eventId: event.id,
+                title: event.title,
+                category: event.category,
+                startDate: event.startDate,
+                startTime: event.startTime,
+                endTime: event.endTime,
+                semesterId: event.startDate
+                  ? getSemesterIdForDate(event.startDate)
+                  : normalizedSemesterId,
+                participants: [normalizedName],
+                action: hasParticipant ? "left" : "joined",
+              };
+              void broadcastNotifications([notifItem], ownEndpointRef.current).catch(
+                (err) => {
+                  console.error("Failed to broadcast participant notification:", err);
+                },
+              );
+            } catch (notifError) {
+              console.error("Failed to prepare participant notification:", notifError);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to toggle participant:", error);
         }
       },
     };

@@ -119,6 +119,48 @@ describe("plannerStateReducer", () => {
       expect(state[semesterIds[0]][0].participants).toContain("Leo");
     });
 
+    it("safely removes the last remaining participant resulting in an empty array", () => {
+      const flatEvents: PlannerEvent[] = [
+        {
+          id: "evt-solo",
+          title: "Solo Event",
+          category: "Group Event",
+          startDate: "2026-05-10",
+          endDate: "2026-05-10",
+          participants: ["SoloUser"],
+        },
+      ];
+
+      const action = {
+        type: "TOGGLE_PARTICIPANT" as const,
+        payload: { eventId: "evt-solo", participantName: "SoloUser" },
+      };
+
+      const nextFlat = plannerStateReducer(flatEvents, action);
+      expect(nextFlat[0].participants).toEqual([]);
+    });
+
+    it("handles undefined or missing participants gracefully without throwing", () => {
+      const malformedFlat = [
+        {
+          id: "evt-malformed",
+          title: "Malformed Event",
+          category: "Other" as const,
+          startDate: "2026-05-10",
+          endDate: "2026-05-10",
+        } as PlannerEvent,
+      ];
+
+      const action = {
+        type: "TOGGLE_PARTICIPANT" as const,
+        payload: { eventId: "evt-malformed", participantName: "NewUser" },
+      };
+
+      expect(() => plannerStateReducer(malformedFlat, action)).not.toThrow();
+      const result = plannerStateReducer(malformedFlat, action);
+      expect(result[0].participants).toEqual(["NewUser"]);
+    });
+
     it("removes a participant from EVERY event across all semesters", () => {
       const action = {
         type: "REMOVE_PARTICIPANT_FROM_ALL_EVENTS" as const,

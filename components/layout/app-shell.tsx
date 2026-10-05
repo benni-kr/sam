@@ -522,7 +522,7 @@ function AppShellFrame({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <main className="min-h-screen bg-page text-sam-text-1">
+        <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-page text-sam-text-1">
           {/*
             Sticky, not just in-flow: read-only mode has to stay visible no
             matter how far the user scrolls, otherwise a long calendar hides the
@@ -642,7 +642,7 @@ function AppShellFrame({
               </div>
             </aside>
 
-            <section className="min-h-0 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:pr-1">
+            <section className="flex flex-col min-h-0 min-w-0 max-w-full lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:pr-1">
               {children}
             </section>
           </div>
