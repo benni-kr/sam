@@ -191,23 +191,41 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       </form>
 
       {/* New Feature Announcement Box */}
-      <div className="w-full max-w-sm mt-6 p-6 rounded-[1.5rem] bg-gradient-to-br from-sky-50 to-violet-50 dark:from-sky-950/40 dark:to-violet-950/40 border border-sky-100 dark:border-sky-900/50 shadow-md text-center">
-        <div className="text-4xl mb-3">📲🔔</div>
-        <h2 className="text-lg font-bold text-sky-900 dark:text-sky-300 mb-3 tracking-tight">
-          SAM installs like an app now!
+      <div className="w-full max-w-sm mt-6 p-6 rounded-[1.5rem] bg-gradient-to-br from-sky-50 to-violet-50 dark:from-sky-950/40 dark:to-violet-950/40 border border-sky-100 dark:border-sky-900/50 shadow-md text-left">
+        <h2 className="text-lg font-bold text-sky-900 dark:text-sky-300 mb-2 tracking-tight text-center">
+          The quality-of-life update
         </h2>
-        <div className="text-sm text-sky-800/80 dark:text-sky-200/80 space-y-3 leading-relaxed">
-          <p>
-            Add SAM to your home screen and it opens in its own window, without
-            the browser bar. Long-press the icon to jump straight to the
-            calendar, this week, or your event list.
-          </p>
-          <p>
-            Tap the <strong>bell</strong> in the sidebar to get notified when
-            someone adds an event or joins one of yours. And if you lose signal,
-            your last synced plan stays readable — editing waits until
-            you&apos;re back online.
-          </p>
+        <p className="text-xs text-sky-800/80 dark:text-sky-200/80 mb-3 text-center leading-relaxed">
+          The new semester is just around the corner and SAM is ready to help you tackle it with a lot of new features!
+        </p>
+
+        <ul className="text-xs text-sky-900/90 dark:text-sky-200/90 space-y-2.5 leading-relaxed">
+          <li className="flex items-start gap-2">
+            <span>⏰</span>
+            <span>
+              <strong>Precise Event Times:</strong> Add times to your events so your friends have no excuse for being late anymore!
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span>🗓️</span>
+            <span>
+              <strong>Calendar Export &amp; Subscriptions:</strong> Export events or subscribe to your personal live feed to keep your native calendar app automatically in sync.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span>🔕</span>
+            <span>
+              <strong>Smart Group Notifications:</strong> Push alerts are now reserved for shared group events — feel free to enter private plans without spamming the entire crew.
+            </span>
+          </li>
+        </ul>
+
+        <p className="text-xs text-sky-800/80 dark:text-sky-200/80 mt-3 text-center italic">
+          ...and so many more refreshments! Have fun exploring :)
+        </p>
+
+        <div className="mt-4 pt-3 border-t border-sky-200/50 dark:border-sky-800/50 text-[11px] text-sky-800/75 dark:text-sky-300/75 leading-relaxed text-center">
+          📲 <strong>And remember that you can install SAM as a PWA!</strong>
         </div>
       </div>
     </div>

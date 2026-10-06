@@ -221,8 +221,6 @@ export function EventPreviewModal({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: event.title,
-          text: `${event.title} (${dateLine})`,
           url: shareUrl,
         });
         setIsShareMenuOpen(false);
