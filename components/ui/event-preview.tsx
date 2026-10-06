@@ -125,6 +125,7 @@ export function EventPreviewModal({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
+  const shareButtonRef = useRef<HTMLButtonElement | null>(null);
   const displayDay = formatDisplayDate(event.day) || event.day || "";
 
   useEffect(() => {
@@ -148,7 +149,8 @@ export function EventPreviewModal({
     function handlePointerDown(e: PointerEvent) {
       if (
         shareMenuRef.current &&
-        !shareMenuRef.current.contains(e.target as Node)
+        !shareMenuRef.current.contains(e.target as Node) &&
+        !shareButtonRef.current?.contains(e.target as Node)
       ) {
         setIsShareMenuOpen(false);
       }
@@ -182,7 +184,7 @@ export function EventPreviewModal({
     dateLine = "Unscheduled";
   }
 
-  async function handleCopyLink() {
+  function getShareUrl(): string {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     let shareUrl = origin;
     if (event.id) {
@@ -211,7 +213,31 @@ export function EventPreviewModal({
         shareUrl = `${origin}/?semester=${encodeURIComponent(targetSemesterId)}&event=${encodeURIComponent(event.id)}`;
       }
     }
+    return shareUrl;
+  }
 
+  async function handleNativeShare() {
+    const shareUrl = getShareUrl();
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: `${event.title} (${dateLine})`,
+          url: shareUrl,
+        });
+        setIsShareMenuOpen(false);
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") {
+          return;
+        }
+      }
+    }
+    await handleCopyLink();
+  }
+
+  async function handleCopyLink() {
+    const shareUrl = getShareUrl();
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(shareUrl);
@@ -287,73 +313,27 @@ export function EventPreviewModal({
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-sam-text-3">
             {heading}
           </p>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <div ref={shareMenuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setIsShareMenuOpen((open) => !open)}
-                className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-sam-border transition-colors ${
-                  isShareMenuOpen || copied
-                    ? "bg-sam-surface-2 text-sam-text-1 dark:bg-sam-surface-2"
-                    : "text-sam-text-2 hover:bg-sam-surface-2 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
-                }`}
-                title="Share event"
-                aria-label="Share event"
-                aria-haspopup="menu"
-                aria-expanded={isShareMenuOpen}
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
-                ) : (
-                  <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-              </button>
-
-              {isShareMenuOpen ? (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-full z-30 mt-1 w-60 overflow-hidden rounded-lg border border-sam-border bg-sam-surface p-1 shadow-xl"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={handleCopyLink}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
-                  >
-                    {copied ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5 text-sam-text-3" />
-                    )}
-                    <span>{copied ? "Link copied!" : "Copy link"}</span>
-                  </button>
-
-                  {canExport ? (
-                    <>
-                      <div className="my-1 border-t border-sam-border" />
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={handleGoogleCalendarExport}
-                        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
-                      >
-                        <CalendarPlus className="h-3.5 w-3.5 text-sam-text-3" />
-                        <span>Add to Google Cal</span>
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={handleAppleCalendarExport}
-                        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
-                      >
-                        <CalendarPlus className="h-3.5 w-3.5 text-sam-text-3" />
-                        <span>Download .ics (Apple / Outlook)</span>
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+          <div className="relative flex items-center gap-1.5 sm:gap-2">
+            <button
+              ref={shareButtonRef}
+              type="button"
+              onClick={() => setIsShareMenuOpen((open) => !open)}
+              className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-sam-border transition-colors ${
+                isShareMenuOpen || copied
+                  ? "bg-sam-surface-2 text-sam-text-1 dark:bg-sam-surface-2"
+                  : "text-sam-text-2 hover:bg-sam-surface-2 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
+              }`}
+              title="Share event"
+              aria-label="Share event"
+              aria-haspopup="menu"
+              aria-expanded={isShareMenuOpen}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
+              ) : (
+                <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+            </button>
 
             <button
               type="button"
@@ -401,6 +381,64 @@ export function EventPreviewModal({
                 <path d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+
+            {isShareMenuOpen ? (
+              <div
+                ref={shareMenuRef}
+                role="menu"
+                className="absolute right-0 top-full z-30 mt-1.5 w-56 sm:w-60 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-sam-border bg-sam-surface p-1 shadow-xl"
+              >
+                {typeof navigator !== "undefined" && typeof navigator.share === "function" ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleNativeShare}
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
+                  >
+                    <Share2 className="h-3.5 w-3.5 text-sam-text-3" />
+                    <span>Share via... (WhatsApp, etc.)</span>
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleCopyLink}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-sam-text-3" />
+                  )}
+                  <span>{copied ? "Link copied!" : "Copy link"}</span>
+                </button>
+
+                {canExport ? (
+                  <>
+                    <div className="my-1 border-t border-sam-border" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleGoogleCalendarExport}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5 text-sam-text-3" />
+                      <span>Add to Google Cal</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleAppleCalendarExport}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-sam-text-2 transition-colors hover:bg-sam-surface-3 hover:text-sam-text-1 dark:hover:bg-sam-surface-2"
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5 text-sam-text-3" />
+                      <span>Download .ics (Apple / Outlook)</span>
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 

@@ -14,27 +14,64 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "SAM | Semester Activity Manager",
-  description:
-    "Collaborative semester planner for shared activities, inboxing ideas, and participation tracking.",
-  applicationName: "SAM",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "SAM",
-  },
-  icons: {
-    icon: [
-      { url: "/icons/icon.svg", type: "image/svg+xml" },
-      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
-      { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
-    ],
-    // iOS/Safari ignore SVG here and require an opaque PNG.
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
-  },
-};
+import {
+  getRequestOrigin,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_PATH,
+  OG_IMAGE_WIDTH,
+} from "@/features/planner/lib/event-og-helper";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const origin = await getRequestOrigin();
+  const absoluteImageUrl = `${origin}${OG_IMAGE_PATH}`;
+
+  return {
+    metadataBase: new URL(origin),
+    title: "SAM | Semester Activity Manager",
+    description:
+      "Collaborative semester planner for shared activities, inboxing ideas, and participation tracking.",
+    applicationName: "SAM",
+    openGraph: {
+      title: "SAM | Semester Activity Manager",
+      description:
+        "Collaborative semester planner for shared activities, inboxing ideas, and participation tracking.",
+      siteName: "SAM",
+      type: "website",
+      images: [
+        {
+          url: absoluteImageUrl,
+          secureUrl: absoluteImageUrl.startsWith("https://") ? absoluteImageUrl : undefined,
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          type: "image/png",
+          alt: "SAM Semester Activity Manager",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary",
+      title: "SAM | Semester Activity Manager",
+      description:
+        "Collaborative semester planner for shared activities, inboxing ideas, and participation tracking.",
+      images: [absoluteImageUrl],
+    },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "SAM",
+    },
+    icons: {
+      icon: [
+        { url: "/icons/icon.svg", type: "image/svg+xml" },
+        { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+        { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
+      ],
+      // iOS/Safari ignore SVG here and require an opaque PNG.
+      apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
