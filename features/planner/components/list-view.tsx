@@ -7,7 +7,7 @@
  * grouped timeline focused on upcoming priorities.
  */
 
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Clock } from "lucide-react";
 import { useMemo, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { EventPreviewModal } from "@/components/ui/event-preview";
@@ -103,6 +103,10 @@ export function ListView() {
     [events, editingEventId],
   );
   const todayDateKey = getTodayDateKey();
+  const todayBirthdays = useMemo(
+    () => getBirthdaysForDate(todayDateKey, friends),
+    [todayDateKey, friends],
+  );
   const searchParams = useSearchParams();
   const hideFinished = searchParams.get("hideFinished") !== "0"; // default on
 
@@ -125,6 +129,14 @@ export function ListView() {
         return (left.startDate ?? "").localeCompare(right.startDate ?? "");
       }
 
+      const leftTime = left.startTime ?? "";
+      const rightTime = right.startTime ?? "";
+      if (leftTime !== rightTime) {
+        if (!leftTime) return -1;
+        if (!rightTime) return 1;
+        return leftTime.localeCompare(rightTime);
+      }
+
       if (left.endDate !== right.endDate) {
         return (left.endDate ?? "").localeCompare(right.endDate ?? "");
       }
@@ -134,9 +146,18 @@ export function ListView() {
   }, [scheduledEvents, hideFinished, todayDateKey]);
 
   return (
-    <section className="h-full overflow-y-auto pb-4 pr-1">
-      <div className="rounded-[2rem] border border-sam-border bg-sam-surface/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
+    <section className="h-full w-full max-w-full min-w-0 overflow-y-auto overflow-x-hidden pb-4 pr-1">
+      <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[2rem] border border-sam-border bg-sam-surface/90 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5">
         <div className="mt-4 space-y-4">
+          {todayBirthdays.length > 0 ? (
+            <div className="px-2 pb-2">
+              <BirthdayBanner
+                dateStr={todayDateKey}
+                birthdays={todayBirthdays}
+              />
+            </div>
+          ) : null}
+
           {sortedEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-sam-border bg-slate-50/70 px-6 py-14 text-center dark:bg-slate-800/50">
               <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-sam-border bg-sam-surface shadow-sm dark:bg-sam-surface-2">
@@ -144,7 +165,6 @@ export function ListView() {
                   className="h-7 w-7 text-sam-text-4"
                   aria-hidden="true"
                 />
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400" />
               </div>
               <h3 className="text-lg font-semibold text-sam-text-1">
                 No events found
@@ -156,30 +176,31 @@ export function ListView() {
             </div>
           ) : (
             <section className="space-y-3 p-2 sm:p-3">
+
               {sortedEvents.map((event, idx) => {
-                const scheduledLabel =
+                const multiDayLabel =
                   event.startDate &&
                   event.endDate &&
                   event.endDate !== event.startDate
                     ? `to ${formatDate(event.endDate)}`
                     : null;
 
+                const timeLabel = event.startTime
+                  ? event.endTime
+                    ? `${event.startTime} – ${event.endTime}`
+                    : event.startTime
+                  : null;
+
                 const badgeDate = event.startDate
                   ? formatDateBadge(event.startDate)
                   : null;
-                const birthdays = event.startDate
-                  ? getBirthdaysForDate(event.startDate, friends)
-                  : [];
 
                 const prev = sortedEvents[idx - 1];
-                const prevDateKey = prev?.startDate ?? null;
                 // On-the-fly Grouping: this month comparison lets us insert
                 // separators into a flat list without pre-processing the data
                 // into nested arrays.
                 const prevMonth = prev?.startDate?.slice(0, 7) ?? null; // YYYY-MM
                 const thisMonth = event.startDate?.slice(0, 7) ?? null;
-                const showBirthdayBanner =
-                  birthdays.length > 0 && event.startDate !== prevDateKey;
 
                 const isActive =
                   getEventStatus(event, todayDateKey) === "Active";
@@ -198,15 +219,6 @@ export function ListView() {
                             year: "numeric",
                           })}
                         </span>
-                      </div>
-                    ) : null}
-
-                    {showBirthdayBanner ? (
-                      <div className="px-2 pb-2">
-                        <BirthdayBanner
-                          dateStr={event.startDate ?? todayDateKey}
-                          birthdays={birthdays}
-                        />
                       </div>
                     ) : null}
 
@@ -249,10 +261,23 @@ export function ListView() {
                               >
                                 {event.title}
                               </button>
-                              {scheduledLabel ? (
-                                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-sam-text-3">
-                                  {scheduledLabel}
-                                </p>
+                              {multiDayLabel || timeLabel ? (
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-sam-text-3">
+                                  {multiDayLabel ? (
+                                    <span className="uppercase tracking-[0.16em] font-medium">
+                                      {multiDayLabel}
+                                    </span>
+                                  ) : null}
+                                  {multiDayLabel && timeLabel ? (
+                                    <span className="text-sam-text-4">·</span>
+                                  ) : null}
+                                  {timeLabel ? (
+                                    <span className="inline-flex items-center gap-1 font-medium tracking-wide">
+                                      <Clock className="h-3 w-3 text-sam-text-4" aria-hidden="true" />
+                                      {timeLabel}
+                                    </span>
+                                  ) : null}
+                                </div>
                               ) : null}
                             </div>
 
@@ -333,6 +358,8 @@ function EventEditModal({
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
+      startTime?: string | null;
+      endTime?: string | null;
       participants: string[];
     },
   ) => void;
@@ -346,6 +373,8 @@ function EventEditModal({
   );
   const [startDate, setStartDate] = useState(event.startDate ?? "");
   const [endDate, setEndDate] = useState(event.endDate ?? "");
+  const [startTime, setStartTime] = useState(event.startTime ?? "");
+  const [endTime, setEndTime] = useState(event.endTime ?? "");
   const [participants, setParticipants] = useState(event.participants);
 
   useEffect(() => {
@@ -367,6 +396,8 @@ function EventEditModal({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
+      startTime: startTime || null,
+      endTime: endTime || null,
       participants,
     });
 
@@ -374,37 +405,28 @@ function EventEditModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Edit event: ${event.title}`}
-    >
-      <section
-        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-4 shadow-2xl"
-        onClick={(nextEvent) => nextEvent.stopPropagation()}
-      >
-        <PlannerEventForm
-          heading="Edit event"
-          submitLabel="Save changes"
-          title={title}
-          description={description}
-          category={category}
-          startDate={startDate}
-          endDate={endDate}
-          participants={participants}
-          availableParticipants={availableParticipants}
-          onTitleChange={setTitle}
-          onDescriptionChange={setDescription}
-          onCategoryChange={setCategory}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onParticipantsChange={setParticipants}
-          onSubmit={handleSubmit}
-          onCancel={onClose}
-        />
-      </section>
-    </div>
+    <PlannerEventForm
+      heading="Edit event"
+      submitLabel="Save changes"
+      title={title}
+      description={description}
+      category={category}
+      startDate={startDate}
+      endDate={endDate}
+      startTime={startTime}
+      endTime={endTime}
+      participants={participants}
+      availableParticipants={availableParticipants}
+      onTitleChange={setTitle}
+      onDescriptionChange={setDescription}
+      onCategoryChange={setCategory}
+      onStartDateChange={setStartDate}
+      onEndDateChange={setEndDate}
+      onStartTimeChange={setStartTime}
+      onEndTimeChange={setEndTime}
+      onParticipantsChange={setParticipants}
+      onSubmit={handleSubmit}
+      onCancel={onClose}
+    />
   );
 }

@@ -56,6 +56,7 @@ export function CalendarDayCell({
   return (
     <div
       ref={setNodeRef}
+      data-date-key={dateKey}
       className={`group relative h-full min-h-28 border-b border-r px-2 py-2 transition-colors last:border-r-0 ${
         isOver
           ? "border-sam-solid bg-sam-surface-3 dark:bg-sam-surface-3"

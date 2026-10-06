@@ -10,7 +10,7 @@ import {
   PlannerStateProvider,
   usePlannerState,
 } from "@/features/planner/state/planner-state";
-import { defaultPlannerSemesterId } from "@/features/planner/lib/planner";
+import { SNAPSHOT_VERSION } from "@/features/planner/lib/offline-cache";
 
 const emptySemesters = { "spring-2026": [], "fall-2026": [] };
 
@@ -18,8 +18,8 @@ const cachedEvent = {
   id: "cached-1",
   title: "Cached exam",
   category: "Exam" as const,
-  startDate: "2026-03-02",
-  endDate: "2026-03-02",
+  startDate: "2026-05-02",
+  endDate: "2026-05-02",
   participants: [],
 };
 
@@ -66,7 +66,7 @@ vi.mock("@/features/weekly-schedule/lib/week-persistence", () => ({
 
 const AllProviders = ({ children }: { children: ReactNode }) => (
   <FriendsProvider>
-    <PlannerStateProvider activeSemesterId={defaultPlannerSemesterId}>
+    <PlannerStateProvider activeSemesterId="spring-2026">
       {children}
     </PlannerStateProvider>
   </FriendsProvider>
@@ -101,7 +101,8 @@ describe("offline fallback", () => {
     });
 
     const snapshot = JSON.parse(window.localStorage.getItem(EVENTS_KEY)!);
-    expect(snapshot.payload["spring-2026"]).toHaveLength(1);
+    expect(snapshot.payload).toHaveLength(1);
+    expect(snapshot.payload[0].id).toBe("cached-1");
     expect(typeof snapshot.savedAt).toBe("string");
     expect(result.current.isOffline).toBe(false);
   });
@@ -110,13 +111,13 @@ describe("offline fallback", () => {
     window.localStorage.setItem(
       EVENTS_KEY,
       JSON.stringify({
-        version: 1, savedAt: "2026-08-01T10:00:00.000Z",
+        version: SNAPSHOT_VERSION, savedAt: "2026-08-01T10:00:00.000Z",
         payload: { ...emptySemesters, "spring-2026": [cachedEvent] },
       }),
     );
     window.localStorage.setItem(
       WEEK_KEY,
-      JSON.stringify({ version: 1, savedAt: "2026-08-01T10:00:00.000Z", payload: emptySemesters }),
+      JSON.stringify({ version: SNAPSHOT_VERSION, savedAt: "2026-08-01T10:00:00.000Z", payload: emptySemesters }),
     );
 
     // fetch rejects with a TypeError when the host cannot be reached at all,
@@ -152,7 +153,7 @@ describe("offline fallback", () => {
     window.localStorage.setItem(
       EVENTS_KEY,
       JSON.stringify({
-        version: 1, savedAt: "2026-08-01T10:00:00.000Z",
+        version: SNAPSHOT_VERSION, savedAt: "2026-08-01T10:00:00.000Z",
         payload: { ...emptySemesters, "spring-2026": [cachedEvent] },
       }),
     );
@@ -183,7 +184,7 @@ describe("offline fallback", () => {
     // "come back later", not "the database is empty". Persisting that would
     // replace a good snapshot with nothing.
     const goodSnapshot = JSON.stringify({
-      version: 1, savedAt: "2026-08-01T10:00:00.000Z",
+      version: SNAPSHOT_VERSION, savedAt: "2026-08-01T10:00:00.000Z",
       payload: { ...emptySemesters, "spring-2026": [cachedEvent] },
     });
     window.localStorage.setItem(EVENTS_KEY, goodSnapshot);
@@ -207,7 +208,7 @@ describe("offline fallback", () => {
   it("ignores a snapshot whose payload is null", async () => {
     window.localStorage.setItem(
       EVENTS_KEY,
-      JSON.stringify({ version: 1, savedAt: "2026-08-01T10:00:00.000Z", payload: null }),
+      JSON.stringify({ version: SNAPSHOT_VERSION, savedAt: "2026-08-01T10:00:00.000Z", payload: null }),
     );
 
     mocks.loadFriends.mockResolvedValue([]);

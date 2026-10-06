@@ -236,6 +236,7 @@ await Promise.all([
   png(iconPngSvg, 512, "icon-512.png", false),
   png(maskableSvg, 512, "maskable-512.png", true),
   png(appleSvg, 180, "apple-touch-icon.png", true),
+  png(appleSvg, 200, "og-thumb.png", true),
   png(buildBadgeSvg(), 96, "badge-96.png", false),
   png(buildShortcutSvg(calendarGlyph), 96, "shortcuts/calendar-96.png", true),
   png(buildShortcutSvg(clockGlyph), 96, "shortcuts/week-96.png", true),

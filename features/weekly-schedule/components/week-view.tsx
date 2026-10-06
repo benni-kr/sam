@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
 import { WeekDayColumn, WeekEventContent } from "@/features/weekly-schedule/components/week-event-block";
@@ -30,14 +41,125 @@ import { useFilterState } from "@/features/planner/state/filter-state";
 import { useMeasuredHeight } from "@/features/weekly-schedule/hooks/use-measured-height";
 import { useDragInteraction } from "@/features/weekly-schedule/hooks/use-drag-interaction";
 
+const fullWeekdayNames: Record<PlannerWeekday, string> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+  Sun: "Sunday",
+};
+
+type MobileDaysCount = 1 | 2 | 3 | "all";
+
+const mobileScreenStore = {
+  subscribe(callback: () => void) {
+    const mql = window.matchMedia("(max-width: 767px)");
+    mql.addEventListener("change", callback);
+    return () => mql.removeEventListener("change", callback);
+  },
+  getSnapshot() {
+    return window.matchMedia("(max-width: 767px)").matches;
+  },
+  getServerSnapshot() {
+    return false;
+  },
+};
+
+let cachedDaysCount: MobileDaysCount | null = null;
+const daysCountListeners = new Set<() => void>();
+
+export const mobileDaysCountStore = {
+  subscribe(callback: () => void) {
+    daysCountListeners.add(callback);
+    return () => {
+      daysCountListeners.delete(callback);
+    };
+  },
+  getSnapshot(): MobileDaysCount {
+    if (cachedDaysCount !== null) return cachedDaysCount;
+    try {
+      const saved = localStorage.getItem("sam_mobile_week_day_count");
+      if (saved === "1" || saved === "2" || saved === "3" || saved === "all") {
+        cachedDaysCount = saved === "all" ? "all" : (Number(saved) as 1 | 2 | 3);
+        return cachedDaysCount;
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    cachedDaysCount = 3;
+    return 3;
+  },
+  getServerSnapshot(): MobileDaysCount {
+    return 3;
+  },
+  set(count: MobileDaysCount) {
+    cachedDaysCount = count;
+    try {
+      localStorage.setItem("sam_mobile_week_day_count", String(count));
+    } catch {
+      // Ignore localStorage errors
+    }
+    daysCountListeners.forEach((listener) => listener());
+  },
+  _reset() {
+    cachedDaysCount = null;
+  },
+};
+
 export function WeekView() {
-  const { weekEvents, updateWeekEvent, deleteWeekEvent } = usePlannerState();
+  const {
+    weekEvents,
+    activeSemesterId,
+    findWeekEventById,
+    updateWeekEvent,
+    deleteWeekEvent,
+  } = usePlannerState();
   const { applyWeekFilters } = useFilterState();
   const { friendNames } = useFriendsState();
   const visibleWeekEvents = applyWeekFilters(weekEvents);
   const { ref: bodyRef, height: bodyHeight } = useMeasuredHeight<HTMLDivElement>();
-  const [previewEvent, setPreviewEvent] = useState<PlannerWeekEvent | null>(null);
+  const [selectedPreviewEvent, setSelectedPreviewEvent] = useState<PlannerWeekEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<PlannerWeekEvent | null>(null);
+  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const eventIdFromQuery = searchParams.get("event");
+
+  const isMobile = useSyncExternalStore(
+    mobileScreenStore.subscribe,
+    mobileScreenStore.getSnapshot,
+    mobileScreenStore.getServerSnapshot,
+  );
+
+  const mobileDaysCount = useSyncExternalStore(
+    mobileDaysCountStore.subscribe,
+    mobileDaysCountStore.getSnapshot,
+    mobileDaysCountStore.getServerSnapshot,
+  );
+
+  const deepLinkedEvent =
+    eventIdFromQuery && eventIdFromQuery !== dismissedEventId
+      ? (weekEvents.find((event) => event.id === eventIdFromQuery) ??
+         findWeekEventById(eventIdFromQuery)?.event ??
+         null)
+      : null;
+
+  const previewEvent = selectedPreviewEvent ?? deepLinkedEvent;
+
+  const handleClosePreview = useCallback(() => {
+    setSelectedPreviewEvent(null);
+    if (eventIdFromQuery) {
+      setDismissedEventId(eventIdFromQuery);
+    }
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("event")) {
+        url.searchParams.delete("event");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, [eventIdFromQuery]);
 
   // Compute the visible time range: default 08:00–18:00, expanded to the
   // nearest hour boundary whenever events fall outside that window.
@@ -90,7 +212,7 @@ export function WeekView() {
     );
   }, [eventsByDay]);
 
-  const visibleDays = useMemo(() => {
+  const availableDays = useMemo(() => {
     const sunVisible = (eventsByDay["Sun"]?.length ?? 0) > 0;
     return plannerWeekdays.filter((day) => {
       if (day === "Sun") return sunVisible;
@@ -98,6 +220,79 @@ export function WeekView() {
       return true;
     });
   }, [eventsByDay]);
+
+  const [mobileDayOffset, setMobileDayOffset] = useState(0);
+
+  const maxOffset = useMemo(() => {
+    if (mobileDaysCount === "all") return 0;
+    return Math.max(0, availableDays.length - mobileDaysCount);
+  }, [availableDays.length, mobileDaysCount]);
+
+  const clampedOffset = Math.min(Math.max(0, mobileDayOffset), maxOffset);
+
+  const visibleDays = useMemo(() => {
+    if (!isMobile || mobileDaysCount === "all") {
+      return availableDays;
+    }
+    return availableDays.slice(clampedOffset, clampedOffset + mobileDaysCount);
+  }, [availableDays, isMobile, mobileDaysCount, clampedOffset]);
+
+  const isPrevDisabled = clampedOffset <= 0 || mobileDaysCount === "all";
+  const isNextDisabled = clampedOffset >= maxOffset || mobileDaysCount === "all";
+
+  const handlePrevDays = () => {
+    setMobileDayOffset((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextDays = () => {
+    setMobileDayOffset((prev) => Math.min(maxOffset, prev + 1));
+  };
+
+  const handleSelectCount = (count: MobileDaysCount) => {
+    mobileDaysCountStore.set(count);
+  };
+
+  const rangeLabel = useMemo(() => {
+    if (mobileDaysCount === "all" || visibleDays.length === availableDays.length) {
+      if (availableDays.length <= 1) {
+        return availableDays[0] ?? "";
+      }
+      return `${availableDays[0]} – ${availableDays[availableDays.length - 1]}`;
+    }
+    if (visibleDays.length === 1) {
+      const day = visibleDays[0];
+      return fullWeekdayNames[day] ?? day;
+    }
+    const first = visibleDays[0];
+    const last = visibleDays[visibleDays.length - 1];
+    return `${first} – ${last}`;
+  }, [mobileDaysCount, visibleDays, availableDays]);
+
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX < 0) {
+        handleNextDays();
+      } else {
+        handlePrevDays();
+      }
+    }
+  };
 
   const { drag, draggingLayouts, ghostLaneInfo, handleInteractionMouseDown } =
     useDragInteraction({
@@ -107,17 +302,17 @@ export function WeekView() {
       visibleDays,
       eventsByDay,
       updateWeekEvent,
-      onEventClick: setPreviewEvent,
+      onEventClick: setSelectedPreviewEvent,
     });
 
   useEffect(() => {
     if (!previewEvent) return;
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setPreviewEvent(null);
+      if (event.key === "Escape") handleClosePreview();
     }
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [previewEvent]);
+  }, [previewEvent, handleClosePreview]);
 
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,12 +333,76 @@ export function WeekView() {
       participants: editingEvent.participants,
     });
 
-    setPreviewEvent(editingEvent);
+    setSelectedPreviewEvent(editingEvent);
     setEditingEvent(null);
   }
 
   return (
-    <section className="flex min-h-full flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]">
+    <section
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="flex min-h-full flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-sam-surface/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700/70 dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_18px_48px_rgba(0,0,0,0.3)]"
+    >
+      {/* Mobile Day Navigation & Day Count Controls */}
+      <div className="flex md:hidden items-center justify-between gap-2 border-b border-sam-border bg-slate-50/95 px-2.5 py-1.5 text-sam-text-2 backdrop-blur dark:bg-slate-800/95">
+        {/* Left: Previous / Next controls + Range label */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handlePrevDays}
+            disabled={isPrevDisabled}
+            aria-label="Previous days"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-sam-border bg-sam-surface text-sam-text-2 shadow-2xs transition-all hover:bg-sam-surface-2 active:scale-95 disabled:pointer-events-none disabled:opacity-30 dark:bg-sam-surface-2 dark:hover:bg-slate-700"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-[5.25rem] text-center text-xs font-semibold text-sam-text-1">
+            {rangeLabel}
+          </span>
+          <button
+            type="button"
+            onClick={handleNextDays}
+            disabled={isNextDisabled}
+            aria-label="Next days"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-sam-border bg-sam-surface text-sam-text-2 shadow-2xs transition-all hover:bg-sam-surface-2 active:scale-95 disabled:pointer-events-none disabled:opacity-30 dark:bg-sam-surface-2 dark:hover:bg-slate-700"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Right: 1, 2, 3, All selector */}
+        <div className="flex items-center rounded-lg border border-sam-border bg-sam-surface-2/60 p-0.5 dark:bg-slate-900/60">
+          {(["1", "2", "3", "all"] as const).map((option) => {
+            const isSelected =
+              option === "all"
+                ? mobileDaysCount === "all"
+                : mobileDaysCount === Number(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() =>
+                  handleSelectCount(
+                    option === "all" ? "all" : (Number(option) as 1 | 2 | 3),
+                  )
+                }
+                aria-label={
+                  option === "all"
+                    ? "Show all days"
+                    : `Show ${option} day${option === "1" ? "" : "s"}`
+                }
+                className={`flex h-6 min-w-[1.75rem] items-center justify-center rounded-md px-1.5 text-[11px] font-semibold transition-all ${
+                  isSelected
+                    ? "bg-sam-surface text-sam-text-1 shadow-2xs dark:bg-slate-700 dark:text-white"
+                    : "text-sam-text-3 hover:text-sam-text-1 active:scale-95"
+                }`}
+              >
+                {option === "all" ? "All" : `${option}d`}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       {/* Day header row */}
       <div
         className="grid border-b border-sam-border bg-slate-50/90 text-sam-text-3 dark:bg-slate-800/90"
@@ -221,17 +480,22 @@ export function WeekView() {
       {previewEvent && typeof document !== "undefined"
         ? createPortal(
             <EventPreviewModal
-              heading="Weekly appointment details"
-              event={previewEvent}
+              heading="Appointment details"
+              event={{
+                ...previewEvent,
+                semesterId:
+                  findWeekEventById(previewEvent.id)?.semesterId ??
+                  activeSemesterId,
+              }}
               onEdit={() => {
                 setEditingEvent(previewEvent);
-                setPreviewEvent(null);
+                handleClosePreview();
               }}
               onDelete={() => {
                 deleteWeekEvent(previewEvent.id);
-                setPreviewEvent(null);
+                handleClosePreview();
               }}
-              onClose={() => setPreviewEvent(null)}
+              onClose={handleClosePreview}
             />,
             document.body,
           )

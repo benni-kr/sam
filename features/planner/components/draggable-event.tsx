@@ -8,7 +8,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 
 import { EventBadge } from "@/features/planner/components/event-badge";
 import { EventPreviewModal } from "@/components/ui/event-preview";
@@ -76,7 +75,7 @@ export function DraggableEvent({
     touchDeviceStore.getServerSnapshot,
   );
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: `event:${event.id}`,
       data: {
@@ -108,12 +107,6 @@ export function DraggableEvent({
     };
   }, [isPreviewOpen]);
 
-  const style = compact
-    ? {
-        transform: CSS.Translate.toString(transform),
-      }
-    : undefined;
-
   function openPreview() {
     if (isDragging) {
       return;
@@ -127,13 +120,12 @@ export function DraggableEvent({
       <>
         <div
           ref={setNodeRef}
-          style={style}
           {...listeners}
           {...attributes}
           onClick={openPreview}
-          className={`${isTouchDevice ? "touch-auto" : "touch-none"} cursor-grab truncate rounded-lg border px-2 py-1 text-[11px] leading-4 active:cursor-grabbing ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
+          className={`${isTouchDevice ? "touch-auto" : "touch-none"} inline-flex max-w-full cursor-grab items-center rounded-lg border px-2 py-0.5 text-[11px] font-medium leading-4 shadow-xs transition-transform active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 ${theme.badge} ${isDragging ? "opacity-40" : "opacity-100"}`}
         >
-          {event.title}
+          <span className="truncate">{event.title}</span>
         </div>
 
         {canUsePortal && isPreviewOpen
@@ -156,7 +148,6 @@ export function DraggableEvent({
     <>
       <div
         ref={setNodeRef}
-        style={style}
         {...listeners}
         {...attributes}
         onClick={openPreview}
@@ -183,7 +174,7 @@ export function DraggableEvent({
   );
 }
 
-function EventDetailsModal({
+export function EventDetailsModal({
   event,
   availableParticipants,
   onSave,
@@ -200,6 +191,8 @@ function EventDetailsModal({
       category: PlannerEventCategory;
       startDate: string | null;
       endDate: string | null;
+      startTime?: string | null;
+      endTime?: string | null;
       participants: string[];
     },
   ) => void;
@@ -214,6 +207,8 @@ function EventDetailsModal({
   );
   const [startDate, setStartDate] = useState(event.startDate ?? "");
   const [endDate, setEndDate] = useState(event.endDate ?? "");
+  const [startTime, setStartTime] = useState(event.startTime ?? "");
+  const [endTime, setEndTime] = useState(event.endTime ?? "");
   const [participants, setParticipants] = useState(event.participants);
 
   function handleSubmit(eventForm: FormEvent<HTMLFormElement>) {
@@ -225,6 +220,8 @@ function EventDetailsModal({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
+      startTime: startTime || null,
+      endTime: endTime || null,
       participants,
     });
 
@@ -241,12 +238,15 @@ function EventDetailsModal({
       <EventPreviewModal
         heading="Event details"
         event={{
+          id: event.id,
           title: event.title,
           description: event.description,
           category: event.category,
           participants: event.participants,
           startDate: event.startDate,
           endDate: event.endDate,
+          startTime: event.startTime,
+          endTime: event.endTime,
         }}
         onEdit={() => setIsEditing(true)}
         onDelete={handleDeleteConfirm}
@@ -256,37 +256,28 @@ function EventDetailsModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Edit event: ${event.title}`}
-    >
-      <div
-        className="w-full max-w-md rounded-xl border border-sam-border bg-sam-surface p-4 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <PlannerEventForm
-          heading="Edit event"
-          submitLabel="Save changes"
-          title={title}
-          description={description}
-          category={category}
-          startDate={startDate}
-          endDate={endDate}
-          participants={participants}
-          availableParticipants={availableParticipants}
-          onTitleChange={setTitle}
-          onDescriptionChange={setDescription}
-          onCategoryChange={setCategory}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onParticipantsChange={setParticipants}
-          onSubmit={handleSubmit}
-          onCancel={() => setIsEditing(false)}
-        />
-      </div>
-    </div>
+    <PlannerEventForm
+      heading="Edit event"
+      submitLabel="Save changes"
+      title={title}
+      description={description}
+      category={category}
+      startDate={startDate}
+      endDate={endDate}
+      startTime={startTime}
+      endTime={endTime}
+      participants={participants}
+      availableParticipants={availableParticipants}
+      onTitleChange={setTitle}
+      onDescriptionChange={setDescription}
+      onCategoryChange={setCategory}
+      onStartDateChange={setStartDate}
+      onEndDateChange={setEndDate}
+      onStartTimeChange={setStartTime}
+      onEndTimeChange={setEndTime}
+      onParticipantsChange={setParticipants}
+      onSubmit={handleSubmit}
+      onCancel={() => setIsEditing(false)}
+    />
   );
 }

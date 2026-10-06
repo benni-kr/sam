@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { getInboxEventsFromState, plannerStateReducer } from "./planner-state";
 import {
   plannerSemesterIds,
+  eventOverlapsSemester,
+  buildSemester,
+  getAvailableSemesters,
   type PlannerEvent,
   type PlannerSemesterId,
 } from "../lib/planner";
@@ -114,6 +117,48 @@ describe("plannerStateReducer", () => {
       // Toggle again, he should be added back
       state = plannerStateReducer(state, action);
       expect(state[semesterIds[0]][0].participants).toContain("Leo");
+    });
+
+    it("safely removes the last remaining participant resulting in an empty array", () => {
+      const flatEvents: PlannerEvent[] = [
+        {
+          id: "evt-solo",
+          title: "Solo Event",
+          category: "Group Event",
+          startDate: "2026-05-10",
+          endDate: "2026-05-10",
+          participants: ["SoloUser"],
+        },
+      ];
+
+      const action = {
+        type: "TOGGLE_PARTICIPANT" as const,
+        payload: { eventId: "evt-solo", participantName: "SoloUser" },
+      };
+
+      const nextFlat = plannerStateReducer(flatEvents, action);
+      expect(nextFlat[0].participants).toEqual([]);
+    });
+
+    it("handles undefined or missing participants gracefully without throwing", () => {
+      const malformedFlat = [
+        {
+          id: "evt-malformed",
+          title: "Malformed Event",
+          category: "Other" as const,
+          startDate: "2026-05-10",
+          endDate: "2026-05-10",
+        } as PlannerEvent,
+      ];
+
+      const action = {
+        type: "TOGGLE_PARTICIPANT" as const,
+        payload: { eventId: "evt-malformed", participantName: "NewUser" },
+      };
+
+      expect(() => plannerStateReducer(malformedFlat, action)).not.toThrow();
+      const result = plannerStateReducer(malformedFlat, action);
+      expect(result[0].participants).toEqual(["NewUser"]);
     });
 
     it("removes a participant from EVERY event across all semesters", () => {
@@ -250,11 +295,252 @@ describe("plannerStateReducer", () => {
 });
 
 describe("getInboxEventsFromState", () => {
-  it("extracts only undated events and sorts them alphabetically", () => {
+  it("extracts only undated events and sorts them alphabetically from legacy dict", () => {
     const inbox = getInboxEventsFromState(testState);
 
     expect(inbox).toHaveLength(2);
     expect(inbox[0].title).toBe("Beach idea");
     expect(inbox[1].title).toBe("Winter Cabin");
   });
+
+  it("extracts only undated events and sorts them alphabetically from flat array", () => {
+    const flatEvents: PlannerEvent[] = [
+      {
+        id: "evt-1",
+        title: "Dated Event",
+        category: "Exam",
+        startDate: "2026-05-01",
+        endDate: "2026-05-01",
+        participants: [],
+      },
+      {
+        id: "inbox-z",
+        title: "Zoo Trip",
+        category: "Group Event",
+        startDate: null,
+        endDate: null,
+        participants: [],
+      },
+      {
+        id: "inbox-a",
+        title: "Aquarium Visit",
+        category: "Group Event",
+        startDate: null,
+        endDate: null,
+        participants: [],
+      },
+    ];
+
+    const inbox = getInboxEventsFromState(flatEvents);
+    expect(inbox).toHaveLength(2);
+    expect(inbox[0].title).toBe("Aquarium Visit");
+    expect(inbox[1].title).toBe("Zoo Trip");
+  });
 });
+
+describe("plannerStateReducer with Flat List State", () => {
+  const initialFlatEvents: PlannerEvent[] = [
+    {
+      id: "evt-1",
+      title: "Spring Picnic",
+      category: "Group Event",
+      startDate: "2026-04-15",
+      endDate: "2026-04-15",
+      participants: ["Maya", "Leo"],
+    },
+    {
+      id: "evt-border",
+      title: "Semester Transition Trip",
+      category: "Group Event",
+      startDate: "2026-09-28",
+      endDate: "2026-10-04",
+      participants: ["Maya"],
+    },
+    {
+      id: "evt-inbox",
+      title: "Future Idea",
+      category: "Other",
+      startDate: null,
+      endDate: null,
+      participants: [],
+    },
+  ];
+
+  it("handles CREATE_EVENT in flat list", () => {
+    const newEvent: PlannerEvent = {
+      id: "evt-future",
+      title: "Graduation Party",
+      category: "Group Event",
+      startDate: "2027-05-10",
+      endDate: "2027-05-10",
+      participants: ["Leo"],
+    };
+
+    const next = plannerStateReducer(initialFlatEvents, {
+      type: "CREATE_EVENT",
+      payload: { semesterId: "spring-2027", event: newEvent },
+    });
+
+    expect(next).toHaveLength(4);
+    expect(next.find((e: PlannerEvent) => e.id === "evt-future")).toEqual(newEvent);
+  });
+
+  it("handles UPDATE_EVENT in flat list", () => {
+    const next = plannerStateReducer(initialFlatEvents, {
+      type: "UPDATE_EVENT",
+      payload: {
+        eventId: "evt-1",
+        title: "Spring Picnic Updated",
+        description: "Updated notes",
+        category: "Group Event",
+        startDate: "2026-04-16",
+        endDate: "2026-04-16",
+        participants: ["Maya", "Leo", "Alex"],
+      },
+    });
+
+    const updated = next.find((e: PlannerEvent) => e.id === "evt-1");
+    expect(updated?.title).toBe("Spring Picnic Updated");
+    expect(updated?.startDate).toBe("2026-04-16");
+    expect(updated?.participants).toEqual(["Maya", "Leo", "Alex"]);
+  });
+
+  it("handles DELETE_EVENT in flat list", () => {
+    const next = plannerStateReducer(initialFlatEvents, {
+      type: "DELETE_EVENT",
+      payload: { eventId: "evt-1" },
+    });
+
+    expect(next).toHaveLength(2);
+    expect(next.find((e: PlannerEvent) => e.id === "evt-1")).toBeUndefined();
+  });
+
+  it("handles MOVE_EVENT_TO_DATE and clamps dates prior to 2026-04-01", () => {
+    // Attempting to move event to March 2026 (prior to origin date 2026-04-01)
+    const next = plannerStateReducer(initialFlatEvents, {
+      type: "MOVE_EVENT_TO_DATE",
+      payload: {
+        eventId: "evt-inbox",
+        dateKey: "2026-01-15",
+        targetSemesterId: "spring-2026",
+      },
+    });
+
+    const moved = next.find((e: PlannerEvent) => e.id === "evt-inbox");
+    expect(moved?.startDate).toBe("2026-04-01");
+    expect(moved?.endDate).toBe("2026-04-01");
+  });
+
+  it("handles MOVE_EVENT_TO_INBOX by clearing start and end dates", () => {
+    const next = plannerStateReducer(initialFlatEvents, {
+      type: "MOVE_EVENT_TO_INBOX",
+      payload: { eventId: "evt-1" },
+    });
+
+    const moved = next.find((e: PlannerEvent) => e.id === "evt-1");
+    expect(moved?.startDate).toBeNull();
+    expect(moved?.endDate).toBeNull();
+  });
+
+  it("handles REMOTE_UPSERT_EVENT for both insert and update in flat list", () => {
+    const insertedEvent: PlannerEvent = {
+      id: "evt-remote-new",
+      title: "Remote Broadcast Event",
+      category: "Exam",
+      startDate: "2026-06-01",
+      endDate: "2026-06-01",
+      participants: [],
+    };
+
+    // Insert
+    let next = plannerStateReducer(initialFlatEvents, {
+      type: "REMOTE_UPSERT_EVENT",
+      payload: { event: insertedEvent },
+    });
+    expect(next).toHaveLength(4);
+    expect(next.find((e: PlannerEvent) => e.id === "evt-remote-new")).toBeDefined();
+
+    // Update
+    const updatedInsertedEvent = { ...insertedEvent, title: "Remote Broadcast Event (Edited)" };
+    next = plannerStateReducer(next, {
+      type: "REMOTE_UPSERT_EVENT",
+      payload: { event: updatedInsertedEvent },
+    });
+    expect(next).toHaveLength(4);
+    expect(next.find((e: PlannerEvent) => e.id === "evt-remote-new")?.title).toBe(
+      "Remote Broadcast Event (Edited)",
+    );
+  });
+
+  it("handles REMOTE_DELETE_EVENT in flat list", () => {
+    const next = plannerStateReducer(initialFlatEvents, {
+      type: "REMOTE_DELETE_EVENT",
+      payload: { eventId: "evt-border" },
+    });
+
+    expect(next).toHaveLength(2);
+    expect(next.find((e: PlannerEvent) => e.id === "evt-border")).toBeUndefined();
+  });
+});
+
+describe("Cross-Semester & Border Cases Querying", () => {
+  const spring2026 = buildSemester("spring", 2026);
+  const fall2026 = buildSemester("fall", 2026);
+  const spring2027 = buildSemester("spring", 2027);
+
+  it("resolves border events spanning across semester boundaries in both semesters", () => {
+    const crossBorderEvent: PlannerEvent = {
+      id: "evt-cross-border",
+      title: "Cross Border Trip",
+      category: "Group Event",
+      startDate: "2026-09-28", // In Spring 2026
+      endDate: "2026-10-04",   // In Fall 2026
+      participants: [],
+    };
+
+    // Spring 2026 bounds: 2026-04-01 to 2026-09-30
+    // Fall 2026 bounds: 2026-10-01 to 2027-03-31
+    expect(eventOverlapsSemester(crossBorderEvent, spring2026)).toBe(true);
+    expect(eventOverlapsSemester(crossBorderEvent, fall2026)).toBe(true);
+    expect(eventOverlapsSemester(crossBorderEvent, spring2027)).toBe(false);
+  });
+
+  it("resolves future events for their respective dynamically generated semester", () => {
+    const futureEvent: PlannerEvent = {
+      id: "evt-future-2027",
+      title: "May 2027 Conference",
+      category: "Exam",
+      startDate: "2027-05-10",
+      endDate: "2027-05-12",
+      participants: [],
+    };
+
+    expect(eventOverlapsSemester(futureEvent, spring2026)).toBe(false);
+    expect(eventOverlapsSemester(futureEvent, fall2026)).toBe(false);
+    expect(eventOverlapsSemester(futureEvent, spring2027)).toBe(true);
+  });
+
+  it("dynamically extends available semesters when events exist in future semesters", () => {
+    const farFutureEvent: PlannerEvent = {
+      id: "evt-far-future",
+      title: "2028 Study Trip",
+      category: "Group Event",
+      startDate: "2028-05-01",
+      endDate: "2028-05-05",
+      participants: [],
+    };
+
+    // Fixed mock date: Oct 2026 (current = fall-2026, default max = spring-2027)
+    const refDate = new Date(2026, 9, 15);
+    const available = getAvailableSemesters([farFutureEvent], refDate);
+    const ids = available.map((s) => s.id);
+
+    expect(ids).toContain("spring-2026");
+    expect(ids).toContain("fall-2026");
+    expect(ids).toContain("spring-2027");
+    expect(ids).toContain("fall-2027");
+    expect(ids).toContain("spring-2028");
+  });
+});
+
+

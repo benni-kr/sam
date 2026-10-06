@@ -14,7 +14,6 @@ import {
   usePlannerState,
 } from "@/features/planner/state/planner-state";
 import {
-  defaultPlannerSemesterId,
   type PlannerEvent,
 } from "@/features/planner/lib/planner";
 
@@ -79,7 +78,7 @@ vi.mock("@/features/weekly-schedule/lib/week-persistence", () => ({
 
 const AllProviders = ({ children }: { children: ReactNode }) => (
   <FriendsProvider>
-    <PlannerStateProvider activeSemesterId={defaultPlannerSemesterId}>
+    <PlannerStateProvider activeSemesterId="spring-2026">
       {children}
     </PlannerStateProvider>
   </FriendsProvider>

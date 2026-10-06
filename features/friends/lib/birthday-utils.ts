@@ -149,10 +149,13 @@ export function getBirthdaysForDate(dateStr: string, friends: Friend[]) {
 
 /**
  * Builds a friendly birthday message for tooltips and banners.
+ * Uses past tense for past birthdays ("turned"), today tense ("turns"),
+ * and future tense ("is turning").
  */
 export function formatBirthdayMessage(
   dateStr: string,
   birthdays: Friend[],
+  todayStr?: string,
 ): string {
   if (birthdays.length === 0) {
     return "";
@@ -163,6 +166,43 @@ export function formatBirthdayMessage(
     name: friend.name,
     age: calculateAge(friend.birthday ?? "", dateStr),
   }));
+
+  const now = new Date();
+  const defaultToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const referenceToday = todayStr ?? defaultToday;
+
+  const isPast = dateStr < referenceToday;
+  const isToday = dateStr === referenceToday;
+
+  if (isPast) {
+    if (people.length === 1) {
+      const onlyPerson = people[0];
+      return `On ${dateLabel}, ${onlyPerson.name} turned ${onlyPerson.age}!`;
+    }
+
+    const head = people
+      .slice(0, -1)
+      .map((person) => `${person.name} turned ${person.age}`)
+      .join(", ");
+    const tail = people[people.length - 1];
+
+    return `On ${dateLabel}, ${head} and ${tail.name} turned ${tail.age}!`;
+  }
+
+  if (isToday) {
+    if (people.length === 1) {
+      const onlyPerson = people[0];
+      return `Today, ${onlyPerson.name} turns ${onlyPerson.age}!`;
+    }
+
+    const head = people
+      .slice(0, -1)
+      .map((person) => `${person.name} turns ${person.age}`)
+      .join(", ");
+    const tail = people[people.length - 1];
+
+    return `Today, ${head} and ${tail.name} turn ${tail.age}!`;
+  }
 
   if (people.length === 1) {
     const onlyPerson = people[0];

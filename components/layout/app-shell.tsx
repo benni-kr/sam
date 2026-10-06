@@ -23,9 +23,10 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationToggle } from "@/features/notifications/components/notification-toggle";
+import { CalendarFeedButton } from "@/components/layout/calendar-feed-button";
 import { Logo } from "@/components/ui/logo";
 
 import { PlannerTabs } from "@/features/planner/components/planner-tabs";
@@ -35,6 +36,7 @@ import { FilterStateProvider } from "@/features/planner/state/filter-state";
 import { PlannerStateProvider } from "@/features/planner/state/planner-state";
 import { usePlannerState } from "@/features/planner/state/planner-state";
 import { CreateEventModal } from "@/components/layout/create-event-modal";
+import { EventDetailsModal } from "@/features/planner/components/draggable-event";
 import { AddEventFab } from "@/components/layout/add-event-fab";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 import { CreateWeekEventModal } from "@/components/layout/create-week-event-modal";
@@ -47,7 +49,7 @@ import { getDefaultWeekAppointmentTimeRange } from "@/components/ui/time-picker"
 import {
   defaultPlannerSemesterId,
   getPlannerSemester,
-  plannerSemesters,
+  getSemesterIdForDate,
   type PlannerEventCategory,
   type PlannerEvent,
 } from "@/features/planner/lib/planner";
@@ -231,14 +233,21 @@ function AppShellFrame({
   children: React.ReactNode;
 }) {
   const {
-    events,
+    allEvents,
     isOffline,
     moveEventToInbox,
     moveEventToDate,
     createEvent,
+    updateEvent,
+    deleteEvent,
     createWeekEvent,
+    availableSemesters,
+    findWeekEventById,
   } = usePlannerState();
   const { friendNames } = useFriendsState();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -248,6 +257,8 @@ function AppShellFrame({
   const [category, setCategory] = useState<PlannerEventCategory>("Exam");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [weekTitle, setWeekTitle] = useState("");
   const [weekDescription, setWeekDescription] = useState("");
@@ -258,6 +269,55 @@ function AppShellFrame({
   const [weekEndTime, setWeekEndTime] = useState("");
   const [weekParticipants, setWeekParticipants] = useState<string[]>([]);
   const [isManageFriendsOpen, setIsManageFriendsOpen] = useState(false);
+  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+
+  const eventIdFromQuery = searchParams.get("event");
+  const deepLinkedEventId =
+    eventIdFromQuery && eventIdFromQuery !== dismissedEventId
+      ? eventIdFromQuery
+      : null;
+
+  const deepLinkedEvent = deepLinkedEventId
+    ? (allEvents.find((event: PlannerEvent) => event.id === deepLinkedEventId) ?? null)
+    : null;
+
+  useEffect(() => {
+    if (!eventIdFromQuery) return;
+
+    if (deepLinkedEvent?.startDate) {
+      const targetSemesterId = getSemesterIdForDate(deepLinkedEvent.startDate);
+      if (targetSemesterId && targetSemesterId !== semesterId) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.set("semester", targetSemesterId);
+        router.replace(`${pathname}?${nextParams.toString()}`);
+      }
+      return;
+    }
+
+    const weekMatch = findWeekEventById(eventIdFromQuery);
+    if (weekMatch) {
+      const shouldSwitchSemester = weekMatch.semesterId !== semesterId;
+      const shouldSwitchToWeek = pathname !== "/week";
+      if (shouldSwitchSemester || shouldSwitchToWeek) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.set("semester", weekMatch.semesterId);
+        router.replace(`/week?${nextParams.toString()}`);
+      }
+    }
+  }, [deepLinkedEvent, eventIdFromQuery, findWeekEventById, semesterId, searchParams, pathname, router]);
+
+  function handleCloseDeepLinkedEvent() {
+    if (eventIdFromQuery) {
+      setDismissedEventId(eventIdFromQuery);
+    }
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("event")) {
+        url.searchParams.delete("event");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -269,7 +329,7 @@ function AppShellFrame({
   );
 
   const activeEvent: PlannerEvent | null = activeEventId
-    ? (events.find((event: PlannerEvent) => event.id === activeEventId) ?? null)
+    ? (allEvents.find((event: PlannerEvent) => event.id === activeEventId) ?? null)
     : null;
 
   useEffect(() => {
@@ -352,6 +412,8 @@ function AppShellFrame({
     setCategory("Exam");
     setStartDate(dateKey ?? "");
     setEndDate(dateKey ?? "");
+    setStartTime("");
+    setEndTime("");
     setParticipants([]);
     setIsCreateModalOpen(true);
   }
@@ -363,6 +425,8 @@ function AppShellFrame({
     setCategory("Exam");
     setStartDate("");
     setEndDate("");
+    setStartTime("");
+    setEndTime("");
     setParticipants([]);
   }
 
@@ -422,12 +486,16 @@ function AppShellFrame({
       category,
       startDate: startDate || null,
       endDate: endDate || null,
+      startTime: startTime || null,
+      endTime: endTime || null,
       participants,
     });
 
     setTitle("");
     setStartDate("");
     setEndDate("");
+    setStartTime("");
+    setEndTime("");
     setParticipants([]);
     setIsCreateModalOpen(false);
   }
@@ -454,7 +522,7 @@ function AppShellFrame({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <main className="min-h-screen bg-page text-sam-text-1">
+        <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-page text-sam-text-1">
           {/*
             Sticky, not just in-flow: read-only mode has to stay visible no
             matter how far the user scrolls, otherwise a long calendar hides the
@@ -468,7 +536,7 @@ function AppShellFrame({
           <div className="mx-auto grid min-h-screen w-full max-w-350 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-6">
             <aside className="flex flex-col overflow-hidden rounded-3xl border border-sam-border bg-sam-surface p-4 shadow-xl dark:shadow-none lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
               {/* PINNED HEADER */}
-              <div className="flex-none flex flex-col gap-3 pb-4 mb-2 border-b border-sam-border/60 dark:border-slate-700/60">
+              <div className="flex-none flex flex-col gap-3 pb-2 mb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Logo className="h-8 w-auto" />
@@ -493,6 +561,7 @@ function AppShellFrame({
                     </a>
 
                     <NotificationToggle />
+                    <CalendarFeedButton />
                     <ThemeToggle />
                   </div>
                 </div>
@@ -530,8 +599,9 @@ function AppShellFrame({
 
                   {semesterMenuOpen ? (
                     <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-xl border border-sam-border bg-sam-surface p-1 shadow-[0_16px_40px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)]">
-                      {plannerSemesters.map((semester) => {
+                      {availableSemesters.map((semester) => {
                         const isActive = semester.id === semesterId;
+                        const isCurrent = semester.id === defaultPlannerSemesterId;
                         const href = buildSemesterHref(semester.id);
 
                         return (
@@ -540,13 +610,18 @@ function AppShellFrame({
                             href={href}
                             aria-current={isActive ? "true" : undefined}
                             onClick={() => setSemesterMenuOpen(false)}
-                            className={`block rounded-lg px-3 py-2 text-left transition-colors ${
+                            className={`flex items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
                               isActive
                                 ? "bg-sam-surface-3 text-sam-text-1 font-semibold"
                                 : "text-sam-text-2 hover:bg-sam-surface-2"
                             }`}
                           >
                             <span className="text-sm">{semester.label}</span>
+                            {isCurrent && (
+                              <span className="ml-2 rounded-md border border-sam-border bg-sam-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-sam-text-3">
+                                Current
+                              </span>
+                            )}
                           </a>
                         );
                       })}
@@ -561,13 +636,13 @@ function AppShellFrame({
 
               {/* SCROLLING CONTENT */}
               <div className="min-h-0 flex-1">
-                <div className="h-full space-y-5 overflow-y-auto pb-4 scrollbar-slim pr-2">
+                <div className="h-full space-y-5 overflow-y-auto pb-4 scrollbar-slim">
                   {sidebarContent ? sidebarContent : null}
                 </div>
               </div>
             </aside>
 
-            <section className="min-h-0 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:pr-1">
+            <section className="flex flex-col min-h-0 min-w-0 max-w-full lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:pr-1">
               {children}
             </section>
           </div>
@@ -592,6 +667,8 @@ function AppShellFrame({
           category={category}
           startDate={startDate}
           endDate={endDate}
+          startTime={startTime}
+          endTime={endTime}
           participants={participants}
           availableParticipants={friendNames}
           onTitleChange={setTitle}
@@ -601,6 +678,8 @@ function AppShellFrame({
           }
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
+          onStartTimeChange={setStartTime}
+          onEndTimeChange={setEndTime}
           onParticipantsChange={setParticipants}
           onSubmit={handleCreateEvent}
           onCancel={closeCreateEvent}
@@ -633,6 +712,16 @@ function AppShellFrame({
           isOpen={isManageFriendsOpen}
           onClose={() => setIsManageFriendsOpen(false)}
         />
+
+        {deepLinkedEvent ? (
+          <EventDetailsModal
+            event={deepLinkedEvent}
+            availableParticipants={friendNames}
+            onSave={updateEvent}
+            onDelete={deleteEvent}
+            onClose={handleCloseDeepLinkedEvent}
+          />
+        ) : null}
       </DndContext>
     </CreateEventProvider>
   );

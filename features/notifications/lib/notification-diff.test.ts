@@ -86,7 +86,12 @@ describe("toPushPayload", () => {
   it("renders a new-event payload with a stable per-event tag", () => {
     expect(
       toPushPayload({ kind: "new-event", eventId: "a", title: "Exam" }),
-    ).toEqual({ title: "New event", body: "Exam", tag: "event:a", url: "/" });
+    ).toEqual({
+      title: "New event",
+      body: "Exam",
+      tag: "event:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
   });
 
   it("formats the title according to category", () => {
@@ -139,7 +144,7 @@ describe("toPushPayload", () => {
       title: "New participant",
       body: "Mia joined Exam",
       tag: "participant:a",
-      url: "/",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
     });
   });
 
@@ -155,7 +160,7 @@ describe("toPushPayload", () => {
       title: "New participants",
       body: "Mia and Leo joined Exam",
       tag: "participant:a",
-      url: "/",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
     });
   });
 
@@ -171,7 +176,7 @@ describe("toPushPayload", () => {
       title: "New participants",
       body: "Mia, Leo and 1 other joined Exam",
       tag: "participant:a",
-      url: "/",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
     });
 
     expect(
@@ -185,7 +190,7 @@ describe("toPushPayload", () => {
       title: "New participants",
       body: "Mia, Leo and 3 others joined Exam",
       tag: "participant:a",
-      url: "/",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
     });
   });
 
@@ -214,13 +219,13 @@ describe("toPushPayload", () => {
     ).toBe("Idea");
   });
 
-  it("points a weekly event at the week view", () => {
+  it("points a weekly event at the week view with semester", () => {
     expect(
       toPushPayload({ kind: "new-event", eventId: "a", title: "Lab", day: "Mon" }).url,
-    ).toBe("/week");
+    ).toBe(`/week?semester=${defaultPlannerSemesterId}&event=a`);
   });
 
-  it("adds a semester query only when it is not the default one", () => {
+  it("always includes the semester query in the url", () => {
     const other = plannerSemesterIds.find((id) => id !== defaultPlannerSemesterId);
 
     expect(
@@ -230,7 +235,7 @@ describe("toPushPayload", () => {
         title: "Exam",
         semesterId: defaultPlannerSemesterId,
       }).url,
-    ).toBe("/");
+    ).toBe(`/?semester=${defaultPlannerSemesterId}&event=a`);
 
     expect(
       toPushPayload({
@@ -239,7 +244,7 @@ describe("toPushPayload", () => {
         title: "Exam",
         semesterId: other,
       }).url,
-    ).toBe(`/?semester=${other}`);
+    ).toBe(`/?semester=${other}&event=a`);
   });
 
   it("lets an explicit url override the derived target", () => {
@@ -249,5 +254,87 @@ describe("toPushPayload", () => {
         "/list",
       ).url,
     ).toBe("/list");
+  });
+
+  it("renders schedule-changed payloads for scheduled, rescheduled, and unscheduled", () => {
+    expect(
+      toPushPayload({
+        kind: "schedule-changed",
+        eventId: "a",
+        title: "Study session",
+        startDate: "2026-05-15",
+        startTime: "14:00",
+        endTime: "16:30",
+        changeType: "scheduled",
+      }),
+    ).toEqual({
+      title: "Group event scheduled",
+      body: "Study session scheduled for 15 May; 14:00 – 16:30",
+      tag: "event:a",
+      url: `/?semester=spring-2026&event=a`,
+    });
+
+    expect(
+      toPushPayload({
+        kind: "schedule-changed",
+        eventId: "a",
+        title: "Study session",
+        startDate: "2026-05-16",
+        startTime: "10:00",
+        changeType: "rescheduled",
+      }),
+    ).toEqual({
+      title: "Group event rescheduled",
+      body: "Study session moved to 16 May; 10:00",
+      tag: "event:a",
+      url: `/?semester=spring-2026&event=a`,
+    });
+
+    expect(
+      toPushPayload({
+        kind: "schedule-changed",
+        eventId: "a",
+        title: "Study session",
+        startDate: null,
+        changeType: "unscheduled",
+      }),
+    ).toEqual({
+      title: "Group event unscheduled",
+      body: "Study session moved to inbox",
+      tag: "event:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
+  });
+
+  it("renders participant left payloads correctly", () => {
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Study session",
+        participants: ["Mia"],
+        action: "left",
+      }),
+    ).toEqual({
+      title: "Participant left",
+      body: "Mia left Study session",
+      tag: "participant:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
+
+    expect(
+      toPushPayload({
+        kind: "new-participant",
+        eventId: "a",
+        title: "Study session",
+        participants: ["Mia", "Leo"],
+        action: "left",
+      }),
+    ).toEqual({
+      title: "Participants left",
+      body: "Mia and Leo left Study session",
+      tag: "participant:a",
+      url: `/?semester=${defaultPlannerSemesterId}&event=a`,
+    });
   });
 });

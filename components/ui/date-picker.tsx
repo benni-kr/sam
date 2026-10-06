@@ -20,6 +20,7 @@ type DatePickerProps = {
   clearLabel?: string;
   clearable?: boolean;
   ariaLabel?: string;
+  minDate?: string;
   className?: string;
   buttonClassName?: string;
   popoverClassName?: string;
@@ -63,6 +64,7 @@ export function DatePicker({
   clearLabel = "Clear date",
   clearable = true,
   ariaLabel,
+  minDate,
   className,
   buttonClassName,
   popoverClassName,
@@ -86,13 +88,21 @@ export function DatePicker({
     selectedDate ?? new Date(),
   );
 
+  const minDateObj = useMemo(() => {
+    if (!minDate) return undefined;
+    const parsed = parseISO(minDate);
+    return isValid(parsed) ? parsed : undefined;
+  }, [minDate]);
+
+  const effectiveMinYear = minDateObj ? minDateObj.getFullYear() : MIN_YEAR;
+
   const yearOptions = useMemo(
     () =>
       Array.from(
-        { length: MAX_YEAR - MIN_YEAR + 1 },
-        (_, idx) => MIN_YEAR + idx,
+        { length: MAX_YEAR - effectiveMinYear + 1 },
+        (_, idx) => effectiveMinYear + idx,
       ),
-    [],
+    [effectiveMinYear],
   );
 
   function updatePopoverPosition() {
@@ -251,11 +261,18 @@ export function DatePicker({
                 month={displayMonth}
                 onMonthChange={setDisplayMonth}
                 selected={selectedDate}
+                disabled={minDateObj ? { before: minDateObj } : undefined}
+                startMonth={minDateObj}
                 onDayClick={(_, __, event) => {
                   event.preventDefault();
                 }}
                 onSelect={(date) => {
-                  onChange(date ? format(date, "yyyy-MM-dd") : "");
+                  if (!date) {
+                    onChange("");
+                  } else {
+                    const formatted = format(date, "yyyy-MM-dd");
+                    onChange(minDate && formatted < minDate ? minDate : formatted);
+                  }
                   setIsOpen(false);
                 }}
                 modifiersClassNames={{

@@ -97,21 +97,23 @@ export function SidebarContent() {
             </div>
           </section>
 
-          <button
-            type="button"
-            onClick={() => openManageFriends()}
-            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
-          >
-            Manage friends
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => openManageFriends()}
+              className="w-full truncate rounded-lg border border-sam-border bg-sam-surface px-2.5 py-2 text-center text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
+            >
+              Manage friends
+            </button>
 
-          <button
-            type="button"
-            onClick={() => openCreateWeekEvent()}
-            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
-          >
-            + Add weekly appointment
-          </button>
+            <button
+              type="button"
+              onClick={() => openCreateWeekEvent()}
+              className="w-full truncate rounded-lg border border-sam-border bg-sam-surface px-2.5 py-2 text-center text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
+            >
+              + Appointment
+            </button>
+          </div>
 
           <FilterArea />
         </>
@@ -152,21 +154,23 @@ export function SidebarContent() {
             </div>
           </section>
 
-          <button
-            type="button"
-            onClick={() => openManageFriends()}
-            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
-          >
-            Manage friends
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => openManageFriends()}
+              className="w-full truncate rounded-lg border border-sam-border bg-sam-surface px-2.5 py-2 text-center text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
+            >
+              Manage friends
+            </button>
 
-          <button
-            type="button"
-            onClick={() => openCreateEvent()}
-            className="w-full rounded-lg border border-sam-border bg-sam-surface px-3 py-2 text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
-          >
-            + Add Event
-          </button>
+            <button
+              type="button"
+              onClick={() => openCreateEvent()}
+              className="w-full truncate rounded-lg border border-sam-border bg-sam-surface px-2.5 py-2 text-center text-xs font-medium text-sam-text-2 transition-colors hover:bg-sam-surface-2 dark:hover:bg-sam-surface-2"
+            >
+              + Event
+            </button>
+          </div>
 
           <FilterArea />
         </>

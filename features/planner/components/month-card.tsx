@@ -116,7 +116,8 @@ export function MonthCard({ month }: MonthCardProps) {
               // Layout Contract: this row MUST be relative because the
               // `MonthWeekEventOverlay` relies on it as the positioning
               // context for multi-day bars spanning the week.
-              className="relative grid grid-cols-7"
+              data-week-row
+              className="relative grid grid-cols-7 scroll-mt-4 sm:scroll-mt-6"
               style={{ minHeight: rowHeight }}
             >
               {rowCells.map((day, columnIndex) => {
