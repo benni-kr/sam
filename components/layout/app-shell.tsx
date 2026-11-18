@@ -54,6 +54,7 @@ import {
   type PlannerEvent,
 } from "@/features/planner/lib/planner";
 import {
+  type BackgroundIconKind,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
@@ -265,6 +266,9 @@ function AppShellFrame({
   const [weekCategory, setWeekCategory] =
     useState<PlannerWeekEventCategory>("University");
   const [weekDay, setWeekDay] = useState<PlannerWeekday>("Mon");
+  const [weekIcon, setWeekIcon] = useState<BackgroundIconKind | undefined>(
+    undefined,
+  );
   const [weekStartTime, setWeekStartTime] = useState("");
   const [weekEndTime, setWeekEndTime] = useState("");
   const [weekParticipants, setWeekParticipants] = useState<string[]>([]);
@@ -439,6 +443,7 @@ function AppShellFrame({
     setWeekDescription("");
     setWeekCategory("University");
     setWeekDay(day);
+    setWeekIcon(undefined);
     setWeekStartTime("");
     setWeekEndTime("");
     setWeekParticipants([]);
@@ -451,6 +456,7 @@ function AppShellFrame({
     setWeekDescription("");
     setWeekCategory("University");
     setWeekDay("Mon");
+    setWeekIcon(undefined);
     setWeekStartTime("");
     setWeekEndTime("");
     setWeekParticipants([]);
@@ -471,6 +477,7 @@ function AppShellFrame({
       day: weekDay,
       startTime: normalizedRange.startTime,
       endTime: normalizedRange.endTime,
+      icon: weekCategory === "Background" ? weekIcon : undefined,
       participants: weekParticipants,
     });
 
@@ -693,6 +700,7 @@ function AppShellFrame({
           description={weekDescription}
           category={weekCategory}
           day={weekDay}
+          icon={weekIcon}
           startTime={weekStartTime}
           endTime={weekEndTime}
           participants={weekParticipants}
@@ -701,6 +709,7 @@ function AppShellFrame({
           onDescriptionChange={setWeekDescription}
           onCategoryChange={setWeekCategory}
           onDayChange={setWeekDay}
+          onIconChange={setWeekIcon}
           onStartTimeChange={setWeekStartTime}
           onEndTimeChange={setWeekEndTime}
           onParticipantsChange={setWeekParticipants}

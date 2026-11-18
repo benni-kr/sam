@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 
 import { PlannerWeekEventForm } from "@/features/weekly-schedule/components/week-event-form";
 import {
+  type BackgroundIconKind,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
@@ -16,6 +17,7 @@ type CreateWeekEventModalProps = {
   description: string;
   category: PlannerWeekEventCategory;
   day: PlannerWeekday;
+  icon?: BackgroundIconKind;
   startTime: string;
   endTime: string;
   participants: string[];
@@ -24,6 +26,7 @@ type CreateWeekEventModalProps = {
   onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: PlannerWeekEventCategory) => void;
   onDayChange: (value: PlannerWeekday) => void;
+  onIconChange?: (value: BackgroundIconKind) => void;
   onStartTimeChange: (value: string) => void;
   onEndTimeChange: (value: string) => void;
   onParticipantsChange: (value: string[]) => void;
@@ -39,6 +42,7 @@ export function CreateWeekEventModal({
   description,
   category,
   day,
+  icon,
   startTime,
   endTime,
   participants,
@@ -47,6 +51,7 @@ export function CreateWeekEventModal({
   onDescriptionChange,
   onCategoryChange,
   onDayChange,
+  onIconChange,
   onStartTimeChange,
   onEndTimeChange,
   onParticipantsChange,
@@ -65,6 +70,7 @@ export function CreateWeekEventModal({
       description={description}
       category={category}
       day={day}
+      icon={icon}
       startTime={startTime}
       endTime={endTime}
       participants={participants}
@@ -73,6 +79,7 @@ export function CreateWeekEventModal({
       onDescriptionChange={onDescriptionChange}
       onCategoryChange={onCategoryChange}
       onDayChange={onDayChange}
+      onIconChange={onIconChange}
       onStartTimeChange={onStartTimeChange}
       onEndTimeChange={onEndTimeChange}
       onParticipantsChange={onParticipantsChange}

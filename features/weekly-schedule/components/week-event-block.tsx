@@ -1,11 +1,16 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
-import { getWeekTheme } from "@/features/weekly-schedule/lib/week-category-config";
+import { BackgroundIcon } from "@/features/weekly-schedule/components/background-icon";
+import {
+  getBackgroundIconKind,
+  getWeekTheme,
+} from "@/features/weekly-schedule/lib/week-category-config";
 import {
   getLaneSpan,
   MIN_EVENT_HEIGHT,
+  normalizeWeekEventInterval,
   TITLE_LINE_PX,
   PARTICIPANT_LINE_PX,
   type EventGroup,
@@ -94,13 +99,16 @@ export function WeekEventContent({
 export function WeekDayColumn({
   day,
   groups,
+  backgroundEvents = [],
   minuteScale,
   displayStartMinutes,
   onInteractionMouseDown,
+  onBackgroundEventClick,
   draggingEventId,
 }: {
   day: PlannerWeekday;
   groups: EventGroup[];
+  backgroundEvents?: PlannerWeekEvent[];
   minuteScale: number;
   displayStartMinutes: number;
   onInteractionMouseDown: (
@@ -109,6 +117,7 @@ export function WeekDayColumn({
     e: React.MouseEvent<HTMLElement>,
     blockRect: DOMRect,
   ) => void;
+  onBackgroundEventClick?: (event: PlannerWeekEvent) => void;
   draggingEventId?: string;
 }) {
   return (
@@ -125,6 +134,47 @@ export function WeekDayColumn({
           }
         />
 
+        {backgroundEvents.map((bgEvent) => {
+          const { startMinutes, endMinutes } = normalizeWeekEventInterval(
+            bgEvent.startTime,
+            bgEvent.endTime,
+          );
+          const top = (startMinutes - displayStartMinutes) * minuteScale;
+          const height = Math.max(20, (endMinutes - startMinutes) * minuteScale);
+
+          return (
+            <Fragment key={bgEvent.id}>
+              {/* Base clickable layer behind foreground cards */}
+              <button
+                type="button"
+                data-background-event-id={bgEvent.id}
+                title={`${bgEvent.title} (${bgEvent.startTime} – ${bgEvent.endTime})`}
+                aria-label={`${bgEvent.title} (${bgEvent.startTime} – ${bgEvent.endTime})`}
+                onClick={() => onBackgroundEventClick?.(bgEvent)}
+                className="bg-week-hatch absolute inset-x-0 z-[1] border-y border-dashed border-amber-400/40 transition-colors hover:bg-amber-100/50 dark:border-amber-500/25 dark:hover:bg-amber-900/25"
+                style={{
+                  top: `${top}px`,
+                  height: `${height}px`,
+                }}
+              />
+              {/* Subtle translucent hatch & icon veil so background slots peek through foreground cards */}
+              <div
+                data-background-veil-id={bgEvent.id}
+                aria-hidden="true"
+                className="bg-week-hatch-veil pointer-events-none absolute inset-x-0 z-20 flex items-center justify-center border-y border-dashed border-amber-500/25 text-amber-800/35 dark:border-amber-400/20 dark:text-amber-200/30"
+                style={{
+                  top: `${top}px`,
+                  height: `${height}px`,
+                }}
+              >
+                <BackgroundIcon
+                  kind={getBackgroundIconKind(bgEvent.title, bgEvent.icon)}
+                />
+              </div>
+            </Fragment>
+          );
+        })}
+
         {groups.map((group, groupIndex) => {
           const groupTop = (group.startMinutes - displayStartMinutes) * minuteScale;
           const groupHeight = Math.max(
@@ -136,7 +186,7 @@ export function WeekDayColumn({
           return (
             <div
               key={`${day}-${groupIndex}`}
-              className="absolute inset-x-0"
+              className="pointer-events-none absolute inset-x-0 z-10"
               style={{ top: `${groupTop}px`, height: `${groupHeight}px` }}
             >
               {group.items.map((item) => {
@@ -156,7 +206,7 @@ export function WeekDayColumn({
                       const rect = e.currentTarget.getBoundingClientRect();
                       onInteractionMouseDown(item.event, "move", e, rect);
                     }}
-                    className={`absolute flex items-center min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
+                    className={`pointer-events-auto absolute flex items-center min-w-0 cursor-grab select-none overflow-hidden rounded-md border px-1 py-px text-left shadow-[0_8px_18px_rgba(15,23,42,0.08)] ${item.event.id === draggingEventId ? "opacity-0 pointer-events-none" : "transition-transform hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.12)]"} ${theme.card}`}
                     style={{
                       top: `${top}px`,
                       left: `${item.lane * laneWidth}%`,

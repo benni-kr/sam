@@ -7,9 +7,15 @@ import {
   getDefaultWeekAppointmentTimeRange,
   TimePicker,
 } from "@/components/ui/time-picker";
+import { BackgroundIcon } from "@/features/weekly-schedule/components/background-icon";
+import {
+  BACKGROUND_ICON_OPTIONS,
+  getBackgroundIconKind,
+} from "@/features/weekly-schedule/lib/week-category-config";
 import {
   plannerWeekEventCategories,
   plannerWeekdays,
+  type BackgroundIconKind,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
@@ -21,6 +27,7 @@ type PlannerWeekEventFormProps = {
   description: string;
   category: PlannerWeekEventCategory;
   day: PlannerWeekday;
+  icon?: BackgroundIconKind;
   startTime: string;
   endTime: string;
   participants: string[];
@@ -29,6 +36,7 @@ type PlannerWeekEventFormProps = {
   onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: PlannerWeekEventCategory) => void;
   onDayChange: (value: PlannerWeekday) => void;
+  onIconChange?: (value: BackgroundIconKind) => void;
   onStartTimeChange: (value: string) => void;
   onEndTimeChange: (value: string) => void;
   onParticipantsChange: (value: string[]) => void;
@@ -50,6 +58,7 @@ export function PlannerWeekEventForm({
   description,
   category,
   day,
+  icon,
   startTime,
   endTime,
   participants,
@@ -58,6 +67,7 @@ export function PlannerWeekEventForm({
   onDescriptionChange,
   onCategoryChange,
   onDayChange,
+  onIconChange,
   onStartTimeChange,
   onEndTimeChange,
   onParticipantsChange,
@@ -68,6 +78,7 @@ export function PlannerWeekEventForm({
     startTime,
     endTime,
   );
+  const activeIconKind = getBackgroundIconKind(title, icon);
 
   function handleStartTimeChange(value: string) {
     onStartTimeChange(value);
@@ -92,7 +103,11 @@ export function PlannerWeekEventForm({
       heading={heading}
       submitLabel={submitLabel}
       title={title}
-      titlePlaceholder="Appointment name"
+      titlePlaceholder={
+        category === "Background"
+          ? "Background activity (e.g. Lunch)"
+          : "Appointment name"
+      }
       description={description}
       onDescriptionChange={onDescriptionChange}
       participants={participants}
@@ -105,9 +120,19 @@ export function PlannerWeekEventForm({
     >
       <select
         value={category}
-        onChange={(event) =>
-          onCategoryChange(event.target.value as PlannerWeekEventCategory)
-        }
+        onChange={(event) => {
+          const nextCategory = event.target.value as PlannerWeekEventCategory;
+          onCategoryChange(nextCategory);
+          if (
+            nextCategory === "Background" &&
+            !title.trim() &&
+            !startTime &&
+            !endTime
+          ) {
+            onStartTimeChange("12:00");
+            onEndTimeChange("13:00");
+          }
+        }}
         required
         className="w-full rounded-md border border-sam-border bg-sam-surface px-2.5 py-1.5 text-sm text-sam-text-2 outline-none ring-slate-300 focus:ring dark:bg-sam-surface-2 dark:ring-slate-600"
       >
@@ -151,6 +176,36 @@ export function PlannerWeekEventForm({
           align="right"
         />
       </div>
+
+      {category === "Background" && onIconChange ? (
+        <div className="rounded-md border border-sam-border bg-sam-surface p-2 dark:bg-sam-surface-2">
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sam-text-3">
+            Background icon
+          </p>
+          <div className="mt-2 grid grid-cols-6 gap-1.5">
+            {BACKGROUND_ICON_OPTIONS.map((option) => {
+              const isSelected = activeIconKind === option.kind;
+              return (
+                <button
+                  key={option.kind}
+                  type="button"
+                  onClick={() => onIconChange(option.kind)}
+                  title={option.label}
+                  aria-label={option.label}
+                  aria-pressed={isSelected}
+                  className={`flex h-9 items-center justify-center rounded-md border transition-colors ${
+                    isSelected
+                      ? "border-amber-500 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-950/50 dark:text-amber-200"
+                      : "border-sam-border bg-sam-surface text-sam-text-3 hover:bg-sam-surface-2 hover:text-sam-text-1 dark:bg-sam-surface"
+                  }`}
+                >
+                  <BackgroundIcon kind={option.kind} className="h-4 w-4" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </BaseEventForm>
   );
 }

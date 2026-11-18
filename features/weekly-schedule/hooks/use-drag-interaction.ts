@@ -239,6 +239,7 @@ export function useDragInteraction({
           day: target.day,
           startTime: minutesToTime(target.startMinutes),
           endTime: minutesToTime(target.endMinutes),
+          icon: event.icon,
           participants: event.participants,
         });
       } else if (state.mode === "move") {

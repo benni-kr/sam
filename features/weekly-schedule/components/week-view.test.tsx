@@ -31,6 +31,24 @@ const mockWeekEvents: PlannerWeekEvent[] = [
     endTime: "12:00",
     participants: ["Bob"],
   },
+  {
+    id: "event-3",
+    title: "Overlap Lecture",
+    category: "University",
+    day: "Mon",
+    startTime: "11:30",
+    endTime: "13:00",
+    participants: [],
+  },
+  {
+    id: "bg-lunch",
+    title: "Lunch",
+    category: "Background",
+    day: "Mon",
+    startTime: "12:00",
+    endTime: "13:00",
+    participants: [],
+  },
 ];
 
 vi.mock("@/features/planner/state/planner-state", () => ({
@@ -201,5 +219,26 @@ describe("WeekView mobile day controls", () => {
     });
 
     expect(screen.getByText("Mon – Wed")).toBeTruthy();
+  });
+
+  it("renders background activities with hatch pattern, through-foreground veil, icon-only watermark, and no lane splitting", () => {
+    const { container } = render(<WeekView />);
+
+    const bgButton = container.querySelector('[data-background-event-id="bg-lunch"]');
+    expect(bgButton).toBeTruthy();
+    expect(bgButton?.className).toContain("bg-week-hatch");
+    expect(bgButton?.textContent).toBe("");
+
+    const bgVeil = container.querySelector('[data-background-veil-id="bg-lunch"]');
+    expect(bgVeil).toBeTruthy();
+    expect(bgVeil?.className).toContain("bg-week-hatch-veil");
+    expect(bgVeil?.className).toContain("pointer-events-none");
+    // Only an icon watermark, zero text rendered inside the background veil
+    expect(bgVeil?.textContent).toBe("");
+    expect(bgVeil?.querySelector("svg")).toBeTruthy();
+
+    // Foreground event overlapping 12:00-13:00 stays at full 100% width (no lane split)
+    const overlapLectureButton = screen.getByTitle("Overlap Lecture");
+    expect((overlapLectureButton as HTMLElement).style.width).toBe("100%");
   });
 });
