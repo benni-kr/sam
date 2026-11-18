@@ -12,7 +12,19 @@ export type PlannerWeekEventCategory =
   | "University"
   | "Language courses"
   | "Sports"
-  | "Other";
+  | "Other"
+  | "Background";
+
+/**
+ * Available watermark icon kinds for Background weekly schedule activities.
+ */
+export type BackgroundIconKind =
+  | "lunch"
+  | "coffee"
+  | "study"
+  | "workout"
+  | "commute"
+  | "rest";
 
 /**
  * The fixed category set for weekly schedule events.
@@ -22,6 +34,7 @@ export const plannerWeekEventCategories: PlannerWeekEventCategory[] = [
   "Language courses",
   "Sports",
   "Other",
+  "Background",
 ];
 
 /**
@@ -67,6 +80,8 @@ export type PlannerWeekEvent = {
   startTime: string;
   /** End time in 24-hour HH:MM format used by the time grid. */
   endTime: string;
+  /** Optional watermark icon kind for Background category activities. */
+  icon?: BackgroundIconKind;
   /** Participant names are stored as display strings and matched case-insensitively. */
   participants: string[];
 };

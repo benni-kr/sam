@@ -52,6 +52,8 @@ export type PlannerWeekAction =
         startTime: string;
         /** Updated end time in HH:MM format. */
         endTime: string;
+        /** Updated watermark icon kind for Background activities. */
+        icon?: PlannerWeekEvent["icon"];
         /** Updated participant list, normalized against the friends domain. */
         participants: string[];
       };
@@ -187,6 +189,10 @@ export function plannerWeekStateReducer(
             day: action.payload.day,
             startTime: action.payload.startTime,
             endTime: action.payload.endTime,
+            icon:
+              action.payload.category === "Background"
+                ? action.payload.icon
+                : undefined,
             participants: action.payload.participants,
           };
         }),

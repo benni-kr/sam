@@ -147,4 +147,34 @@ describe("Weekly Schedule Persistence Data Integrity", () => {
     expect(result[plannerSemesterIds[0]]).toHaveLength(1);
     expect(result[plannerSemesterIds[0]]![0].title).toBe("Lecture");
   });
+
+  it("round-trips Background category icon metadata cleanly inside row description", () => {
+    const bgEvent: PlannerWeekEvent = {
+      id: "wevt-bg-1",
+      title: "Coffee Break",
+      description: "Cafeteria",
+      category: "Background",
+      day: "Wed",
+      startTime: "15:00",
+      endTime: "15:30",
+      icon: "coffee",
+      participants: [],
+    };
+
+    const row = weekEventToRow(bgEvent, plannerSemesterIds[0], "test-scope");
+    expect(row.description).toBe("[[icon:coffee]]\nCafeteria");
+
+    const parsed = rowToPlannerWeekEvent(row);
+    expect(parsed?.event).toEqual(bgEvent);
+
+    const noDescBg: PlannerWeekEvent = {
+      ...bgEvent,
+      id: "wevt-bg-2",
+      description: undefined,
+      icon: "lunch",
+    };
+    const rowNoDesc = weekEventToRow(noDescBg, plannerSemesterIds[0], "test-scope");
+    expect(rowNoDesc.description).toBe("[[icon:lunch]]");
+    expect(rowToPlannerWeekEvent(rowNoDesc)?.event).toEqual(noDescBg);
+  });
 });

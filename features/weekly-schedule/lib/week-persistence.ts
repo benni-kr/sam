@@ -14,10 +14,12 @@ import {
 import {
   plannerWeekEventCategories,
   plannerWeekdays,
+  type BackgroundIconKind,
   type PlannerWeekEvent,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
 } from "@/features/weekly-schedule/lib/week-types";
+import { isBackgroundIconKind } from "@/features/weekly-schedule/lib/week-category-config";
 import { getPlannerScope } from "@/features/planner/lib/planner-scope";
 
 export type PlannerWeekEventsBySemester = Partial<
@@ -109,6 +111,41 @@ export function normalizeParticipants(value: unknown) {
     .filter(Boolean);
 }
 
+const BACKGROUND_ICON_PREFIX_RE = /^\[\[icon:([a-z]+)\]\](?:\n([\s\S]*))?$/;
+
+export function encodeWeekEventDescription(
+  description?: string,
+  icon?: BackgroundIconKind,
+): string | null {
+  const trimmed = description?.trim() ?? "";
+  if (icon && isBackgroundIconKind(icon)) {
+    return trimmed ? `[[icon:${icon}]]\n${trimmed}` : `[[icon:${icon}]]`;
+  }
+  return trimmed || null;
+}
+
+export function decodeWeekEventDescription(raw: string | null): {
+  description?: string;
+  icon?: BackgroundIconKind;
+} {
+  if (!raw) {
+    return {};
+  }
+
+  const match = raw.match(BACKGROUND_ICON_PREFIX_RE);
+  if (match && isBackgroundIconKind(match[1])) {
+    const rest = match[2]?.trim();
+    return {
+      icon: match[1],
+      description: rest || undefined,
+    };
+  }
+
+  return {
+    description: raw || undefined,
+  };
+}
+
 export function rowToPlannerWeekEvent(
   row: SupabaseWeekEventRow,
 ): { semesterId: PlannerSemesterId; event: PlannerWeekEvent } | null {
@@ -121,17 +158,19 @@ export function rowToPlannerWeekEvent(
     : "Other";
 
   const targetSemesterId = row.semester_id?.trim() || defaultPlannerSemesterId;
+  const decoded = decodeWeekEventDescription(row.description);
 
   return {
     semesterId: targetSemesterId,
     event: {
       id: row.event_id,
       title: row.title,
-      description: row.description ?? undefined,
+      description: decoded.description,
       category,
       day: row.day,
       startTime: row.start_time,
       endTime: row.end_time,
+      ...(category === "Background" && decoded.icon ? { icon: decoded.icon } : {}),
       participants: normalizeParticipants(row.participants),
     },
   };
@@ -147,7 +186,10 @@ export function weekEventToRow(
     semester_id: semesterId,
     event_id: event.id,
     title: event.title,
-    description: event.description ?? null,
+    description: encodeWeekEventDescription(
+      event.description,
+      event.category === "Background" ? event.icon : undefined,
+    ),
     category: event.category,
     day: event.day,
     start_time: event.startTime,
@@ -338,7 +380,18 @@ export async function updateSupabaseWeekEvent(
   const body: Record<string, unknown> = {};
 
   if (patch.title !== undefined) body.title = patch.title;
-  if (patch.description !== undefined) body.description = patch.description ?? null;
+  if (patch.description !== undefined || patch.icon !== undefined) {
+    const effectiveIcon =
+      patch.category !== undefined
+        ? patch.category === "Background"
+          ? patch.icon
+          : undefined
+        : patch.icon;
+    body.description = encodeWeekEventDescription(
+      patch.description,
+      effectiveIcon,
+    );
+  }
   if (patch.category !== undefined) body.category = patch.category;
   if (patch.day !== undefined) body.day = patch.day;
   if (patch.startTime !== undefined) body.start_time = patch.startTime;
