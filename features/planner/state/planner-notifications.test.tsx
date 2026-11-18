@@ -398,13 +398,10 @@ describe("Planner Push Notification Dispatching", () => {
     );
   });
 
-  it("handles toggling participants on undated group events without crashing even if broadcast rejects", async () => {
-    mocks.broadcastNotifications.mockRejectedValueOnce(
-      new Error("Network failure"),
-    );
-
+  it("does not broadcast when updating or toggling participants on an inbox group event", async () => {
     const { result } = renderHook(
       () => ({
+        friends: useFriendsState(),
         planner: usePlannerState(),
       }),
       { wrapper: AllProviders },
@@ -412,7 +409,11 @@ describe("Planner Push Notification Dispatching", () => {
 
     await waitFor(() => expect(mocks.loadPlanner).toHaveBeenCalled());
 
-    // Create undated group event in inbox
+    await act(async () => {
+      result.current.friends.addFriend("Bob");
+    });
+
+    // Create undated group event in inbox (silent)
     await act(async () => {
       result.current.planner.createEvent({
         title: "Undated Group Hangout",
@@ -427,19 +428,24 @@ describe("Planner Push Notification Dispatching", () => {
       (e) => e.title === "Undated Group Hangout",
     );
     expect(event).toBeDefined();
+    expect(mocks.broadcastNotifications).not.toHaveBeenCalled();
 
-    // Toggle participant in and verify no crash occurs even with rejected broadcast
+    // Toggle participant on inbox event -> still silent
     await act(async () => {
-      expect(() => {
-        result.current.planner.toggleParticipant(event!.id, "Bob");
-      }).not.toThrow();
+      result.current.planner.toggleParticipant(event!.id, "Bob");
     });
+    expect(mocks.broadcastNotifications).not.toHaveBeenCalled();
 
-    // Toggle participant out
+    // Update inbox event details & participants while remaining in inbox -> still silent
     await act(async () => {
-      expect(() => {
-        result.current.planner.toggleParticipant(event!.id, "Bob");
-      }).not.toThrow();
+      result.current.planner.updateEvent(event!.id, {
+        title: "Updated Inbox Hangout",
+        category: "Group Event",
+        startDate: null,
+        endDate: null,
+        participants: ["Bob", "Alice"],
+      });
     });
+    expect(mocks.broadcastNotifications).not.toHaveBeenCalled();
   });
 });
