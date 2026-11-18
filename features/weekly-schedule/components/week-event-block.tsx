@@ -10,7 +10,6 @@ import {
 import {
   getLaneSpan,
   MIN_EVENT_HEIGHT,
-  normalizeWeekEventInterval,
   TITLE_LINE_PX,
   PARTICIPANT_LINE_PX,
   type EventGroup,
@@ -99,7 +98,7 @@ export function WeekEventContent({
 export function WeekDayColumn({
   day,
   groups,
-  backgroundEvents = [],
+  backgroundGroups = [],
   minuteScale,
   displayStartMinutes,
   onInteractionMouseDown,
@@ -108,7 +107,7 @@ export function WeekDayColumn({
 }: {
   day: PlannerWeekday;
   groups: EventGroup[];
-  backgroundEvents?: PlannerWeekEvent[];
+  backgroundGroups?: EventGroup[];
   minuteScale: number;
   displayStartMinutes: number;
   onInteractionMouseDown: (
@@ -134,45 +133,54 @@ export function WeekDayColumn({
           }
         />
 
-        {backgroundEvents.map((bgEvent) => {
-          const { startMinutes, endMinutes } = normalizeWeekEventInterval(
-            bgEvent.startTime,
-            bgEvent.endTime,
-          );
-          const top = (startMinutes - displayStartMinutes) * minuteScale;
-          const height = Math.max(20, (endMinutes - startMinutes) * minuteScale);
+        {backgroundGroups.flatMap((group) => {
+          const laneWidth = 100 / group.laneCount;
 
-          return (
-            <Fragment key={bgEvent.id}>
-              {/* Base clickable layer behind foreground cards */}
-              <button
-                type="button"
-                data-background-event-id={bgEvent.id}
-                title={`${bgEvent.title} (${bgEvent.startTime} – ${bgEvent.endTime})`}
-                aria-label={`${bgEvent.title} (${bgEvent.startTime} – ${bgEvent.endTime})`}
-                onClick={() => onBackgroundEventClick?.(bgEvent)}
-                className="bg-week-hatch absolute inset-x-0 z-[1] border-y border-dashed border-amber-400/40 transition-colors hover:bg-amber-100/50 dark:border-amber-500/25 dark:hover:bg-amber-900/25"
-                style={{
-                  top: `${top}px`,
-                  height: `${height}px`,
-                }}
-              />
-              {/* Subtle translucent hatch & icon veil so background slots peek through foreground cards */}
-              <div
-                data-background-veil-id={bgEvent.id}
-                aria-hidden="true"
-                className="bg-week-hatch-veil pointer-events-none absolute inset-x-0 z-20 flex items-center justify-center border-y border-dashed border-amber-500/25 text-amber-800/35 dark:border-amber-400/20 dark:text-amber-200/30"
-                style={{
-                  top: `${top}px`,
-                  height: `${height}px`,
-                }}
-              >
-                <BackgroundIcon
-                  kind={getBackgroundIconKind(bgEvent.title, bgEvent.icon)}
+          return group.items.map((item) => {
+            const bgEvent = item.event;
+            const top = (item.startMinutes - displayStartMinutes) * minuteScale;
+            const height = Math.max(
+              20,
+              (item.endMinutes - item.startMinutes) * minuteScale,
+            );
+            const span = getLaneSpan(item, group);
+            const positionStyle = {
+              top: `${top}px`,
+              left: `${item.lane * laneWidth}%`,
+              width: `${laneWidth * span}%`,
+              height: `${height}px`,
+            };
+            const dividerClass =
+              item.lane > 0
+                ? "border-l border-dashed border-amber-400/35 dark:border-amber-500/25"
+                : "";
+
+            return (
+              <Fragment key={bgEvent.id}>
+                {/* Base clickable layer behind foreground cards */}
+                <button
+                  type="button"
+                  data-background-event-id={bgEvent.id}
+                  title={`${bgEvent.title} (${bgEvent.startTime} – ${bgEvent.endTime})`}
+                  aria-label={`${bgEvent.title} (${bgEvent.startTime} – ${bgEvent.endTime})`}
+                  onClick={() => onBackgroundEventClick?.(bgEvent)}
+                  className={`bg-week-hatch absolute z-[1] border-y border-dashed border-amber-400/40 transition-colors hover:bg-amber-100/50 dark:border-amber-500/25 dark:hover:bg-amber-900/25 ${dividerClass}`}
+                  style={positionStyle}
                 />
-              </div>
-            </Fragment>
-          );
+                {/* Subtle translucent hatch & icon veil so background slots peek through foreground cards */}
+                <div
+                  data-background-veil-id={bgEvent.id}
+                  aria-hidden="true"
+                  className="bg-week-hatch-veil pointer-events-none absolute z-20 flex items-center justify-center border-y border-dashed border-amber-500/25 text-amber-800/35 dark:border-amber-400/20 dark:text-amber-200/30"
+                  style={positionStyle}
+                >
+                  <BackgroundIcon
+                    kind={getBackgroundIconKind(bgEvent.title, bgEvent.icon)}
+                  />
+                </div>
+              </Fragment>
+            );
+          });
         })}
 
         {groups.map((group, groupIndex) => {

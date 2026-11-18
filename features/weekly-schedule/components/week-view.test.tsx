@@ -49,6 +49,26 @@ const mockWeekEvents: PlannerWeekEvent[] = [
     endTime: "13:00",
     participants: [],
   },
+  {
+    id: "bg-coffee",
+    title: "Coffee Break",
+    category: "Background",
+    day: "Tue",
+    startTime: "14:00",
+    endTime: "15:00",
+    icon: "coffee",
+    participants: [],
+  },
+  {
+    id: "bg-study",
+    title: "Focus",
+    category: "Background",
+    day: "Tue",
+    startTime: "14:30",
+    endTime: "15:30",
+    icon: "study",
+    participants: [],
+  },
 ];
 
 vi.mock("@/features/planner/state/planner-state", () => ({
@@ -240,5 +260,19 @@ describe("WeekView mobile day controls", () => {
     // Foreground event overlapping 12:00-13:00 stays at full 100% width (no lane split)
     const overlapLectureButton = screen.getByTitle("Overlap Lecture");
     expect((overlapLectureButton as HTMLElement).style.width).toBe("100%");
+  });
+
+  it("splits overlapping background activities side-by-side independently of foreground lanes", () => {
+    const { container } = render(<WeekView />);
+
+    const coffeeBtn = container.querySelector('[data-background-event-id="bg-coffee"]') as HTMLElement | null;
+    const studyBtn = container.querySelector('[data-background-event-id="bg-study"]') as HTMLElement | null;
+    expect(coffeeBtn).toBeTruthy();
+    expect(studyBtn).toBeTruthy();
+
+    expect(coffeeBtn?.style.left).toBe("0%");
+    expect(coffeeBtn?.style.width).toBe("50%");
+    expect(studyBtn?.style.left).toBe("50%");
+    expect(studyBtn?.style.width).toBe("50%");
   });
 });

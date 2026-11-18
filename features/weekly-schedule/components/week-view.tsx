@@ -108,6 +108,23 @@ export const mobileDaysCountStore = {
   },
 };
 
+function buildLayoutsByDay(
+  byDay: Record<PlannerWeekday, PlannerWeekEvent[]>,
+): Record<PlannerWeekday, DayLayout> {
+  return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(
+    (accumulator, day) => {
+      accumulator[day] = {
+        groups: buildDayLayouts(byDay[day] ?? []),
+      };
+      return accumulator;
+    },
+    {
+      Mon: { groups: [] }, Tue: { groups: [] }, Wed: { groups: [] },
+      Thu: { groups: [] }, Fri: { groups: [] }, Sat: { groups: [] }, Sun: { groups: [] },
+    },
+  );
+}
+
 export function WeekView() {
   const {
     weekEvents,
@@ -216,20 +233,15 @@ export function WeekView() {
     };
   }, [visibleWeekEvents]);
 
-  const layouts = useMemo(() => {
-    return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(
-      (accumulator, day) => {
-        accumulator[day] = {
-          groups: buildDayLayouts(foregroundEventsByDay[day] ?? []),
-        };
-        return accumulator;
-      },
-      {
-        Mon: { groups: [] }, Tue: { groups: [] }, Wed: { groups: [] },
-        Thu: { groups: [] }, Fri: { groups: [] }, Sat: { groups: [] }, Sun: { groups: [] },
-      },
-    );
-  }, [foregroundEventsByDay]);
+  const layouts = useMemo(
+    () => buildLayoutsByDay(foregroundEventsByDay),
+    [foregroundEventsByDay],
+  );
+
+  const backgroundLayouts = useMemo(
+    () => buildLayoutsByDay(backgroundEventsByDay),
+    [backgroundEventsByDay],
+  );
 
   const availableDays = useMemo(() => {
     const sunVisible = (eventsByDay["Sun"]?.length ?? 0) > 0;
@@ -488,7 +500,7 @@ export function WeekView() {
             key={day}
             day={day}
             groups={(draggingLayouts?.[day] ?? layouts[day]).groups}
-            backgroundEvents={backgroundEventsByDay[day]}
+            backgroundGroups={backgroundLayouts[day].groups}
             minuteScale={minuteScale}
             displayStartMinutes={displayStartMinutes}
             onInteractionMouseDown={handleInteractionMouseDown}
