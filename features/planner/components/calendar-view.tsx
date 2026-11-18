@@ -25,48 +25,71 @@ export function CalendarView() {
   const { months, allEvents } = usePlannerState();
   const searchParams = useSearchParams();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const handledScrollKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const eventId = searchParams.get("event");
+    const semesterKey = searchParams.get("semester") ?? "default";
+    const scrollKey = `${semesterKey}|${eventId ?? ""}`;
+
+    // Never hijack the user's scroll position after initial mount / deep-link scroll
+    // when events are created, edited, dragged, or deleted.
+    if (handledScrollKeyRef.current === scrollKey) {
+      return;
+    }
+
     if (eventId) {
       const event = allEvents.find((e) => e.id === eventId);
-      if (event?.startDate) {
-        const scrollToDayOrMonth = () => {
-          const dayElement = document.querySelector(
-            `[data-date-key="${event.startDate}"]`,
-          );
-          if (dayElement) {
-            dayElement.scrollIntoView({
-              behavior: "smooth",
-              block: "center",
-            });
-            return true;
-          }
-
-          const parts = event.startDate?.split("-");
-          if (parts && parts.length === 3) {
-            const targetYear = parseInt(parts[0], 10);
-            const targetMonthIndex = parseInt(parts[1], 10) - 1;
-            const monthElement = document.querySelector(
-              `[data-month-year="${targetYear}"][data-month-index="${targetMonthIndex}"]`,
-            );
-            if (monthElement) {
-              monthElement.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-              return true;
-            }
-          }
-          return false;
-        };
-
-        if (!scrollToDayOrMonth()) {
-          const timer = setTimeout(scrollToDayOrMonth, 120);
-          return () => clearTimeout(timer);
-        }
+      if (!event) {
+        // Wait for events to hydrate before resolving the deep-linked event.
         return;
       }
+
+      if (!event.startDate) {
+        handledScrollKeyRef.current = scrollKey;
+        return;
+      }
+
+      const scrollToDayOrMonth = () => {
+        const dayElement = document.querySelector(
+          `[data-date-key="${event.startDate}"]`,
+        );
+        if (dayElement) {
+          dayElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          handledScrollKeyRef.current = scrollKey;
+          return true;
+        }
+
+        const parts = event.startDate?.split("-");
+        if (parts && parts.length === 3) {
+          const targetYear = parseInt(parts[0], 10);
+          const targetMonthIndex = parseInt(parts[1], 10) - 1;
+          const monthElement = document.querySelector(
+            `[data-month-year="${targetYear}"][data-month-index="${targetMonthIndex}"]`,
+          );
+          if (monthElement) {
+            monthElement.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+            handledScrollKeyRef.current = scrollKey;
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (!scrollToDayOrMonth()) {
+        const timer = setTimeout(() => {
+          scrollToDayOrMonth();
+          handledScrollKeyRef.current = scrollKey;
+        }, 120);
+        return () => clearTimeout(timer);
+      }
+      return;
     }
 
     const scrollToCurrentWeekOrMonth = () => {
@@ -102,8 +125,13 @@ export function CalendarView() {
       return false;
     };
 
-    if (!scrollToCurrentWeekOrMonth()) {
-      const timer = setTimeout(scrollToCurrentWeekOrMonth, 120);
+    if (scrollToCurrentWeekOrMonth()) {
+      handledScrollKeyRef.current = scrollKey;
+    } else {
+      const timer = setTimeout(() => {
+        scrollToCurrentWeekOrMonth();
+        handledScrollKeyRef.current = scrollKey;
+      }, 120);
       return () => clearTimeout(timer);
     }
   }, [allEvents, searchParams]);
