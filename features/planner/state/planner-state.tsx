@@ -67,6 +67,7 @@ import {
 } from "@/features/planner/lib/planner";
 import {
   plannerWeekEventCategories,
+  type BackgroundIconKind,
   type PlannerWeekEvent,
   type PlannerWeekEventCategory,
   type PlannerWeekday,
@@ -136,6 +137,7 @@ type PlannerStateContextValue = {
     day: PlannerWeekday;
     startTime: string;
     endTime: string;
+    icon?: BackgroundIconKind;
     participants: string[];
   }) => void;
   updateWeekEvent: (
@@ -147,6 +149,7 @@ type PlannerStateContextValue = {
       day: PlannerWeekday;
       startTime: string;
       endTime: string;
+      icon?: BackgroundIconKind;
       participants: string[];
     },
   ) => void;
@@ -1515,45 +1518,45 @@ export function PlannerStateProvider({
             });
           }
 
-          const added = participants.filter(
-            (p) => !oldEvent.participants.includes(p),
-          );
-          const removed = oldEvent.participants.filter(
-            (p) => !participants.includes(p),
-          );
-          const targetSemesterId = normalizedDates.startDate
-            ? getSemesterIdForDate(normalizedDates.startDate)
-            : oldEvent.startDate
-              ? getSemesterIdForDate(oldEvent.startDate)
-              : normalizedSemesterId;
+          // Only broadcast participant changes for scheduled (calendar) events;
+          // changes on events sitting in the Inbox stay silent.
+          if (newHasDate) {
+            const added = participants.filter(
+              (p) => !oldEvent.participants.includes(p),
+            );
+            const removed = oldEvent.participants.filter(
+              (p) => !participants.includes(p),
+            );
+            const targetSemesterId = getSemesterIdForDate(normalizedDates.startDate!);
 
-          if (added.length > 0) {
-            notifs.push({
-              kind: "new-participant",
-              eventId,
-              title,
-              category: input.category,
-              startDate: normalizedDates.startDate,
-              startTime: input.startTime ?? null,
-              endTime: input.endTime ?? null,
-              semesterId: targetSemesterId,
-              participants: added,
-              action: "joined",
-            });
-          }
-          if (removed.length > 0) {
-            notifs.push({
-              kind: "new-participant",
-              eventId,
-              title,
-              category: input.category,
-              startDate: normalizedDates.startDate,
-              startTime: input.startTime ?? null,
-              endTime: input.endTime ?? null,
-              semesterId: targetSemesterId,
-              participants: removed,
-              action: "left",
-            });
+            if (added.length > 0) {
+              notifs.push({
+                kind: "new-participant",
+                eventId,
+                title,
+                category: input.category,
+                startDate: normalizedDates.startDate,
+                startTime: input.startTime ?? null,
+                endTime: input.endTime ?? null,
+                semesterId: targetSemesterId,
+                participants: added,
+                action: "joined",
+              });
+            }
+            if (removed.length > 0) {
+              notifs.push({
+                kind: "new-participant",
+                eventId,
+                title,
+                category: input.category,
+                startDate: normalizedDates.startDate,
+                startTime: input.startTime ?? null,
+                endTime: input.endTime ?? null,
+                semesterId: targetSemesterId,
+                participants: removed,
+                action: "left",
+              });
+            }
           }
 
           if (notifs.length > 0) {
@@ -1591,6 +1594,9 @@ export function PlannerStateProvider({
           day: input.day,
           startTime: input.startTime,
           endTime: input.endTime,
+          ...(input.category === "Background" && input.icon
+            ? { icon: input.icon }
+            : {}),
           participants: dedupeParticipantNames(input.participants),
         };
 
@@ -1622,6 +1628,9 @@ export function PlannerStateProvider({
 
         const participants = dedupeParticipantNames(input.participants);
 
+        const nextIcon =
+          input.category === "Background" ? input.icon : undefined;
+
         dispatchWeek({
           type: "UPDATE_WEEK_EVENT",
           payload: {
@@ -1632,6 +1641,7 @@ export function PlannerStateProvider({
             day: input.day,
             startTime: input.startTime,
             endTime: input.endTime,
+            icon: nextIcon,
             participants,
           },
         });
@@ -1644,6 +1654,7 @@ export function PlannerStateProvider({
             day: input.day,
             startTime: input.startTime,
             endTime: input.endTime,
+            icon: nextIcon,
             participants,
             semesterId: normalizedSemesterId,
           })
@@ -1709,7 +1720,7 @@ export function PlannerStateProvider({
               console.error("Failed to toggle participant:", error);
             });
 
-          if (event.category === "Group Event") {
+          if (event.category === "Group Event" && Boolean(event.startDate)) {
             try {
               const notifItem: NotificationItem = {
                 kind: "new-participant",
@@ -1719,9 +1730,7 @@ export function PlannerStateProvider({
                 startDate: event.startDate,
                 startTime: event.startTime,
                 endTime: event.endTime,
-                semesterId: event.startDate
-                  ? getSemesterIdForDate(event.startDate)
-                  : normalizedSemesterId,
+                semesterId: getSemesterIdForDate(event.startDate!),
                 participants: [normalizedName],
                 action: hasParticipant ? "left" : "joined",
               };

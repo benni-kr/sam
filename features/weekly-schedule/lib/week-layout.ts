@@ -46,6 +46,25 @@ export function clampMinutes(minutes: number): number {
   return Math.min(WEEK_END_MINUTES, Math.max(WEEK_START_MINUTES, minutes));
 }
 
+/**
+ * Parses and clamps a weekly event's start/end times to valid grid bounds
+ * with at least a 15-minute duration.
+ */
+export function normalizeWeekEventInterval(
+  startTime: string,
+  endTime: string,
+): { startMinutes: number; endMinutes: number } {
+  const rawStartMinutes = parseTimeToMinutes(startTime);
+  const startMinutes = Math.min(
+    WEEK_END_MINUTES - 15,
+    Math.max(WEEK_START_MINUTES, rawStartMinutes),
+  );
+  const endMinutes = clampMinutes(
+    Math.max(startMinutes + 15, parseTimeToMinutes(endTime)),
+  );
+  return { startMinutes, endMinutes };
+}
+
 export function formatHourLabel(hour: number): string {
   if (hour === 24) return "24:00";
   return `${String(hour).padStart(2, "0")}:00`;
@@ -114,15 +133,9 @@ export function buildDayLayouts(events: PlannerWeekEvent[]): EventGroup[] {
   }
 
   for (const event of sorted) {
-    const rawStartMinutes = parseTimeToMinutes(event.startTime);
-
-    // Clamp start time to a maximum of 23:45 (WEEK_END_MINUTES - 15)
-    const startMinutes = Math.min(
-      WEEK_END_MINUTES - 15,
-      Math.max(WEEK_START_MINUTES, rawStartMinutes),
-    );
-    const endMinutes = clampMinutes(
-      Math.max(startMinutes + 15, parseTimeToMinutes(event.endTime)),
+    const { startMinutes, endMinutes } = normalizeWeekEventInterval(
+      event.startTime,
+      event.endTime,
     );
 
     if (currentGroup.length > 0 && startMinutes >= currentGroupEnd) {

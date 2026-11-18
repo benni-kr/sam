@@ -108,6 +108,23 @@ export const mobileDaysCountStore = {
   },
 };
 
+function buildLayoutsByDay(
+  byDay: Record<PlannerWeekday, PlannerWeekEvent[]>,
+): Record<PlannerWeekday, DayLayout> {
+  return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(
+    (accumulator, day) => {
+      accumulator[day] = {
+        groups: buildDayLayouts(byDay[day] ?? []),
+      };
+      return accumulator;
+    },
+    {
+      Mon: { groups: [] }, Tue: { groups: [] }, Wed: { groups: [] },
+      Thu: { groups: [] }, Fri: { groups: [] }, Sat: { groups: [] }, Sun: { groups: [] },
+    },
+  );
+}
+
 export function WeekView() {
   const {
     weekEvents,
@@ -189,28 +206,42 @@ export function WeekView() {
   const minuteScale =
     bodyHeight > 0 ? bodyHeight / (displayEndMinutes - displayStartMinutes) : 1.0;
 
-  const eventsByDay = useMemo(() => {
-    return plannerWeekdays.reduce<Record<PlannerWeekday, PlannerWeekEvent[]>>(
-      (accumulator, day) => {
-        accumulator[day] = visibleWeekEvents.filter((event) => event.day === day);
-        return accumulator;
-      },
-      { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [] },
-    );
+  const { eventsByDay, foregroundEventsByDay, backgroundEventsByDay } = useMemo(() => {
+    const allByDay: Record<PlannerWeekday, PlannerWeekEvent[]> = {
+      Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
+    };
+    const fgByDay: Record<PlannerWeekday, PlannerWeekEvent[]> = {
+      Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
+    };
+    const bgByDay: Record<PlannerWeekday, PlannerWeekEvent[]> = {
+      Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
+    };
+
+    for (const event of visibleWeekEvents) {
+      allByDay[event.day].push(event);
+      if (event.category === "Background") {
+        bgByDay[event.day].push(event);
+      } else {
+        fgByDay[event.day].push(event);
+      }
+    }
+
+    return {
+      eventsByDay: allByDay,
+      foregroundEventsByDay: fgByDay,
+      backgroundEventsByDay: bgByDay,
+    };
   }, [visibleWeekEvents]);
 
-  const layouts = useMemo(() => {
-    return plannerWeekdays.reduce<Record<PlannerWeekday, DayLayout>>(
-      (accumulator, day) => {
-        accumulator[day] = { groups: buildDayLayouts(eventsByDay[day] ?? []) };
-        return accumulator;
-      },
-      {
-        Mon: { groups: [] }, Tue: { groups: [] }, Wed: { groups: [] },
-        Thu: { groups: [] }, Fri: { groups: [] }, Sat: { groups: [] }, Sun: { groups: [] },
-      },
-    );
-  }, [eventsByDay]);
+  const layouts = useMemo(
+    () => buildLayoutsByDay(foregroundEventsByDay),
+    [foregroundEventsByDay],
+  );
+
+  const backgroundLayouts = useMemo(
+    () => buildLayoutsByDay(backgroundEventsByDay),
+    [backgroundEventsByDay],
+  );
 
   const availableDays = useMemo(() => {
     const sunVisible = (eventsByDay["Sun"]?.length ?? 0) > 0;
@@ -300,7 +331,7 @@ export function WeekView() {
       minuteScale,
       displayStartMinutes,
       visibleDays,
-      eventsByDay,
+      eventsByDay: foregroundEventsByDay,
       updateWeekEvent,
       onEventClick: setSelectedPreviewEvent,
     });
@@ -330,6 +361,7 @@ export function WeekView() {
       day: editingEvent.day,
       startTime: normalizedRange.startTime,
       endTime: normalizedRange.endTime,
+      icon: editingEvent.category === "Background" ? editingEvent.icon : undefined,
       participants: editingEvent.participants,
     });
 
@@ -468,9 +500,11 @@ export function WeekView() {
             key={day}
             day={day}
             groups={(draggingLayouts?.[day] ?? layouts[day]).groups}
+            backgroundGroups={backgroundLayouts[day].groups}
             minuteScale={minuteScale}
             displayStartMinutes={displayStartMinutes}
             onInteractionMouseDown={handleInteractionMouseDown}
+            onBackgroundEventClick={setSelectedPreviewEvent}
             draggingEventId={drag?.isDragging ? drag.event.id : undefined}
           />
         ))}
@@ -510,6 +544,7 @@ export function WeekView() {
               description={editingEvent.description ?? ""}
               category={editingEvent.category}
               day={editingEvent.day}
+              icon={editingEvent.icon}
               startTime={editingEvent.startTime}
               endTime={editingEvent.endTime}
               participants={editingEvent.participants}
@@ -532,6 +567,11 @@ export function WeekView() {
               onDayChange={(value) =>
                 setEditingEvent((current) =>
                   current ? { ...current, day: value } : current,
+                )
+              }
+              onIconChange={(value) =>
+                setEditingEvent((current) =>
+                  current ? { ...current, icon: value } : current,
                 )
               }
               onStartTimeChange={(value) =>

@@ -28,6 +28,9 @@
   --sam-solid-fg: #ffffff;
   --sam-page-bg: radial-gradient(circle at top, #f8f7f3, #efede6 55%, #e7e2d7);
   --sam-page-solid: #efede6; /* mid-stop of --sam-page-bg */
+  --sam-week-hatch-stripe: rgba(217, 119, 6, 0.14);
+  --sam-week-hatch-veil: rgba(217, 119, 6, 0.12);
+  --sam-week-hatch-bg: rgba(254, 243, 199, 0.32);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,6 +54,9 @@
       #0d0d11
     );
     --sam-page-solid: #141419; /* mid-stop of dark --sam-page-bg */
+    --sam-week-hatch-stripe: rgba(251, 191, 36, 0.14);
+    --sam-week-hatch-veil: rgba(251, 191, 36, 0.12);
+    --sam-week-hatch-bg: rgba(120, 53, 15, 0.16);
   }
 }
 
@@ -73,6 +79,9 @@ html.dark {
   --sam-solid-fg: #0f172a;
   --sam-page-bg: radial-gradient(circle at top, #1c1c24, #141419 55%, #0d0d11);
   --sam-page-solid: #141419;
+  --sam-week-hatch-stripe: rgba(251, 191, 36, 0.14);
+  --sam-week-hatch-veil: rgba(251, 191, 36, 0.12);
+  --sam-week-hatch-bg: rgba(120, 53, 15, 0.16);
 }
 
 /* ── Tailwind color utilities from chrome tokens ───────────────────────── */
@@ -97,6 +106,25 @@ html.dark {
 @layer utilities {
   .bg-page {
     background: var(--sam-page-bg);
+  }
+  .bg-week-hatch {
+    background-color: var(--sam-week-hatch-bg);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--sam-week-hatch-stripe) 0,
+      var(--sam-week-hatch-stripe) 2px,
+      transparent 2px,
+      transparent 10px
+    );
+  }
+  .bg-week-hatch-veil {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--sam-week-hatch-veil) 0,
+      var(--sam-week-hatch-veil) 2px,
+      transparent 2px,
+      transparent 10px
+    );
   }
 }
 

@@ -31,6 +31,44 @@ const mockWeekEvents: PlannerWeekEvent[] = [
     endTime: "12:00",
     participants: ["Bob"],
   },
+  {
+    id: "event-3",
+    title: "Overlap Lecture",
+    category: "University",
+    day: "Mon",
+    startTime: "11:30",
+    endTime: "13:00",
+    participants: [],
+  },
+  {
+    id: "bg-lunch",
+    title: "Lunch",
+    category: "Background",
+    day: "Mon",
+    startTime: "12:00",
+    endTime: "13:00",
+    participants: [],
+  },
+  {
+    id: "bg-coffee",
+    title: "Coffee Break",
+    category: "Background",
+    day: "Tue",
+    startTime: "14:00",
+    endTime: "15:00",
+    icon: "coffee",
+    participants: [],
+  },
+  {
+    id: "bg-study",
+    title: "Focus",
+    category: "Background",
+    day: "Tue",
+    startTime: "14:30",
+    endTime: "15:30",
+    icon: "study",
+    participants: [],
+  },
 ];
 
 vi.mock("@/features/planner/state/planner-state", () => ({
@@ -201,5 +239,40 @@ describe("WeekView mobile day controls", () => {
     });
 
     expect(screen.getByText("Mon – Wed")).toBeTruthy();
+  });
+
+  it("renders background activities with hatch pattern, through-foreground veil, icon-only watermark, and no lane splitting", () => {
+    const { container } = render(<WeekView />);
+
+    const bgButton = container.querySelector('[data-background-event-id="bg-lunch"]');
+    expect(bgButton).toBeTruthy();
+    expect(bgButton?.className).toContain("bg-week-hatch");
+    expect(bgButton?.textContent).toBe("");
+
+    const bgVeil = container.querySelector('[data-background-veil-id="bg-lunch"]');
+    expect(bgVeil).toBeTruthy();
+    expect(bgVeil?.className).toContain("bg-week-hatch-veil");
+    expect(bgVeil?.className).toContain("pointer-events-none");
+    // Only an icon watermark, zero text rendered inside the background veil
+    expect(bgVeil?.textContent).toBe("");
+    expect(bgVeil?.querySelector("svg")).toBeTruthy();
+
+    // Foreground event overlapping 12:00-13:00 stays at full 100% width (no lane split)
+    const overlapLectureButton = screen.getByTitle("Overlap Lecture");
+    expect((overlapLectureButton as HTMLElement).style.width).toBe("100%");
+  });
+
+  it("splits overlapping background activities side-by-side independently of foreground lanes", () => {
+    const { container } = render(<WeekView />);
+
+    const coffeeBtn = container.querySelector('[data-background-event-id="bg-coffee"]') as HTMLElement | null;
+    const studyBtn = container.querySelector('[data-background-event-id="bg-study"]') as HTMLElement | null;
+    expect(coffeeBtn).toBeTruthy();
+    expect(studyBtn).toBeTruthy();
+
+    expect(coffeeBtn?.style.left).toBe("0%");
+    expect(coffeeBtn?.style.width).toBe("50%");
+    expect(studyBtn?.style.left).toBe("50%");
+    expect(studyBtn?.style.width).toBe("50%");
   });
 });
